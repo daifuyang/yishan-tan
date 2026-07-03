@@ -1,0 +1,59 @@
+edition: 3.0.0
+name: yishan-tan
+access: enterprise
+
+vars:
+  region: cn-shanghai
+  serviceName: yishan-tan
+  functionName: yishan-tan
+
+resources:
+  function:
+    name: ${vars.functionName}
+    description: Yishan Tan (TanStack Start)
+    runtime: custom.debian12
+    handler: bootstrap
+    code: ./code
+    memorySize: 1024
+    timeout: 60
+    environmentVariables:
+      NODE_ENV: production
+      APP_LOG_LEVEL: info
+      APP_BASE_URL:
+        - '${envs.PUBLIC_APP_URL}'
+      BETTER_AUTH_URL:
+        - '${envs.BETTER_AUTH_URL}'
+      BETTER_AUTH_SECRET:
+        - '${envs.BETTER_AUTH_SECRET}'
+      BETTER_AUTH_TRUSTED_ORIGINS:
+        - '${envs.BETTER_AUTH_TRUSTED_ORIGINS}'
+      DATABASE_URL:
+        - '${envs.DATABASE_URL}'
+      REDIS_URL:
+        - '${envs.REDIS_URL}'
+    vpcConfig:
+      vpcId:
+        - '${envs.VPC_ID}'
+      vSwitchIds:
+        - '${envs.VSWITCH_ID}'
+      securityGroupId:
+        - '${envs.SECURITY_GROUP_ID}'
+    customRuntimeConfig:
+      command:
+        - '/code/bootstrap'
+      port: 9000
+    triggers:
+      - triggerName: httpTrigger
+        triggerType: http
+        triggerConfig:
+          authType: anonymous
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - PATCH
+            - OPTIONS
+          customDomain:
+            domainName:
+              - '${envs.PUBLIC_APP_URL}'

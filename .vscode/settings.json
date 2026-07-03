@@ -1,0 +1,7 @@
+{
+  "extends": "@biomejs/biome/configs/lib.json",
+  "files": {
+    "ignoreUnknown": true,
+    "ignore": ["node_modules", ".output", "dist", "fc-deploy/code"]
+  }
+}

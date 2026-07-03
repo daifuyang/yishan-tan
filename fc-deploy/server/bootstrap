@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# FC custom runtime 启动脚本。
+# - 只负责启动应用，禁止执行 apt-get / pnpm install / 数据库迁移 / 证书续签。
+# - 部署包应已包含完整 node_modules 与 .output 目录。
+
+set -euo pipefail
+
+cd /code
+export NODE_ENV="${NODE_ENV:-production}"
+export PORT="${PORT:-9000}"
+
+exec node .output/server/index.mjs
