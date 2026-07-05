@@ -2,6 +2,7 @@ import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 
 declare global {
@@ -10,7 +11,7 @@ declare global {
 
 function buildAuth() {
   return betterAuth({
-    database: drizzleAdapter(getDb(), { provider: "pg" }),
+    database: drizzleAdapter(getDb(), { provider: "pg", schema }),
     secret: process.env.BETTER_AUTH_SECRET ?? "yishan-tan-install-mode-secret-placeholder-000000",
     baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
     trustedOrigins: [
@@ -34,6 +35,7 @@ function buildAuth() {
     advanced: {
       cookiePrefix: "yishantan",
       useSecureCookies: process.env.NODE_ENV === "production",
+      database: { generateId: "uuid" },
     },
     plugins: [
       apiKey({
@@ -48,6 +50,7 @@ function buildAuth() {
       additionalFields: {
         username: { type: "string", required: true, input: true },
         displayName: { type: "string", required: false, input: true },
+        phone: { type: "string", required: false, input: true },
         role: { type: "string", required: false, input: false },
       },
     },

@@ -12,7 +12,7 @@ export type CurrentUserServiceInput = undefined;
 export type CurrentUserServiceOutput = PublicUser | null;
 
 export type CreateSessionServiceInput = {
-  email: string;
+  account: string;
   password: string;
 };
 export type CreateSessionServiceOutput = {
@@ -23,7 +23,9 @@ export type CreateUserServiceInput = {
   email: string;
   password: string;
   username: string;
+  name?: string;
   displayName?: string;
+  phone?: string;
 };
 export type CreateUserServiceOutput = PublicUser;
 

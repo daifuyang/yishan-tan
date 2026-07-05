@@ -21,3 +21,8 @@ pnpm-debug.log*
 !.vscode/extensions.json
 
 src/routeTree.gen.ts.bak
+
+# dev tooling artifacts
+.playwright-cli/
+.tanstack/
+.playwright-mcp/

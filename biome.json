@@ -2,7 +2,14 @@
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
     "ignoreUnknown": true,
-    "ignore": ["node_modules", ".output", "dist", "fc-deploy/code", "**/routeTree.gen.ts"]
+    "ignore": [
+      "node_modules",
+      ".output",
+      "dist",
+      "fc-deploy/code",
+      "**/routeTree.gen.ts",
+      "db/migrations"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -14,15 +21,37 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "a11y": {
+        "recommended": true
+      },
       "correctness": {
-        "useExhaustiveDependencies": "off"
+        "useExhaustiveDependencies": "warn",
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noConsole": "warn"
       },
       "style": {
-        "useImportType": "warn"
+        "useImportType": "warn",
+        "useConsistentArrayType": "error"
       }
     }
   },
   "javascript": {
     "jsxRuntime": "transparent"
-  }
+  },
+  "overrides": [
+    {
+      "include": ["scripts/**", "db/seed.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
 }

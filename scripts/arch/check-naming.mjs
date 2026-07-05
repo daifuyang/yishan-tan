@@ -11,7 +11,7 @@
  */
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { listFiles, readIfExists, report } from "./_shared.mjs";
+import { listFiles, report } from "./_shared.mjs";
 
 const REST_OK = /^\/api\/v1\/([a-z0-9-]+)(\.|$)/;
 
@@ -47,8 +47,13 @@ async function checkFeaturesNaming() {
 }
 
 function isPluralResource(name) {
+  if (!name) return false;
   if (/^[a-z]+$/.test(name) && name.endsWith("s")) return true;
   if (/^[a-z-]+$/.test(name) && /ies$/.test(name)) return true;
+  if (/^[a-z][a-z0-9-]*[a-z0-9]$/.test(name) && name.endsWith("s")) return true;
+  const collectiveNouns = new Set(["data", "info", "meta"]);
+  const lastSegment = name.split("-").pop() ?? "";
+  if (collectiveNouns.has(lastSegment)) return true;
   return false;
 }
 

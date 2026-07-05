@@ -1,5 +1,3 @@
-export * from "./schema";
-
 import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({

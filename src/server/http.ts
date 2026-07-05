@@ -11,6 +11,20 @@ export function json(data: unknown, init?: ResponseInit): Response {
   });
 }
 
+export function ok<T>(data: T, init?: ResponseInit): Response {
+  return json({ ok: true, data }, init);
+}
+
+export function page<T>(
+  items: T[],
+  total: number,
+  page: number,
+  pageSize: number,
+  init?: ResponseInit,
+): Response {
+  return json({ ok: true, data: { items }, meta: { total, page, pageSize } }, init);
+}
+
 export async function parseJson(request: Request): Promise<unknown> {
   if (!request.body) return {};
   try {
@@ -33,12 +47,12 @@ export function handleApiError(error: unknown): Response {
       { status: 400 },
     );
   }
+  const message = error instanceof Error ? error.message : "服务暂时不可用";
   if (error instanceof ServerError) {
     return json(
       { ok: false, code: error.code, error: error.message },
       { status: error.statusCode },
     );
   }
-  const message = error instanceof Error ? error.message : "服务暂时不可用";
   return json({ ok: false, code: "INTERNAL", error: message }, { status: 500 });
 }

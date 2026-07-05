@@ -16,7 +16,9 @@ export async function contextFromRequest(input: Headers | Request): Promise<Serv
   const headers = toHeaders(input);
   const session = await auth.api.getSession({ headers });
   if (session?.user?.id) {
-    return { userId: session.user.id, headers, authKind: "session" };
+    const role =
+      session.user.role === "admin" || session.user.role === "member" ? session.user.role : null;
+    return { userId: session.user.id, headers, authKind: "session", role };
   }
 
   const apiKey = headers.get("x-api-key");
@@ -29,6 +31,7 @@ export async function contextFromRequest(input: Headers | Request): Promise<Serv
         userId: verified.key.referenceId,
         headers,
         authKind: "apiKey",
+        role: null,
       };
     }
   }

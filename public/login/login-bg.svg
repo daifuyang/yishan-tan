@@ -1,0 +1,77 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="base" x1="105" y1="86" x2="1778" y2="1056" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0737C8"/>
+      <stop offset="0.34" stop-color="#075EEB"/>
+      <stop offset="0.67" stop-color="#087DF4"/>
+      <stop offset="1" stop-color="#0345C9"/>
+    </linearGradient>
+    <radialGradient id="leftLight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(476 706) rotate(18) scale(700 420)">
+      <stop stop-color="#4AEAFF" stop-opacity="0.52"/>
+      <stop offset="0.42" stop-color="#25B9FF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#075EEB" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="topLight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1160 64) rotate(105) scale(760 560)">
+      <stop stop-color="#58E7FF" stop-opacity="0.28"/>
+      <stop offset="0.48" stop-color="#148DFF" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#0737C8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rightDepth" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1560 790) rotate(142) scale(820 520)">
+      <stop stop-color="#002FA7" stop-opacity="0.26"/>
+      <stop offset="0.56" stop-color="#0345C9" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#087DF4" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shapeA" x1="96" y1="922" x2="934" y2="534" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#69F0FF" stop-opacity="0.34"/>
+      <stop offset="0.52" stop-color="#2BA8FF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="shapeB" x1="362" y1="766" x2="1000" y2="488" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.1"/>
+      <stop offset="0.42" stop-color="#7CF4FF" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+    <radialGradient id="rightCalm" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1510 570) rotate(126) scale(940 760)">
+      <stop stop-color="#0256D5" stop-opacity="0.28"/>
+      <stop offset="0.58" stop-color="#0357D7" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#087DF4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur36" x="-240" y="-240" width="2400" height="1560" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="36"/>
+    </filter>
+    <filter id="blur18" x="-160" y="-160" width="2240" height="1400" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="noiseFilter" x="0" y="0" width="1920" height="1080" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.035"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#base)"/>
+  <rect width="1920" height="1080" fill="url(#leftLight)"/>
+  <rect width="1920" height="1080" fill="url(#topLight)"/>
+  <rect width="1920" height="1080" fill="url(#rightDepth)"/>
+
+  <g filter="url(#blur36)" opacity="0.74">
+    <ellipse cx="428" cy="860" rx="470" ry="230" fill="#20D9FF" fill-opacity="0.34"/>
+    <ellipse cx="704" cy="732" rx="390" ry="170" fill="#4AA3FF" fill-opacity="0.14"/>
+  </g>
+
+  <g filter="url(#blur18)" opacity="0.66">
+    <path d="M-160 1094L370 806C422 778 486 775 542 798L966 974L380 1282L-160 1094Z" fill="url(#shapeA)"/>
+    <path d="M176 908L562 698C614 670 678 666 734 690L1060 830L638 1062L176 908Z" fill="url(#shapeB)"/>
+  </g>
+
+  <g opacity="0.32">
+    <path d="M28 1000L392 806C440 780 500 778 550 800L840 926L462 1124L28 1000Z" fill="url(#shapeA)"/>
+    <path d="M248 908L558 744C610 716 674 714 728 738L946 836L622 1010L248 908Z" fill="url(#shapeB)"/>
+  </g>
+
+  <rect width="1920" height="1080" fill="url(#rightCalm)"/>
+  <rect width="1920" height="1080" filter="url(#noiseFilter)" opacity="0.55"/>
+  <rect width="1920" height="1080" fill="#0038B8" opacity="0.04"/>
+</svg>

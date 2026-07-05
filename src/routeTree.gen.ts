@@ -9,21 +9,135 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminStoragesRouteImport } from './routes/admin/storages'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminRolesRouteImport } from './routes/admin/roles'
+import { Route as AdminPostsRouteImport } from './routes/admin/posts'
+import { Route as AdminPortalsRouteImport } from './routes/admin/portals'
+import { Route as AdminMenusRouteImport } from './routes/admin/menus'
+import { Route as AdminLoginLogsRouteImport } from './routes/admin/login-logs'
+import { Route as AdminDictsRouteImport } from './routes/admin/dicts'
+import { Route as AdminDepartmentsRouteImport } from './routes/admin/departments'
+import { Route as AdminAttachmentsRouteImport } from './routes/admin/attachments'
 import { Route as ApiV1UsersRouteImport } from './routes/api/v1/users'
 import { Route as ApiV1SessionsRouteImport } from './routes/api/v1/sessions'
+import { Route as ApiV1PostsRouteImport } from './routes/api/v1/posts'
+import { Route as ApiV1MenusRouteImport } from './routes/api/v1/menus'
+import { Route as ApiV1DictsDataRouteImport } from './routes/api/v1/dicts-data'
+import { Route as ApiV1DictTypesRouteImport } from './routes/api/v1/dict-types'
+import { Route as ApiV1DepartmentsRouteImport } from './routes/api/v1/departments'
+import { Route as AdminDictsTypeCodeRouteImport } from './routes/admin/dicts/$typeCode'
+import { Route as ApiV1UsersIndexRouteImport } from './routes/api/v1/users/index'
+import { Route as ApiV1SystemOptionsIndexRouteImport } from './routes/api/v1/system-options/index'
+import { Route as ApiV1StoragesIndexRouteImport } from './routes/api/v1/storages/index'
+import { Route as ApiV1RolesIndexRouteImport } from './routes/api/v1/roles/index'
+import { Route as ApiV1ApiKeysIndexRouteImport } from './routes/api/v1/api-keys/index'
 import { Route as ApiV1UsersMeRouteImport } from './routes/api/v1/users/me'
+import { Route as ApiV1UsersIdRouteImport } from './routes/api/v1/users/$id'
+import { Route as ApiV1SystemOptionsBatchRouteImport } from './routes/api/v1/system-options/batch'
+import { Route as ApiV1SystemOptionsKeyRouteImport } from './routes/api/v1/system-options/$key'
+import { Route as ApiV1StoragesIdRouteImport } from './routes/api/v1/storages/$id'
+import { Route as ApiV1RolesIdRouteImport } from './routes/api/v1/roles/$id'
+import { Route as ApiV1PostsIdRouteImport } from './routes/api/v1/posts/$id'
+import { Route as ApiV1MenusIdRouteImport } from './routes/api/v1/menus/$id'
+import { Route as ApiV1DictsDataIdRouteImport } from './routes/api/v1/dicts-data/$id'
+import { Route as ApiV1DictTypesIdRouteImport } from './routes/api/v1/dict-types/$id'
+import { Route as ApiV1DepartmentsIdRouteImport } from './routes/api/v1/departments/$id'
+import { Route as ApiV1ApiKeysIdRouteImport } from './routes/api/v1/api-keys/$id'
+import { Route as ApiV1UsersMeLoginLogsRouteImport } from './routes/api/v1/users/me/login-logs'
+import { Route as ApiV1StoragesIdDefaultRouteImport } from './routes/api/v1/storages/$id.default'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const ApiUploadsRoute = ApiUploadsRouteImport.update({
+  id: '/api/uploads',
+  path: '/api/uploads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminStoragesRoute = AdminStoragesRouteImport.update({
+  id: '/storages',
+  path: '/storages',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPostsRoute = AdminPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPortalsRoute = AdminPortalsRouteImport.update({
+  id: '/portals',
+  path: '/portals',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminMenusRoute = AdminMenusRouteImport.update({
+  id: '/menus',
+  path: '/menus',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminLoginLogsRoute = AdminLoginLogsRouteImport.update({
+  id: '/login-logs',
+  path: '/login-logs',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDictsRoute = AdminDictsRouteImport.update({
+  id: '/dicts',
+  path: '/dicts',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDepartmentsRoute = AdminDepartmentsRouteImport.update({
+  id: '/departments',
+  path: '/departments',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAttachmentsRoute = AdminAttachmentsRouteImport.update({
+  id: '/attachments',
+  path: '/attachments',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const ApiV1UsersRoute = ApiV1UsersRouteImport.update({
   id: '/api/v1/users',
@@ -35,72 +149,467 @@ const ApiV1SessionsRoute = ApiV1SessionsRouteImport.update({
   path: '/api/v1/sessions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PostsRoute = ApiV1PostsRouteImport.update({
+  id: '/api/v1/posts',
+  path: '/api/v1/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1MenusRoute = ApiV1MenusRouteImport.update({
+  id: '/api/v1/menus',
+  path: '/api/v1/menus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1DictsDataRoute = ApiV1DictsDataRouteImport.update({
+  id: '/api/v1/dicts-data',
+  path: '/api/v1/dicts-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1DictTypesRoute = ApiV1DictTypesRouteImport.update({
+  id: '/api/v1/dict-types',
+  path: '/api/v1/dict-types',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1DepartmentsRoute = ApiV1DepartmentsRouteImport.update({
+  id: '/api/v1/departments',
+  path: '/api/v1/departments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDictsTypeCodeRoute = AdminDictsTypeCodeRouteImport.update({
+  id: '/$typeCode',
+  path: '/$typeCode',
+  getParentRoute: () => AdminDictsRoute,
+} as any)
+const ApiV1UsersIndexRoute = ApiV1UsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ApiV1UsersRoute,
+} as any)
+const ApiV1SystemOptionsIndexRoute = ApiV1SystemOptionsIndexRouteImport.update({
+  id: '/api/v1/system-options/',
+  path: '/api/v1/system-options/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1StoragesIndexRoute = ApiV1StoragesIndexRouteImport.update({
+  id: '/api/v1/storages/',
+  path: '/api/v1/storages/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1RolesIndexRoute = ApiV1RolesIndexRouteImport.update({
+  id: '/api/v1/roles/',
+  path: '/api/v1/roles/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1ApiKeysIndexRoute = ApiV1ApiKeysIndexRouteImport.update({
+  id: '/api/v1/api-keys/',
+  path: '/api/v1/api-keys/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1UsersMeRoute = ApiV1UsersMeRouteImport.update({
   id: '/me',
   path: '/me',
   getParentRoute: () => ApiV1UsersRoute,
 } as any)
+const ApiV1UsersIdRoute = ApiV1UsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1UsersRoute,
+} as any)
+const ApiV1SystemOptionsBatchRoute = ApiV1SystemOptionsBatchRouteImport.update({
+  id: '/api/v1/system-options/batch',
+  path: '/api/v1/system-options/batch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1SystemOptionsKeyRoute = ApiV1SystemOptionsKeyRouteImport.update({
+  id: '/api/v1/system-options/$key',
+  path: '/api/v1/system-options/$key',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1StoragesIdRoute = ApiV1StoragesIdRouteImport.update({
+  id: '/api/v1/storages/$id',
+  path: '/api/v1/storages/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1RolesIdRoute = ApiV1RolesIdRouteImport.update({
+  id: '/api/v1/roles/$id',
+  path: '/api/v1/roles/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1PostsIdRoute = ApiV1PostsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1PostsRoute,
+} as any)
+const ApiV1MenusIdRoute = ApiV1MenusIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1MenusRoute,
+} as any)
+const ApiV1DictsDataIdRoute = ApiV1DictsDataIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1DictsDataRoute,
+} as any)
+const ApiV1DictTypesIdRoute = ApiV1DictTypesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1DictTypesRoute,
+} as any)
+const ApiV1DepartmentsIdRoute = ApiV1DepartmentsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1DepartmentsRoute,
+} as any)
+const ApiV1ApiKeysIdRoute = ApiV1ApiKeysIdRouteImport.update({
+  id: '/api/v1/api-keys/$id',
+  path: '/api/v1/api-keys/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1UsersMeLoginLogsRoute = ApiV1UsersMeLoginLogsRouteImport.update({
+  id: '/login-logs',
+  path: '/login-logs',
+  getParentRoute: () => ApiV1UsersMeRoute,
+} as any)
+const ApiV1StoragesIdDefaultRoute = ApiV1StoragesIdDefaultRouteImport.update({
+  id: '/default',
+  path: '/default',
+  getParentRoute: () => ApiV1StoragesIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/admin/attachments': typeof AdminAttachmentsRoute
+  '/admin/departments': typeof AdminDepartmentsRoute
+  '/admin/dicts': typeof AdminDictsRouteWithChildren
+  '/admin/login-logs': typeof AdminLoginLogsRoute
+  '/admin/menus': typeof AdminMenusRoute
+  '/admin/portals': typeof AdminPortalsRoute
+  '/admin/posts': typeof AdminPostsRoute
+  '/admin/roles': typeof AdminRolesRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storages': typeof AdminStoragesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/uploads': typeof ApiUploadsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/dicts/$typeCode': typeof AdminDictsTypeCodeRoute
+  '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
+  '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
+  '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
+  '/api/v1/menus': typeof ApiV1MenusRouteWithChildren
+  '/api/v1/posts': typeof ApiV1PostsRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
   '/api/v1/users': typeof ApiV1UsersRouteWithChildren
-  '/api/v1/users/me': typeof ApiV1UsersMeRoute
+  '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
+  '/api/v1/departments/$id': typeof ApiV1DepartmentsIdRoute
+  '/api/v1/dict-types/$id': typeof ApiV1DictTypesIdRoute
+  '/api/v1/dicts-data/$id': typeof ApiV1DictsDataIdRoute
+  '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
+  '/api/v1/posts/$id': typeof ApiV1PostsIdRoute
+  '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
+  '/api/v1/storages/$id': typeof ApiV1StoragesIdRouteWithChildren
+  '/api/v1/system-options/$key': typeof ApiV1SystemOptionsKeyRoute
+  '/api/v1/system-options/batch': typeof ApiV1SystemOptionsBatchRoute
+  '/api/v1/users/$id': typeof ApiV1UsersIdRoute
+  '/api/v1/users/me': typeof ApiV1UsersMeRouteWithChildren
+  '/api/v1/api-keys/': typeof ApiV1ApiKeysIndexRoute
+  '/api/v1/roles/': typeof ApiV1RolesIndexRoute
+  '/api/v1/storages/': typeof ApiV1StoragesIndexRoute
+  '/api/v1/system-options/': typeof ApiV1SystemOptionsIndexRoute
+  '/api/v1/users/': typeof ApiV1UsersIndexRoute
+  '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
+  '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/admin/attachments': typeof AdminAttachmentsRoute
+  '/admin/departments': typeof AdminDepartmentsRoute
+  '/admin/dicts': typeof AdminDictsRouteWithChildren
+  '/admin/login-logs': typeof AdminLoginLogsRoute
+  '/admin/menus': typeof AdminMenusRoute
+  '/admin/portals': typeof AdminPortalsRoute
+  '/admin/posts': typeof AdminPostsRoute
+  '/admin/roles': typeof AdminRolesRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storages': typeof AdminStoragesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/uploads': typeof ApiUploadsRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/dicts/$typeCode': typeof AdminDictsTypeCodeRoute
+  '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
+  '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
+  '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
+  '/api/v1/menus': typeof ApiV1MenusRouteWithChildren
+  '/api/v1/posts': typeof ApiV1PostsRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
-  '/api/v1/users': typeof ApiV1UsersRouteWithChildren
-  '/api/v1/users/me': typeof ApiV1UsersMeRoute
+  '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
+  '/api/v1/departments/$id': typeof ApiV1DepartmentsIdRoute
+  '/api/v1/dict-types/$id': typeof ApiV1DictTypesIdRoute
+  '/api/v1/dicts-data/$id': typeof ApiV1DictsDataIdRoute
+  '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
+  '/api/v1/posts/$id': typeof ApiV1PostsIdRoute
+  '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
+  '/api/v1/storages/$id': typeof ApiV1StoragesIdRouteWithChildren
+  '/api/v1/system-options/$key': typeof ApiV1SystemOptionsKeyRoute
+  '/api/v1/system-options/batch': typeof ApiV1SystemOptionsBatchRoute
+  '/api/v1/users/$id': typeof ApiV1UsersIdRoute
+  '/api/v1/users/me': typeof ApiV1UsersMeRouteWithChildren
+  '/api/v1/api-keys': typeof ApiV1ApiKeysIndexRoute
+  '/api/v1/roles': typeof ApiV1RolesIndexRoute
+  '/api/v1/storages': typeof ApiV1StoragesIndexRoute
+  '/api/v1/system-options': typeof ApiV1SystemOptionsIndexRoute
+  '/api/v1/users': typeof ApiV1UsersIndexRoute
+  '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
+  '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/admin/attachments': typeof AdminAttachmentsRoute
+  '/admin/departments': typeof AdminDepartmentsRoute
+  '/admin/dicts': typeof AdminDictsRouteWithChildren
+  '/admin/login-logs': typeof AdminLoginLogsRoute
+  '/admin/menus': typeof AdminMenusRoute
+  '/admin/portals': typeof AdminPortalsRoute
+  '/admin/posts': typeof AdminPostsRoute
+  '/admin/roles': typeof AdminRolesRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storages': typeof AdminStoragesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/uploads': typeof ApiUploadsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/dicts/$typeCode': typeof AdminDictsTypeCodeRoute
+  '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
+  '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
+  '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
+  '/api/v1/menus': typeof ApiV1MenusRouteWithChildren
+  '/api/v1/posts': typeof ApiV1PostsRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
   '/api/v1/users': typeof ApiV1UsersRouteWithChildren
-  '/api/v1/users/me': typeof ApiV1UsersMeRoute
+  '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
+  '/api/v1/departments/$id': typeof ApiV1DepartmentsIdRoute
+  '/api/v1/dict-types/$id': typeof ApiV1DictTypesIdRoute
+  '/api/v1/dicts-data/$id': typeof ApiV1DictsDataIdRoute
+  '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
+  '/api/v1/posts/$id': typeof ApiV1PostsIdRoute
+  '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
+  '/api/v1/storages/$id': typeof ApiV1StoragesIdRouteWithChildren
+  '/api/v1/system-options/$key': typeof ApiV1SystemOptionsKeyRoute
+  '/api/v1/system-options/batch': typeof ApiV1SystemOptionsBatchRoute
+  '/api/v1/users/$id': typeof ApiV1UsersIdRoute
+  '/api/v1/users/me': typeof ApiV1UsersMeRouteWithChildren
+  '/api/v1/api-keys/': typeof ApiV1ApiKeysIndexRoute
+  '/api/v1/roles/': typeof ApiV1RolesIndexRoute
+  '/api/v1/storages/': typeof ApiV1StoragesIndexRoute
+  '/api/v1/system-options/': typeof ApiV1SystemOptionsIndexRoute
+  '/api/v1/users/': typeof ApiV1UsersIndexRoute
+  '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
+  '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/login'
+    | '/admin/attachments'
+    | '/admin/departments'
+    | '/admin/dicts'
+    | '/admin/login-logs'
+    | '/admin/menus'
+    | '/admin/portals'
+    | '/admin/posts'
+    | '/admin/roles'
+    | '/admin/settings'
+    | '/admin/storages'
+    | '/admin/users'
     | '/api/health'
+    | '/api/uploads'
+    | '/admin/'
+    | '/admin/dicts/$typeCode'
+    | '/api/v1/departments'
+    | '/api/v1/dict-types'
+    | '/api/v1/dicts-data'
+    | '/api/v1/menus'
+    | '/api/v1/posts'
     | '/api/v1/sessions'
     | '/api/v1/users'
+    | '/api/v1/api-keys/$id'
+    | '/api/v1/departments/$id'
+    | '/api/v1/dict-types/$id'
+    | '/api/v1/dicts-data/$id'
+    | '/api/v1/menus/$id'
+    | '/api/v1/posts/$id'
+    | '/api/v1/roles/$id'
+    | '/api/v1/storages/$id'
+    | '/api/v1/system-options/$key'
+    | '/api/v1/system-options/batch'
+    | '/api/v1/users/$id'
     | '/api/v1/users/me'
+    | '/api/v1/api-keys/'
+    | '/api/v1/roles/'
+    | '/api/v1/storages/'
+    | '/api/v1/system-options/'
+    | '/api/v1/users/'
+    | '/api/v1/storages/$id/default'
+    | '/api/v1/users/me/login-logs'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
+    | '/admin/attachments'
+    | '/admin/departments'
+    | '/admin/dicts'
+    | '/admin/login-logs'
+    | '/admin/menus'
+    | '/admin/portals'
+    | '/admin/posts'
+    | '/admin/roles'
+    | '/admin/settings'
+    | '/admin/storages'
+    | '/admin/users'
     | '/api/health'
+    | '/api/uploads'
+    | '/admin'
+    | '/admin/dicts/$typeCode'
+    | '/api/v1/departments'
+    | '/api/v1/dict-types'
+    | '/api/v1/dicts-data'
+    | '/api/v1/menus'
+    | '/api/v1/posts'
     | '/api/v1/sessions'
-    | '/api/v1/users'
+    | '/api/v1/api-keys/$id'
+    | '/api/v1/departments/$id'
+    | '/api/v1/dict-types/$id'
+    | '/api/v1/dicts-data/$id'
+    | '/api/v1/menus/$id'
+    | '/api/v1/posts/$id'
+    | '/api/v1/roles/$id'
+    | '/api/v1/storages/$id'
+    | '/api/v1/system-options/$key'
+    | '/api/v1/system-options/batch'
+    | '/api/v1/users/$id'
     | '/api/v1/users/me'
+    | '/api/v1/api-keys'
+    | '/api/v1/roles'
+    | '/api/v1/storages'
+    | '/api/v1/system-options'
+    | '/api/v1/users'
+    | '/api/v1/storages/$id/default'
+    | '/api/v1/users/me/login-logs'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/login'
+    | '/admin/attachments'
+    | '/admin/departments'
+    | '/admin/dicts'
+    | '/admin/login-logs'
+    | '/admin/menus'
+    | '/admin/portals'
+    | '/admin/posts'
+    | '/admin/roles'
+    | '/admin/settings'
+    | '/admin/storages'
+    | '/admin/users'
     | '/api/health'
+    | '/api/uploads'
+    | '/admin/'
+    | '/admin/dicts/$typeCode'
+    | '/api/v1/departments'
+    | '/api/v1/dict-types'
+    | '/api/v1/dicts-data'
+    | '/api/v1/menus'
+    | '/api/v1/posts'
     | '/api/v1/sessions'
     | '/api/v1/users'
+    | '/api/v1/api-keys/$id'
+    | '/api/v1/departments/$id'
+    | '/api/v1/dict-types/$id'
+    | '/api/v1/dicts-data/$id'
+    | '/api/v1/menus/$id'
+    | '/api/v1/posts/$id'
+    | '/api/v1/roles/$id'
+    | '/api/v1/storages/$id'
+    | '/api/v1/system-options/$key'
+    | '/api/v1/system-options/batch'
+    | '/api/v1/users/$id'
     | '/api/v1/users/me'
+    | '/api/v1/api-keys/'
+    | '/api/v1/roles/'
+    | '/api/v1/storages/'
+    | '/api/v1/system-options/'
+    | '/api/v1/users/'
+    | '/api/v1/storages/$id/default'
+    | '/api/v1/users/me/login-logs'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiUploadsRoute: typeof ApiUploadsRoute
+  ApiV1DepartmentsRoute: typeof ApiV1DepartmentsRouteWithChildren
+  ApiV1DictTypesRoute: typeof ApiV1DictTypesRouteWithChildren
+  ApiV1DictsDataRoute: typeof ApiV1DictsDataRouteWithChildren
+  ApiV1MenusRoute: typeof ApiV1MenusRouteWithChildren
+  ApiV1PostsRoute: typeof ApiV1PostsRouteWithChildren
   ApiV1SessionsRoute: typeof ApiV1SessionsRoute
   ApiV1UsersRoute: typeof ApiV1UsersRouteWithChildren
+  ApiV1ApiKeysIdRoute: typeof ApiV1ApiKeysIdRoute
+  ApiV1RolesIdRoute: typeof ApiV1RolesIdRoute
+  ApiV1StoragesIdRoute: typeof ApiV1StoragesIdRouteWithChildren
+  ApiV1SystemOptionsKeyRoute: typeof ApiV1SystemOptionsKeyRoute
+  ApiV1SystemOptionsBatchRoute: typeof ApiV1SystemOptionsBatchRoute
+  ApiV1ApiKeysIndexRoute: typeof ApiV1ApiKeysIndexRoute
+  ApiV1RolesIndexRoute: typeof ApiV1RolesIndexRoute
+  ApiV1StoragesIndexRoute: typeof ApiV1StoragesIndexRoute
+  ApiV1SystemOptionsIndexRoute: typeof ApiV1SystemOptionsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/api/uploads': {
+      id: '/api/uploads'
+      path: '/api/uploads'
+      fullPath: '/api/uploads'
+      preLoaderRoute: typeof ApiUploadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -109,6 +618,83 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/storages': {
+      id: '/admin/storages'
+      path: '/storages'
+      fullPath: '/admin/storages'
+      preLoaderRoute: typeof AdminStoragesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/roles': {
+      id: '/admin/roles'
+      path: '/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/posts': {
+      id: '/admin/posts'
+      path: '/posts'
+      fullPath: '/admin/posts'
+      preLoaderRoute: typeof AdminPostsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/portals': {
+      id: '/admin/portals'
+      path: '/portals'
+      fullPath: '/admin/portals'
+      preLoaderRoute: typeof AdminPortalsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/menus': {
+      id: '/admin/menus'
+      path: '/menus'
+      fullPath: '/admin/menus'
+      preLoaderRoute: typeof AdminMenusRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/login-logs': {
+      id: '/admin/login-logs'
+      path: '/login-logs'
+      fullPath: '/admin/login-logs'
+      preLoaderRoute: typeof AdminLoginLogsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/dicts': {
+      id: '/admin/dicts'
+      path: '/dicts'
+      fullPath: '/admin/dicts'
+      preLoaderRoute: typeof AdminDictsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/departments': {
+      id: '/admin/departments'
+      path: '/departments'
+      fullPath: '/admin/departments'
+      preLoaderRoute: typeof AdminDepartmentsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/attachments': {
+      id: '/admin/attachments'
+      path: '/attachments'
+      fullPath: '/admin/attachments'
+      preLoaderRoute: typeof AdminAttachmentsRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/api/v1/users': {
       id: '/api/v1/users'
@@ -124,6 +710,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1SessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/posts': {
+      id: '/api/v1/posts'
+      path: '/api/v1/posts'
+      fullPath: '/api/v1/posts'
+      preLoaderRoute: typeof ApiV1PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/menus': {
+      id: '/api/v1/menus'
+      path: '/api/v1/menus'
+      fullPath: '/api/v1/menus'
+      preLoaderRoute: typeof ApiV1MenusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/dicts-data': {
+      id: '/api/v1/dicts-data'
+      path: '/api/v1/dicts-data'
+      fullPath: '/api/v1/dicts-data'
+      preLoaderRoute: typeof ApiV1DictsDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/dict-types': {
+      id: '/api/v1/dict-types'
+      path: '/api/v1/dict-types'
+      fullPath: '/api/v1/dict-types'
+      preLoaderRoute: typeof ApiV1DictTypesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/departments': {
+      id: '/api/v1/departments'
+      path: '/api/v1/departments'
+      fullPath: '/api/v1/departments'
+      preLoaderRoute: typeof ApiV1DepartmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/dicts/$typeCode': {
+      id: '/admin/dicts/$typeCode'
+      path: '/$typeCode'
+      fullPath: '/admin/dicts/$typeCode'
+      preLoaderRoute: typeof AdminDictsTypeCodeRouteImport
+      parentRoute: typeof AdminDictsRoute
+    }
+    '/api/v1/users/': {
+      id: '/api/v1/users/'
+      path: '/'
+      fullPath: '/api/v1/users/'
+      preLoaderRoute: typeof ApiV1UsersIndexRouteImport
+      parentRoute: typeof ApiV1UsersRoute
+    }
+    '/api/v1/system-options/': {
+      id: '/api/v1/system-options/'
+      path: '/api/v1/system-options'
+      fullPath: '/api/v1/system-options/'
+      preLoaderRoute: typeof ApiV1SystemOptionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/storages/': {
+      id: '/api/v1/storages/'
+      path: '/api/v1/storages'
+      fullPath: '/api/v1/storages/'
+      preLoaderRoute: typeof ApiV1StoragesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/roles/': {
+      id: '/api/v1/roles/'
+      path: '/api/v1/roles'
+      fullPath: '/api/v1/roles/'
+      preLoaderRoute: typeof ApiV1RolesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/api-keys/': {
+      id: '/api/v1/api-keys/'
+      path: '/api/v1/api-keys'
+      fullPath: '/api/v1/api-keys/'
+      preLoaderRoute: typeof ApiV1ApiKeysIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/users/me': {
       id: '/api/v1/users/me'
       path: '/me'
@@ -131,26 +794,267 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1UsersMeRouteImport
       parentRoute: typeof ApiV1UsersRoute
     }
+    '/api/v1/users/$id': {
+      id: '/api/v1/users/$id'
+      path: '/$id'
+      fullPath: '/api/v1/users/$id'
+      preLoaderRoute: typeof ApiV1UsersIdRouteImport
+      parentRoute: typeof ApiV1UsersRoute
+    }
+    '/api/v1/system-options/batch': {
+      id: '/api/v1/system-options/batch'
+      path: '/api/v1/system-options/batch'
+      fullPath: '/api/v1/system-options/batch'
+      preLoaderRoute: typeof ApiV1SystemOptionsBatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/system-options/$key': {
+      id: '/api/v1/system-options/$key'
+      path: '/api/v1/system-options/$key'
+      fullPath: '/api/v1/system-options/$key'
+      preLoaderRoute: typeof ApiV1SystemOptionsKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/storages/$id': {
+      id: '/api/v1/storages/$id'
+      path: '/api/v1/storages/$id'
+      fullPath: '/api/v1/storages/$id'
+      preLoaderRoute: typeof ApiV1StoragesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/roles/$id': {
+      id: '/api/v1/roles/$id'
+      path: '/api/v1/roles/$id'
+      fullPath: '/api/v1/roles/$id'
+      preLoaderRoute: typeof ApiV1RolesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/posts/$id': {
+      id: '/api/v1/posts/$id'
+      path: '/$id'
+      fullPath: '/api/v1/posts/$id'
+      preLoaderRoute: typeof ApiV1PostsIdRouteImport
+      parentRoute: typeof ApiV1PostsRoute
+    }
+    '/api/v1/menus/$id': {
+      id: '/api/v1/menus/$id'
+      path: '/$id'
+      fullPath: '/api/v1/menus/$id'
+      preLoaderRoute: typeof ApiV1MenusIdRouteImport
+      parentRoute: typeof ApiV1MenusRoute
+    }
+    '/api/v1/dicts-data/$id': {
+      id: '/api/v1/dicts-data/$id'
+      path: '/$id'
+      fullPath: '/api/v1/dicts-data/$id'
+      preLoaderRoute: typeof ApiV1DictsDataIdRouteImport
+      parentRoute: typeof ApiV1DictsDataRoute
+    }
+    '/api/v1/dict-types/$id': {
+      id: '/api/v1/dict-types/$id'
+      path: '/$id'
+      fullPath: '/api/v1/dict-types/$id'
+      preLoaderRoute: typeof ApiV1DictTypesIdRouteImport
+      parentRoute: typeof ApiV1DictTypesRoute
+    }
+    '/api/v1/departments/$id': {
+      id: '/api/v1/departments/$id'
+      path: '/$id'
+      fullPath: '/api/v1/departments/$id'
+      preLoaderRoute: typeof ApiV1DepartmentsIdRouteImport
+      parentRoute: typeof ApiV1DepartmentsRoute
+    }
+    '/api/v1/api-keys/$id': {
+      id: '/api/v1/api-keys/$id'
+      path: '/api/v1/api-keys/$id'
+      fullPath: '/api/v1/api-keys/$id'
+      preLoaderRoute: typeof ApiV1ApiKeysIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/users/me/login-logs': {
+      id: '/api/v1/users/me/login-logs'
+      path: '/login-logs'
+      fullPath: '/api/v1/users/me/login-logs'
+      preLoaderRoute: typeof ApiV1UsersMeLoginLogsRouteImport
+      parentRoute: typeof ApiV1UsersMeRoute
+    }
+    '/api/v1/storages/$id/default': {
+      id: '/api/v1/storages/$id/default'
+      path: '/default'
+      fullPath: '/api/v1/storages/$id/default'
+      preLoaderRoute: typeof ApiV1StoragesIdDefaultRouteImport
+      parentRoute: typeof ApiV1StoragesIdRoute
+    }
   }
 }
 
+interface AdminDictsRouteChildren {
+  AdminDictsTypeCodeRoute: typeof AdminDictsTypeCodeRoute
+}
+
+const AdminDictsRouteChildren: AdminDictsRouteChildren = {
+  AdminDictsTypeCodeRoute: AdminDictsTypeCodeRoute,
+}
+
+const AdminDictsRouteWithChildren = AdminDictsRoute._addFileChildren(
+  AdminDictsRouteChildren,
+)
+
+interface AdminRouteRouteChildren {
+  AdminAttachmentsRoute: typeof AdminAttachmentsRoute
+  AdminDepartmentsRoute: typeof AdminDepartmentsRoute
+  AdminDictsRoute: typeof AdminDictsRouteWithChildren
+  AdminLoginLogsRoute: typeof AdminLoginLogsRoute
+  AdminMenusRoute: typeof AdminMenusRoute
+  AdminPortalsRoute: typeof AdminPortalsRoute
+  AdminPostsRoute: typeof AdminPostsRoute
+  AdminRolesRoute: typeof AdminRolesRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStoragesRoute: typeof AdminStoragesRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAttachmentsRoute: AdminAttachmentsRoute,
+  AdminDepartmentsRoute: AdminDepartmentsRoute,
+  AdminDictsRoute: AdminDictsRouteWithChildren,
+  AdminLoginLogsRoute: AdminLoginLogsRoute,
+  AdminMenusRoute: AdminMenusRoute,
+  AdminPortalsRoute: AdminPortalsRoute,
+  AdminPostsRoute: AdminPostsRoute,
+  AdminRolesRoute: AdminRolesRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminStoragesRoute: AdminStoragesRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
+interface ApiV1DepartmentsRouteChildren {
+  ApiV1DepartmentsIdRoute: typeof ApiV1DepartmentsIdRoute
+}
+
+const ApiV1DepartmentsRouteChildren: ApiV1DepartmentsRouteChildren = {
+  ApiV1DepartmentsIdRoute: ApiV1DepartmentsIdRoute,
+}
+
+const ApiV1DepartmentsRouteWithChildren =
+  ApiV1DepartmentsRoute._addFileChildren(ApiV1DepartmentsRouteChildren)
+
+interface ApiV1DictTypesRouteChildren {
+  ApiV1DictTypesIdRoute: typeof ApiV1DictTypesIdRoute
+}
+
+const ApiV1DictTypesRouteChildren: ApiV1DictTypesRouteChildren = {
+  ApiV1DictTypesIdRoute: ApiV1DictTypesIdRoute,
+}
+
+const ApiV1DictTypesRouteWithChildren = ApiV1DictTypesRoute._addFileChildren(
+  ApiV1DictTypesRouteChildren,
+)
+
+interface ApiV1DictsDataRouteChildren {
+  ApiV1DictsDataIdRoute: typeof ApiV1DictsDataIdRoute
+}
+
+const ApiV1DictsDataRouteChildren: ApiV1DictsDataRouteChildren = {
+  ApiV1DictsDataIdRoute: ApiV1DictsDataIdRoute,
+}
+
+const ApiV1DictsDataRouteWithChildren = ApiV1DictsDataRoute._addFileChildren(
+  ApiV1DictsDataRouteChildren,
+)
+
+interface ApiV1MenusRouteChildren {
+  ApiV1MenusIdRoute: typeof ApiV1MenusIdRoute
+}
+
+const ApiV1MenusRouteChildren: ApiV1MenusRouteChildren = {
+  ApiV1MenusIdRoute: ApiV1MenusIdRoute,
+}
+
+const ApiV1MenusRouteWithChildren = ApiV1MenusRoute._addFileChildren(
+  ApiV1MenusRouteChildren,
+)
+
+interface ApiV1PostsRouteChildren {
+  ApiV1PostsIdRoute: typeof ApiV1PostsIdRoute
+}
+
+const ApiV1PostsRouteChildren: ApiV1PostsRouteChildren = {
+  ApiV1PostsIdRoute: ApiV1PostsIdRoute,
+}
+
+const ApiV1PostsRouteWithChildren = ApiV1PostsRoute._addFileChildren(
+  ApiV1PostsRouteChildren,
+)
+
+interface ApiV1UsersMeRouteChildren {
+  ApiV1UsersMeLoginLogsRoute: typeof ApiV1UsersMeLoginLogsRoute
+}
+
+const ApiV1UsersMeRouteChildren: ApiV1UsersMeRouteChildren = {
+  ApiV1UsersMeLoginLogsRoute: ApiV1UsersMeLoginLogsRoute,
+}
+
+const ApiV1UsersMeRouteWithChildren = ApiV1UsersMeRoute._addFileChildren(
+  ApiV1UsersMeRouteChildren,
+)
+
 interface ApiV1UsersRouteChildren {
-  ApiV1UsersMeRoute: typeof ApiV1UsersMeRoute
+  ApiV1UsersIdRoute: typeof ApiV1UsersIdRoute
+  ApiV1UsersMeRoute: typeof ApiV1UsersMeRouteWithChildren
+  ApiV1UsersIndexRoute: typeof ApiV1UsersIndexRoute
 }
 
 const ApiV1UsersRouteChildren: ApiV1UsersRouteChildren = {
-  ApiV1UsersMeRoute: ApiV1UsersMeRoute,
+  ApiV1UsersIdRoute: ApiV1UsersIdRoute,
+  ApiV1UsersMeRoute: ApiV1UsersMeRouteWithChildren,
+  ApiV1UsersIndexRoute: ApiV1UsersIndexRoute,
 }
 
 const ApiV1UsersRouteWithChildren = ApiV1UsersRoute._addFileChildren(
   ApiV1UsersRouteChildren,
 )
 
+interface ApiV1StoragesIdRouteChildren {
+  ApiV1StoragesIdDefaultRoute: typeof ApiV1StoragesIdDefaultRoute
+}
+
+const ApiV1StoragesIdRouteChildren: ApiV1StoragesIdRouteChildren = {
+  ApiV1StoragesIdDefaultRoute: ApiV1StoragesIdDefaultRoute,
+}
+
+const ApiV1StoragesIdRouteWithChildren = ApiV1StoragesIdRoute._addFileChildren(
+  ApiV1StoragesIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiUploadsRoute: ApiUploadsRoute,
+  ApiV1DepartmentsRoute: ApiV1DepartmentsRouteWithChildren,
+  ApiV1DictTypesRoute: ApiV1DictTypesRouteWithChildren,
+  ApiV1DictsDataRoute: ApiV1DictsDataRouteWithChildren,
+  ApiV1MenusRoute: ApiV1MenusRouteWithChildren,
+  ApiV1PostsRoute: ApiV1PostsRouteWithChildren,
   ApiV1SessionsRoute: ApiV1SessionsRoute,
   ApiV1UsersRoute: ApiV1UsersRouteWithChildren,
+  ApiV1ApiKeysIdRoute: ApiV1ApiKeysIdRoute,
+  ApiV1RolesIdRoute: ApiV1RolesIdRoute,
+  ApiV1StoragesIdRoute: ApiV1StoragesIdRouteWithChildren,
+  ApiV1SystemOptionsKeyRoute: ApiV1SystemOptionsKeyRoute,
+  ApiV1SystemOptionsBatchRoute: ApiV1SystemOptionsBatchRoute,
+  ApiV1ApiKeysIndexRoute: ApiV1ApiKeysIndexRoute,
+  ApiV1RolesIndexRoute: ApiV1RolesIndexRoute,
+  ApiV1StoragesIndexRoute: ApiV1StoragesIndexRoute,
+  ApiV1SystemOptionsIndexRoute: ApiV1SystemOptionsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

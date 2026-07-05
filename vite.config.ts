@@ -1,10 +1,22 @@
+import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  plugins: [tanstackStart(), react(), tsconfigPaths()],
+  plugins: [
+    tailwindcss(),
+    tanstackStart({
+      server: {
+        build: {
+          inlineCss: true,
+        },
+      },
+    }),
+    react(),
+    tsconfigPaths({ projects: ["./tsconfig.json"] }),
+  ],
   server: {
     port: Number(process.env.PORT ?? 3000),
     host: true,

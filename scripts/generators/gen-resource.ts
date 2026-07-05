@@ -156,10 +156,6 @@ export const Route = createFileRoute('/api/v1/${toPlural(domain)}')({
   },
 ];
 
-async function ensureDir(p: string) {
-  await fs.mkdir(p, { recursive: true });
-}
-
 function toPascal(name: string) {
   return name
     .split(/[-_]/)
