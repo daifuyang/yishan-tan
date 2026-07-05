@@ -78,7 +78,7 @@ export function MultiSelect({
   const triggerLabel = ariaLabel ?? placeholder;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

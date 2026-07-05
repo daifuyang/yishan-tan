@@ -69,7 +69,6 @@ function PopconfirmContent({
 
 function Popconfirm({
   open,
-  defaultOpen,
   onOpenChange,
   children,
   title,
@@ -95,19 +94,22 @@ function Popconfirm({
 
   const handleConfirm = async (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    e.stopPropagation();
+    // 不 stopPropagation：Radix Popover 监听 pointerdown，不是 click，不会因为
+    // click 冒泡而误关 popover。允许冒泡让父级 onClick 正常响应。
     if (isBusy) return;
     setConfirming(true);
     try {
       await onConfirm();
     } finally {
-      setConfirming(false);
+      // 保留最后一次 confirming 状态给 onOpenChange(false) 流程：
+      // 父级常常在 onConfirm 成功后立即 setOpen(false)，这时 React 还没 re-render，
+      // 直接 setConfirming(false) 会丢一次 render。延后到下一 microtask。
+      setTimeout(() => setConfirming(false), 0);
     }
   };
 
   const handleCancel = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     if (isBusy) return;
     onOpenChange?.(false);
   };
@@ -118,7 +120,7 @@ function Popconfirm({
   };
 
   return (
-    <PopconfirmRoot open={open} defaultOpen={defaultOpen} onOpenChange={handleOpenChange}>
+    <PopconfirmRoot open={open} onOpenChange={handleOpenChange}>
       <PopconfirmTrigger asChild>{children}</PopconfirmTrigger>
       <PopconfirmPortal>
         <PopconfirmContent
