@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+import {
+  DISPLAY_FORMAT,
+  HEADER_FORMAT,
+  WEEKDAY_LABELS,
+  addMonths,
+  fromIso,
+  getMonthGrid,
+  toIso,
+} from "./date-picker-utils";
+
 export type DatePickerProps = {
   /** "YYYY-MM-DD" 字符串;与现有 `<input type="date">` 契约一致 */
   value: string | null;
@@ -22,56 +32,6 @@ export type DatePickerProps = {
   name?: string;
   className?: string;
 };
-
-const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"] as const;
-
-const DISPLAY_FORMAT = new Intl.DateTimeFormat("zh-CN", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  timeZone: "UTC",
-});
-
-const HEADER_FORMAT = new Intl.DateTimeFormat("zh-CN", {
-  year: "numeric",
-  month: "long",
-  timeZone: "UTC",
-});
-
-function toIso(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function fromIso(iso: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const [y, m, d] = iso.split("-").map(Number);
-  if (y === undefined || m === undefined || d === undefined) return null;
-  return new Date(Date.UTC(y, m - 1, d));
-}
-
-function addMonths(d: Date, n: number): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));
-}
-
-/**
- * 生成 6×7=42 天的网格;周一开头。
- * `view` 是 UTC 当月 1 号。
- */
-function getMonthGrid(view: Date): Date[] {
-  const first = new Date(Date.UTC(view.getUTCFullYear(), view.getUTCMonth(), 1));
-  // 0=Sun..6=Sat; 周一开头 → 把 Sun 当作"上周"
-  const firstWeekday = (first.getUTCDay() + 6) % 7;
-  const start = new Date(first);
-  start.setUTCDate(1 - firstWeekday);
-  return Array.from({ length: 42 }, (_, i) => {
-    const d = new Date(start);
-    d.setUTCDate(start.getUTCDate() + i);
-    return d;
-  });
-}
 
 function DatePicker({
   value,
@@ -230,3 +190,5 @@ function DatePicker({
 }
 
 export { DatePicker };
+
+DatePicker.displayName = "DatePicker";

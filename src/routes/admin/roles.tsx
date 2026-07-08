@@ -5,6 +5,7 @@ import * as React from "react";
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
 import { StatusBadge, type StatusTone } from "@/components/admin/display";
 import {
+  DateRangePicker,
   MenuTree,
   type MenuTreeNode,
   Popconfirm,
@@ -32,6 +33,7 @@ import { type DataScope, roleListQuerySchema } from "~/features/roles/roles.sche
 import type { RoleListItemDto } from "~/features/roles/roles.types";
 import { useCreateRole, useDeleteRole, useUpdateRole } from "~/features/roles/roles.use-mutations";
 import { placeholders } from "~/lib/copy";
+import { normalizeDateRange } from "~/lib/date-range";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -454,25 +456,13 @@ function AdminRolesPage() {
               </Select>
             </QueryFormItem>
 
-            <QueryFormItem label="创建时间起" htmlFor="filter-created-from">
-              <Input
-                id="filter-created-from"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={draft.createdFrom}
-                onChange={(e) => applyDraftPatch({ createdFrom: e.target.value })}
-              />
-            </QueryFormItem>
-
-            <QueryFormItem label="创建时间止" htmlFor="filter-created-to">
-              <Input
-                id="filter-created-to"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={draft.createdTo}
-                onChange={(e) => applyDraftPatch({ createdTo: e.target.value })}
+            <QueryFormItem label="创建时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+                onChange={(r) =>
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
               />
             </QueryFormItem>
           </>
@@ -614,8 +604,10 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   const name = trim(filters.name);
   const description = trim(filters.description);
   const status = filters.status === "all" ? undefined : filters.status;
-  const createdFrom = trim(filters.createdFrom);
-  const createdTo = trim(filters.createdTo);
+  const { createdFrom, createdTo } = normalizeDateRange({
+    start: filters.createdFrom || null,
+    end: filters.createdTo || null,
+  });
   const keyword = [name, description].filter(Boolean).join(" ") || undefined;
   return roleListQuerySchema.parse({
     page,

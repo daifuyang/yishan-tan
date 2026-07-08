@@ -17,6 +17,7 @@ export {
   type PopconfirmTone,
 } from "./popconfirm";
 export { DatePicker, type DatePickerProps } from "./date-picker";
+export { DateRangePicker, type DateRangePickerProps, type DateRange } from "./date-range-picker";
 export {
   SearchMultiSelect,
   type SearchMultiSelectProps,
