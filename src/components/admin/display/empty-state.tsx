@@ -55,12 +55,12 @@ export function EmptyState({
       data-slot="empty-state"
       data-variant="default"
       className={cn(
-        "flex flex-col items-center justify-center gap-3 px-6 py-16 text-center",
+        "flex flex-col items-center justify-center gap-2 px-6 py-10 text-center",
         className,
       )}
     >
-      {Icon ? <Icon className="size-12 text-text-mute" aria-hidden /> : null}
-      <div className="space-y-1">
+      {Icon ? <Icon className="size-10 text-text-mute" aria-hidden /> : null}
+      <div className="space-y-0.5">
         <h3 className="text-[14px] font-medium text-text-strong">{title}</h3>
         {description ? (
           <p className="mx-auto max-w-xs text-[13px] text-text-soft">{description}</p>

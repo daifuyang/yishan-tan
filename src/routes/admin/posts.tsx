@@ -534,19 +534,6 @@ function AdminPostsPage() {
           },
           loading: list.isFetching,
           emptyTitle: "暂无岗位",
-          emptyDescription: list.isError
-            ? "加载岗位列表失败，请稍后重试或检查后端日志。"
-            : "尚未配置任何岗位，点击「新建岗位」开始搭建岗位体系。",
-          emptyAction: list.isError ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => void list.refetch()}>
-              重试
-            </Button>
-          ) : (
-            <Button type="button" size="sm" variant="outline" onClick={handleOpenCreate}>
-              <Plus className="size-3.5" aria-hidden />
-              新建岗位
-            </Button>
-          ),
           error: list.isError
             ? list.error instanceof Error
               ? list.error.message

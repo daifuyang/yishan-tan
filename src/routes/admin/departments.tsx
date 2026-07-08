@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, FolderTree, Plus, SearchX } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -548,42 +548,11 @@ function AdminDepartmentsPage() {
           },
           loading: treeQuery.isFetching,
           // 区分两种 empty：①真空（无任何部门）→ 大图标 + 新建引导；②过滤空（有数据但被过滤掉）→ dashed 横幅 + 清空筛选
-          emptyIcon: treeQuery.isError ? undefined : tree.length === 0 ? FolderTree : SearchX,
           emptyTitle: treeQuery.isError
             ? "加载失败"
             : tree.length === 0
               ? "暂无部门"
               : "未找到匹配的部门",
-          emptyDescription: treeQuery.isError
-            ? "加载部门列表失败，请稍后重试或检查后端日志。"
-            : tree.length === 0
-              ? "尚未配置任何部门，点击「新建」开始搭建组织树。"
-              : `当前筛选条件下没有匹配的部门（共 ${tree.length} 个）。`,
-          emptyVariant: !treeQuery.isError && tree.length > 0 ? "dashed" : "default",
-          emptyAction: treeQuery.isError ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void treeQuery.refetch()}
-            >
-              重试
-            </Button>
-          ) : tree.length === 0 ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleOpenCreate(null)}
-            >
-              <Plus className="size-3.5" aria-hidden />
-              新建
-            </Button>
-          ) : (
-            <Button type="button" size="sm" variant="outline" onClick={handleResetFilters}>
-              清空筛选
-            </Button>
-          ),
           error: treeQuery.isError
             ? treeQuery.error instanceof Error
               ? treeQuery.error.message

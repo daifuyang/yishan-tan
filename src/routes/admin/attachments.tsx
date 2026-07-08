@@ -485,18 +485,6 @@ function AdminAttachmentsPage() {
         },
         loading: list.isFetching,
         emptyTitle: "暂无附件",
-        emptyDescription: list.isError
-          ? "加载附件列表失败，请稍后重试或检查后端日志。"
-          : "当前筛选条件下没有匹配附件，点上方「上传」试试。",
-        emptyAction: list.isError ? (
-          <Button type="button" size="sm" variant="outline" onClick={() => void list.refetch()}>
-            重试
-          </Button>
-        ) : (
-          <Button type="button" size="sm" variant="outline" onClick={handleResetFilters}>
-            清空筛选
-          </Button>
-        ),
         error: list.isError
           ? list.error instanceof Error
             ? list.error.message

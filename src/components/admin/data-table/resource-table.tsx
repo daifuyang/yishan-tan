@@ -424,18 +424,52 @@ export function ResourceTable<Row>({
     );
   };
 
-  const renderEmpty = () => {
-    if (empty) return empty;
-    return (
-      <EmptyState
-        icon={emptyIcon ?? Inbox}
-        title={emptyTitle}
-        description={emptyDescription}
-        action={emptyAction}
-        variant={emptyVariant ?? "default"}
-      />
-    );
-  };
+  const totalColumnCount = columns.length + (selectionEnabled ? 1 : 0);
+  const isInitialLoading = loading && data.length === 0;
+  const isEmpty = !isInitialLoading && data.length === 0;
+
+  const renderHeader = () => (
+    <TableHeader>
+      <TableRow>
+        {selectionHeaderCell}
+        {columns.map((col) => {
+          const sticky = getStickyCellProps(col, "header");
+          return (
+            <TableHead
+              key={col.key}
+              style={{
+                ...(col.width ? { width: col.width, minWidth: col.width } : {}),
+                ...(sticky?.style ?? {}),
+              }}
+              className={cn(
+                HEAD_ALIGN_CLASS[col.align ?? "left"],
+                sticky?.className,
+                col.className,
+              )}
+            >
+              {col.header}
+            </TableHead>
+          );
+        })}
+      </TableRow>
+    </TableHeader>
+  );
+
+  const renderEmptyCell = () => (
+    <TableRow>
+      <TableCell colSpan={totalColumnCount} className="p-0">
+        {empty ?? (
+          <EmptyState
+            icon={emptyIcon ?? Inbox}
+            title={emptyTitle}
+            description={emptyDescription}
+            action={emptyAction}
+            variant={emptyVariant ?? "default"}
+          />
+        )}
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <div
@@ -460,121 +494,68 @@ export function ResourceTable<Row>({
           </div>
         ) : null}
 
-        {loading && data.length === 0 ? (
-          <Table className="table-fixed">
-            <TableHeader>
-              <TableRow>
-                {selectionHeaderCell}
-                {columns.map((col) => {
-                  const sticky = getStickyCellProps(col, "header");
-                  return (
-                    <TableHead
-                      key={col.key}
-                      style={{
-                        ...(col.width ? { width: col.width, minWidth: col.width } : {}),
-                        ...(sticky?.style ?? {}),
-                      }}
+        <Table className="table-fixed">
+          {renderHeader()}
+          <TableBody>
+            {isInitialLoading
+              ? Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => i).map((i) => (
+                  <TableRow key={`skeleton-row-${columns.length}-${i}`}>
+                    {selectionEnabled ? <TableCell className={ALIGN_CLASS.center} /> : null}
+                    {columns.map((col) => {
+                      const sticky = getStickyCellProps(col, "body");
+                      return (
+                        <TableCell
+                          key={col.key}
+                          style={{
+                            ...(col.width ? { width: col.width, minWidth: col.width } : {}),
+                            ...(sticky?.style ?? {}),
+                          }}
+                          className={cn(sticky?.className, col.className)}
+                        >
+                          <div className="h-4 w-full max-w-[180px] animate-pulse rounded bg-line-soft" />
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))
+              : isEmpty
+                ? renderEmptyCell()
+                : data.map((row, index) => (
+                    <TableRow
+                      key={rowKey(row, index)}
                       className={cn(
-                        HEAD_ALIGN_CLASS[col.align ?? "left"],
-                        sticky?.className,
-                        col.className,
+                        "group/row",
+                        onRowClick && "cursor-pointer",
+                        rowClassName?.(row, index),
                       )}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
                     >
-                      {col.header}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => i).map((i) => (
-                <TableRow key={`skeleton-row-${columns.length}-${i}`}>
-                  {selectionEnabled ? <TableCell className={ALIGN_CLASS.center} /> : null}
-                  {columns.map((col) => {
-                    const sticky = getStickyCellProps(col, "body");
-                    return (
-                      <TableCell
-                        key={col.key}
-                        style={{
-                          ...(col.width ? { width: col.width, minWidth: col.width } : {}),
-                          ...(sticky?.style ?? {}),
-                        }}
-                        className={cn(sticky?.className, col.className)}
-                      >
-                        <div className="h-4 w-full max-w-[180px] animate-pulse rounded bg-line-soft" />
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : data.length === 0 ? (
-          renderEmpty()
-        ) : (
-          <Table className="table-fixed">
-            <TableHeader>
-              <TableRow>
-                {selectionHeaderCell}
-                {columns.map((col) => {
-                  const sticky = getStickyCellProps(col, "header");
-                  return (
-                    <TableHead
-                      key={col.key}
-                      style={{
-                        ...(col.width ? { width: col.width, minWidth: col.width } : {}),
-                        ...(sticky?.style ?? {}),
-                      }}
-                      className={cn(
-                        HEAD_ALIGN_CLASS[col.align ?? "left"],
-                        sticky?.className,
-                        col.className,
-                      )}
-                    >
-                      {col.header}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((row, index) => (
-                <TableRow
-                  key={rowKey(row, index)}
-                  className={cn(
-                    "group/row",
-                    onRowClick && "cursor-pointer",
-                    rowClassName?.(row, index),
-                  )}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {renderSelectionCell(row, index)}
-                  {columns.map((col) => {
-                    const sticky = getStickyCellProps(col, "body");
-                    return (
-                      <TableCell
-                        key={col.key}
-                        style={{
-                          ...(col.width ? { width: col.width, minWidth: col.width } : {}),
-                          ...(sticky?.style ?? {}),
-                        }}
-                        className={cn(
-                          ALIGN_CLASS[col.align ?? "left"],
-                          sticky?.className,
-                          col.className,
-                        )}
-                      >
-                        {col.cell
-                          ? col.cell(row, index)
-                          : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+                      {renderSelectionCell(row, index)}
+                      {columns.map((col) => {
+                        const sticky = getStickyCellProps(col, "body");
+                        return (
+                          <TableCell
+                            key={col.key}
+                            style={{
+                              ...(col.width ? { width: col.width, minWidth: col.width } : {}),
+                              ...(sticky?.style ?? {}),
+                            }}
+                            className={cn(
+                              ALIGN_CLASS[col.align ?? "left"],
+                              sticky?.className,
+                              col.className,
+                            )}
+                          >
+                            {col.cell
+                              ? col.cell(row, index)
+                              : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+          </TableBody>
+        </Table>
       </div>
 
       <ResourcePagination

@@ -549,23 +549,6 @@ function AdminMenusPage() {
           onPageSizeChange: () => undefined,
           loading: treeQuery.isFetching,
           emptyTitle: "暂无菜单",
-          emptyDescription: treeQuery.isError
-            ? "加载菜单树失败，请稍后重试或检查后端日志。"
-            : "当前筛选条件下没有匹配的菜单，试着调整关键字或状态。",
-          emptyAction: treeQuery.isError ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void treeQuery.refetch()}
-            >
-              重试
-            </Button>
-          ) : (
-            <Button type="button" size="sm" variant="outline" onClick={handleResetFilters}>
-              清空筛选
-            </Button>
-          ),
           error: treeQuery.isError
             ? treeQuery.error instanceof Error
               ? treeQuery.error.message
