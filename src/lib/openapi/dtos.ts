@@ -9,6 +9,7 @@
  * `.nullable().optional()` 而非 `.optional()`，保留 DTO 中的 null vs undefined 区分。
  */
 import { z } from "zod";
+import { dataScopeSchema } from "~/features/roles/roles.schema";
 import { menuTypeSchema, statusSchema, systemRoleSchema } from "./envelope";
 
 const nullableString = z.string().nullable();
@@ -91,17 +92,18 @@ export const roleDtoSchema = z
     name: z.string(),
     description: nullableString,
     status: statusSchema,
+    dataScope: dataScopeSchema,
+    isSystemDefault: z.boolean(),
+    creatorId: nullableString,
+    creatorName: nullableString,
+    updaterId: nullableString,
+    updaterName: nullableString,
     createdAt: isoDate,
     updatedAt: isoDate,
   })
   .openapi("RoleDto");
 
-export const roleListItemDtoSchema = roleDtoSchema
-  .extend({
-    userCount: z.number().int().nonnegative(),
-    menuCount: z.number().int().nonnegative(),
-  })
-  .openapi("RoleListItemDto");
+export const roleListItemDtoSchema = roleDtoSchema.openapi("RoleListItemDto");
 
 export const roleDetailDtoSchema = roleDtoSchema
   .extend({

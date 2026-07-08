@@ -332,6 +332,7 @@ async function ensureAdminRole(): Promise<string> {
       name: "系统管理员",
       description: "seed 默认管理员角色，拥有全部菜单权限",
       status: "enabled",
+      isSystemDefault: true,
     })
     .returning({ id: role.id });
   if (!inserted[0]) throw new Error("admin role 创建失败");

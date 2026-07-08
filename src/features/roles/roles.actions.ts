@@ -22,8 +22,8 @@ async function adminCtx() {
 export const listRoles = createServerFn({ method: "GET" })
   .validator(roleListQuerySchema)
   .handler(async ({ data }) => {
-    const ctx = await adminCtx();
-    return listRolesService({ ctx, ...data });
+    await adminCtx();
+    return listRolesService(data);
   });
 
 export const getRole = createServerFn({ method: "GET" })

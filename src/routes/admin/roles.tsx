@@ -31,6 +31,7 @@ import { useAssignableMenus, useRolesList } from "~/features/roles/roles.queries
 import { type DataScope, roleListQuerySchema } from "~/features/roles/roles.schema";
 import type { RoleListItemDto } from "~/features/roles/roles.types";
 import { useCreateRole, useDeleteRole, useUpdateRole } from "~/features/roles/roles.use-mutations";
+import { placeholders } from "~/lib/copy";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -95,6 +96,7 @@ function AdminRolesPage() {
   const [creating, setCreating] = React.useState(false);
   const [createForm, setCreateForm] = React.useState<CreateRoleFormValue>(EMPTY_CREATE_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
 
   const query = buildListQuery(filters, page, pageSize);
   const list = useRolesList(query);
@@ -328,7 +330,11 @@ function AdminRolesPage() {
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
-                    void handleToggleStatus(row);
+                    if (isDisabled) {
+                      void handleToggleStatus(row);
+                    } else {
+                      setDisablePopconfirmRowId(row.id);
+                    }
                   }}
                   disabled={isSystem}
                 >
@@ -347,6 +353,23 @@ function AdminRolesPage() {
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
               onConfirm={() => handleDeleteConfirm(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
+            <Popconfirm
+              open={disablePopconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+              title="禁用角色"
+              description="禁用后，已分配该角色的用户将失去对应权限。"
+              confirmLabel="禁用"
+              tone="danger"
+              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+              onConfirm={() => handleToggleStatus(row)}
               side="top"
               align="end"
               sideOffset={6}
@@ -398,7 +421,7 @@ function AdminRolesPage() {
                 id="filter-name"
                 className={FILTER_CONTROL_CLASS}
                 allowClear
-                placeholder="如:管理员"
+                placeholder={placeholders.input}
                 value={draft.name}
                 onChange={(e) => applyDraftPatch({ name: e.target.value })}
               />
@@ -409,7 +432,7 @@ function AdminRolesPage() {
                 id="filter-description"
                 className={FILTER_CONTROL_CLASS}
                 allowClear
-                placeholder="如:系统最高权限"
+                placeholder={placeholders.input}
                 value={draft.description}
                 onChange={(e) => applyDraftPatch({ description: e.target.value })}
               />

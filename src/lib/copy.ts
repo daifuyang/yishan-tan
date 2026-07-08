@@ -36,6 +36,7 @@ export const placeholders = {
   search: {
     common: "搜索关键词",
     user: "搜索用户",
+    role: "搜索角色",
     attachment: "搜索附件名",
     storage: "搜索存储名",
   },

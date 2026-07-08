@@ -1,4 +1,4 @@
-import { type SQL, and, desc, eq, gte, isNull, like, lte, sql } from "drizzle-orm";
+import { type SQL, and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
@@ -76,7 +76,13 @@ export const listRolesService: ListRolesService = async ({
 }) => {
   const where: SQL[] = [isNull(schema.role.deletedAt)];
   if (status) where.push(eq(schema.role.status, status));
-  if (keyword) where.push(like(schema.role.name, `%${keyword}%`));
+  if (keyword) {
+    const cond = or(
+      like(schema.role.name, `%${keyword}%`),
+      like(schema.role.description, `%${keyword}%`),
+    );
+    if (cond) where.push(cond);
+  }
   const from = parseDate(createdFrom);
   const to = parseDate(createdTo);
   if (from) where.push(gte(schema.role.createdAt, from));

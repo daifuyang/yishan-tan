@@ -40,7 +40,6 @@ export type UpdateRoleServiceInput = {
 };
 
 export type ListRolesService = (input: {
-  ctx: { userId: string; headers: Headers; authKind: "session" | "apiKey" | "system" };
   page: number;
   pageSize: number;
   keyword?: string;
