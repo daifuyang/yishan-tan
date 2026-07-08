@@ -485,7 +485,7 @@ function AdminRolesPage() {
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新增角色
+            新增
           </Button>
         }
         tableProps={{
