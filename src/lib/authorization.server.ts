@@ -21,7 +21,7 @@ export function isSystemAdmin(ctx: ServiceContext): boolean {
 
 export async function requireAdmin(ctx: ServiceContext): Promise<void> {
   if (isSystemAdmin(ctx)) return;
-  throw Errors.forbidden("仅系统管理员可执行该操作");
+  throw Errors.forbidden("仅超级管理员可执行该操作");
 }
 
 export async function requireSelfOrAdmin(ctx: ServiceContext, ownerId: string): Promise<void> {

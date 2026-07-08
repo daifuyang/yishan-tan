@@ -3,6 +3,12 @@ import { ChevronDown, Plus } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+  TEXTAREA_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge, type StatusTone } from "@/components/admin/display";
 import {
   DateRangePicker,
@@ -52,14 +58,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdFrom: "",
   createdTo: "",
 };
-
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
-const TEXTAREA_CLASS =
-  "border-line flex w-full min-w-0 rounded-[4px] border bg-white px-3 py-2 text-[13px] leading-[1.5] text-text-strong transition-colors outline-none focus-visible:border-brand-500 focus-visible:ring-brand-500 focus-visible:ring-[1px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40";
 
 const DATA_SCOPE_OPTIONS: Array<{ value: DataScope; label: string }> = [
   { value: "1", label: "全部数据" },
@@ -202,30 +200,27 @@ function AdminRolesPage() {
 
   const columns: ResourceColumn<RoleListItemDto>[] = [
     {
-      key: "id",
-      header: "ID",
-      width: "80px",
-      align: "right",
-      cell: (row) => (
-        <span className="font-mono text-[12px] text-text-mute">{row.id.slice(0, 8)}</span>
-      ),
-    },
-    {
       key: "name",
-      header: "名称",
+      header: "角色名称",
       width: "140px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.name}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.name}
+        >
           {row.name}
         </span>
       ),
     },
     {
       key: "description",
-      header: "描述",
+      header: "角色描述",
       width: "220px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.description ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.description ?? ""}
+        >
           {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -238,7 +233,7 @@ function AdminRolesPage() {
         row.isSystemDefault ? (
           <StatusBadge tone="info" label="系统" variant="soft" />
         ) : (
-          <StatusBadge tone="success" label="自定义" variant="soft" />
+          <StatusBadge tone="neutral" label="自定义" variant="soft" />
         ),
     },
     {
@@ -256,7 +251,7 @@ function AdminRolesPage() {
       width: "100px",
       cell: (row) => (
         <StatusBadge
-          tone={row.status === "enabled" ? "success" : "danger"}
+          tone="info"
           label={row.status === "enabled" ? "启用" : "已禁用"}
           variant="soft"
         />
@@ -412,7 +407,6 @@ function AdminRolesPage() {
     <>
       <ResourcePage
         title="角色管理"
-        description="维护业务角色与菜单权限。"
         filterColumns={3}
         filterCollapsible
         filterDefaultCollapsed
@@ -475,7 +469,7 @@ function AdminRolesPage() {
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新增
+            新建
           </Button>
         }
         tableProps={{
@@ -547,8 +541,7 @@ function AdminRolesPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增角色"
-        description="填写基础信息并分配菜单权限。"
+        title="新建角色"
         dialogSize="md"
         sheetSize="md"
         submitLabel="创建"

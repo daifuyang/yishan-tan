@@ -3,8 +3,14 @@ import { ArrowLeft, Plus } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+  TEXTAREA_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
-import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { DateRangePicker, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { PageHeader, ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,14 +50,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdFrom: "",
   createdTo: "",
 };
-
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
-const TEXTAREA_CLASS =
-  "border-line flex w-full min-w-0 rounded-[4px] border bg-white px-3 py-2 text-[13px] leading-[1.5] text-text-strong transition-colors outline-none focus-visible:border-brand-500 focus-visible:ring-brand-500 focus-visible:ring-[1px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40";
 
 export const Route = createFileRoute("/admin/dicts/$typeCode")({
   component: AdminDictDataPage,
@@ -180,7 +178,10 @@ function AdminDictDataPage() {
       header: "标签",
       width: "160px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.label}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.label}
+        >
           {row.label}
         </span>
       ),
@@ -190,7 +191,7 @@ function AdminDictDataPage() {
       header: "值",
       width: "160px",
       cell: (row) => (
-        <code className="truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-text-soft">
+        <code className="break-words whitespace-normal rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-text-soft">
           {row.value}
         </code>
       ),
@@ -207,7 +208,10 @@ function AdminDictDataPage() {
       header: "描述",
       width: "240px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.extra ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.extra ?? ""}
+        >
           {row.extra ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -344,7 +348,6 @@ function AdminDictDataPage() {
 
       <ResourcePage<DictDataDto>
         title=""
-        description=""
         filterColumns={3}
         filterDefaultCollapsed
         filter={
@@ -398,25 +401,13 @@ function AdminDictDataPage() {
               </Select>
             </QueryFormItem>
 
-            <QueryFormItem label="创建时间起" htmlFor="filter-created-from">
-              <Input
-                id="filter-created-from"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdFrom}
-                onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
-              />
-            </QueryFormItem>
-
-            <QueryFormItem label="创建时间止" htmlFor="filter-created-to">
-              <Input
-                id="filter-created-to"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdTo}
-                onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+            <QueryFormItem label="创建时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: filters.createdFrom || null, end: filters.createdTo || null }}
+                onChange={(r) =>
+                  applyFilterPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
               />
             </QueryFormItem>
           </>
@@ -438,7 +429,7 @@ function AdminDictDataPage() {
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新增字典数据
+            新建字典数据
           </Button>
         }
         tableProps={{
@@ -457,7 +448,7 @@ function AdminDictDataPage() {
           emptyTitle: "暂无字典数据",
           emptyDescription: list.isError
             ? "加载字典数据失败，请稍后重试或检查后端日志。"
-            : "当前字典类型下还没有数据，点击「新增字典数据」开始维护。",
+            : "当前字典类型下还没有数据，点击「新建字典数据」开始维护。",
           emptyAction: list.isError ? (
             <Button type="button" size="sm" variant="outline" onClick={() => void list.refetch()}>
               重试
@@ -510,7 +501,7 @@ function AdminDictDataPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增字典数据"
+        title="新建字典数据"
         description={`归属字典类型 ${typeCode}`}
         dialogSize="md"
         sheetSize="md"

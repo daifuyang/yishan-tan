@@ -1,6 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import {
-  BookText,
   Braces,
   FileClock,
   History,
@@ -104,22 +103,22 @@ const QUICK_ACTIONS = [
     href: "/admin/menus",
   },
   {
-    title: "接口文档",
-    description: "查看 OpenAPI 能力",
-    icon: BookText,
-    href: "/admin/system-options",
-  },
-  {
     title: "系统日志",
     description: "追踪关键操作记录",
     icon: FileClock,
+    href: "/admin/login-logs",
+  },
+  {
+    title: "站点配置",
+    description: "按业务分组的系统配置",
+    icon: History,
     href: "/admin/settings",
   },
 ];
 
 const ACTIVITIES: ActivityItem[] = [
-  { id: "a1", actor: "系统管理员", title: "更新了角色权限", time: "10 分钟前" },
-  { id: "a2", title: "新增 OpenAPI 分组：用户中心", time: "32 分钟前" },
+  { id: "a1", actor: "超级管理员", title: "更新了角色权限", time: "10 分钟前" },
+  { id: "a2", title: "新建 OpenAPI 分组：用户中心", time: "32 分钟前" },
   { id: "a3", title: "菜单「组织架构」完成配置", time: "今天 09:40" },
   { id: "a4", title: "字典管理完成初始化", time: "昨天 18:20" },
 ];
@@ -130,16 +129,15 @@ function AdminDashboardPage() {
       <TechHero
         badge="AI Ready Console"
         title="工作台"
-        description="AI 友好后台系统，统一管理权限、组织、菜单与 OpenAPI 能力。"
         actions={[
           {
             label: "查看 OpenAPI",
             icon: <PlugZap className="size-4" aria-hidden />,
             variant: "primary",
-            href: "/admin/system-options",
+            href: "/admin/menus",
           },
           {
-            label: "新增用户",
+            label: "新建用户",
             icon: <UserPlus className="size-4" aria-hidden />,
             variant: "ghost",
             href: "/admin/users",
@@ -159,10 +157,7 @@ function AdminDashboardPage() {
         ))}
       </section>
 
-      <DashboardSection
-        title="系统能力"
-        description="围绕认证、权限、接口能力，构建 AI 时代可调用的后台基础设施。"
-      >
+      <DashboardSection title="系统能力">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CAPABILITIES.map((cap) => (
             <CapabilityCard key={cap.title} {...cap} />
@@ -170,7 +165,7 @@ function AdminDashboardPage() {
         </div>
       </DashboardSection>
 
-      <DashboardSection title="快捷入口" description="直达常用后台模块，节省操作路径。">
+      <DashboardSection title="快捷入口">
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {QUICK_ACTIONS.map((action) => (
             <QuickActionCard key={action.title} {...action} />
@@ -185,10 +180,7 @@ function AdminDashboardPage() {
           </div>
         </DashboardSection>
 
-        <DashboardSection
-          title="下一步"
-          description="第 3 步将建立 ResourceTable / FilterBar / FormDialog 等后台规范组件。"
-        >
+        <DashboardSection title="下一步">
           <div className="yt-card relative overflow-hidden p-5">
             <div
               aria-hidden

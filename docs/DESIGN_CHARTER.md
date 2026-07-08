@@ -452,7 +452,42 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 
 - `sticky: "left" | "right"`,仅在必要列用(操作列默认 sticky-right)
 
-### 7.7 加载与错误
+### 7.7 新增「ID 列规约」
+
+> 列表页**禁止**展示资源 ID;用户/角色/字典类型等业务资源在列表中以业务字段(名称/编码)为主键。如需 ID(导出 / API 联调 / 复制链接),仅在以下场景展示:
+> 1. **详情页**:用 `DetailSheet` / `DetailPage`,小字 `font-mono text-[12px] text-text-soft` + `Copyable` 控件;
+> 2. **行操作下拉**:"复制 ID" 菜单项;
+> 3. **API 文档/CLI 输出**:不渲染。
+> 违反此条视为 §13 反模式新增条目「13.X 列表页展示资源 ID」。
+
+### 7.8 新增「列宽与对齐约定」
+
+> - **文本列**:`align="left"`,主字段(`名称`)宽 140–180px,描述列 220–240px;
+> - **数值列**:`align="right"`,必须 `font-variant-numeric: tabular-nums`(已写进 `@layer base`),宽度按内容 `min-w-[80px]`;
+> - **状态列**:`align="center"`,宽 90–110px;
+> - **时间列**:`align="left"`,固定 `width="170px"`,格式 `YYYY-MM-DD HH:mm`;
+> - **动作列**:`align="right" sticky="right"`,固定 `width="200px"`,多于 3 个按钮折叠到 `更多` 下拉;
+> - **首列**(主字段)不 sticky-right,业务主键列不允许截断关键信息。
+
+### 7.9 新增「工具栏与按钮顺序」
+
+> `ResourcePage` 工具栏从左到右:`toolbarTitle` 左侧,`toolbarActions` 右侧。`toolbarActions` 内部顺序(单选框内填):
+> 1. 批量操作类(存在选中时显示,样式 `variant="outline"`,icon 居左,文本格式 `"批量 <动作> (n)"`);
+> 2. 导入 / 导出 / 列设置(icon + text);
+> 3. 刷新(icon-only `size-8` 方按钮,带 Tooltip);
+> 4. 主操作(新增 / 上传 / 同步),`variant="default"`,**每个 area 限 1 个**(承接 §9.1)。
+> `IconButton`(icon-only)必须配 `Tooltip`;同一 area 内不允许混合 icon-only 与 text+icon。
+
+### 7.10 新增「动作列下拉项分隔」
+
+> 动作列下拉(`<DropdownMenuContent>`)的项分组:
+> 1. **常用操作**(编辑 / 查看 / 启停)— 无前缀;
+> 2. **次要操作**(复制 ID / 导出此行)— 无前缀;
+> 3. **危险操作**(删除 / 停用)— 用 `text-destructive`,与上面用 `<DropdownMenuSeparator>` 分隔;
+> 4. **禁用项**(`disabled` + `opacity-40`),不下沉到二级菜单。
+> "更多" trigger 一律 `ChevronDown` 图标 + "更多" 文案 + `variant="link"`,与其他动作列按钮同高同色。
+
+### 7.11 加载与错误
 
 - 骨架屏:5 行 `max-w-[180px] animate-pulse rounded bg-line-soft`
 - 错误条:只对"有旧数据但拉新失败"展示,不因空数据 + 错误清屏
@@ -501,6 +536,15 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 
 - **三要素**(参考 antd):大小 + 格式 + 进度
 - 当前 `UploadAttachment` 仅按钮,**缺进度条 / 拖拽**(P1 待补,详见 Phase 2 第 9 条)
+
+### 8.6 新增「DetailSheet 规约」
+
+> 只读详情视图使用 `DetailSheet`,由 `ResponsiveFormLayer` 派生(`mode="view"` 标志)或独立组件。内部用 `DescriptionList` 模式:标签列 92px(同 §8.2),值列 `text-text-soft text-[13px]`。
+> - 不允许出现 `Input` / `Select` / `Button`(除关闭按钮);
+> - 标题 = `资源名 · ${name}`,描述 = 当前状态(`StatusBadge`);
+> - `Esc` / overlay 关闭,焦点恢复到触发行(承接 §13.9);
+> - 字段顺序:**基础信息 → 关联信息 → 元信息(createdAt / updatedAt)**。
+> 反例:`login-logs.tsx` 自造 `Sheet` + 内联 `DetailRow`,应替换为 `DetailSheet`。
 
 ---
 
@@ -595,6 +639,19 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 - **内容舒适性**:避免强对比
 - **信息一致性**:与浅色模式层级一致
 
+### 11.5 新增「StatusBadge 颜色 / 字号规约」
+
+> 列表页**所有**状态、布尔、分类标识必须用 `StatusBadge`,禁止内联 hex / 自造 span chip。映射规则:
+> | 语义 | tone | label 示例 |
+> |---|---|---|
+> | 启用 / 成功 / 正常 | `success` | "启用"、"成功"、"正常" |
+> | 禁用 / 失败 / 异常 | `danger` | "已禁用"、"失败" |
+> | 信息 / 进行中 / 默认值 | `info` | "系统"、"启用中" |
+> | 警告 / 即将停用 / 仅本人 | `warning` | "默认"、"即将过期" |
+> | 自定义 / 中性 | `neutral` | "自定义"、"备用" |
+> 字号 `text-[12px]`、内边距 `px-2 py-0.5`、圆角 `rounded-[3px]`(已在 `StatusBadge` 中实现);**禁止**在 `cell` 内写裸 `<Badge>` 或 `<span className="rounded bg-... text-...">`。
+> **新增强制反模式 13.X**:内联 hex 黄色 / 蓝色徽章,典型如 `border-[#ffd591] bg-[#fff7e6] text-[#d46b08]`。
+
 ---
 
 ## 12. 治理与守卫
@@ -645,6 +702,7 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 | 13.14 | 一致性不引用宪章新增组件 | PR 必须引用宪章章节号 | §12.4 |
 | 13.15 | 按钮文案用"确定 / 取消"(与 §3.2 重复表述) | 改为"发布 / 保存 / 删除"等动作动词;§3.2 与 §13.15 协同生效 | §3.2 |
 | 13.16 | 按钮带默认阴影 | 走 `shadow-none`(§2.6 第 5 行硬约束),例外需 PR 引用 §2.6 | §2.6 |
+| 13.17 | 内联 hex 黄色 / 蓝色徽章(典型 `border-[#ffd591] bg-[#fff7e6] text-[#d46b08]`) | 违反 §2.1 / §11.5;**当前违规页**:`portals.tsx`(默认星 + themeMode chip)、`storages.tsx`(默认星) | §2.1 / §11.5 |
 
 ---
 

@@ -14,7 +14,7 @@ type TechHeroAction = {
 type TechHeroProps = {
   badge?: string;
   title: string;
-  description: string;
+  description?: string;
   actions?: TechHeroAction[];
   className?: string;
 };
@@ -56,9 +56,11 @@ export function TechHero({ badge, title, description, actions, className }: Tech
           <h1 className="mt-4 text-[28px] font-bold leading-tight tracking-tight sm:text-[32px] lg:text-[36px]">
             {title}
           </h1>
-          <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-white/85 sm:text-[15px]">
-            {description}
-          </p>
+          {description ? (
+            <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-white/85 sm:text-[15px]">
+              {description}
+            </p>
+          ) : null}
 
           {actions && actions.length > 0 ? (
             <div className="mt-6 flex flex-wrap gap-3">

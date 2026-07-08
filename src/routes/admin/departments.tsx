@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderTree, Plus, SearchX } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
 import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
@@ -23,37 +28,32 @@ import {
   useDeleteDepartment,
   useUpdateDepartment,
 } from "~/features/departments/departments.use-mutations";
+import { useUsersList } from "~/features/users/users.queries";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
 type FilterState = {
-  keyword: string;
+  name: string;
   status: StatusFilter;
 };
 
 const DEFAULT_FILTERS: FilterState = {
-  keyword: "",
+  name: "",
   status: "all",
 };
 
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
-
 type EditDepartmentFormValue = {
   name: string;
-  code: string;
   parentId: string | null;
+  leaderId: string | null;
   sort: number;
   status: "enabled" | "disabled";
 };
 
 const EMPTY_DEPT_FORM: EditDepartmentFormValue = {
   name: "",
-  code: "",
   parentId: null,
+  leaderId: null,
   sort: 0,
   status: "enabled",
 };
@@ -75,26 +75,22 @@ function formatDateTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function matchesFilter(node: DepartmentDto, keyword: string, status: StatusFilter): boolean {
+function matchesFilter(node: DepartmentDto, name: string, status: StatusFilter): boolean {
   if (status !== "all" && node.status !== status) return false;
-  if (keyword) {
-    const k = keyword.toLowerCase();
-    if (!node.name.toLowerCase().includes(k) && !node.code.toLowerCase().includes(k)) {
+  if (name) {
+    const k = name.toLowerCase();
+    if (!node.name.toLowerCase().includes(k)) {
       return false;
     }
   }
   return true;
 }
 
-function filterTree(
-  nodes: DepartmentNode[],
-  keyword: string,
-  status: StatusFilter,
-): DepartmentNode[] {
+function filterTree(nodes: DepartmentNode[], name: string, status: StatusFilter): DepartmentNode[] {
   const result: DepartmentNode[] = [];
   for (const node of nodes) {
-    const filteredChildren = filterTree(node.children, keyword, status);
-    const selfMatch = matchesFilter(node, keyword, status);
+    const filteredChildren = filterTree(node.children, name, status);
+    const selfMatch = matchesFilter(node, name, status);
     if (selfMatch || filteredChildren.length > 0) {
       result.push({ ...node, children: filteredChildren });
     }
@@ -141,7 +137,7 @@ function findNodeInTree(nodes: DepartmentNode[], id: string): DepartmentNode | n
 }
 
 function AdminDepartmentsPage() {
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(50);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -163,15 +159,25 @@ function AdminDepartmentsPage() {
 
   const treeQuery = useDepartmentTree();
   const tree = treeQuery.data ?? [];
+  const usersListQuery = useUsersList({ page: 1, pageSize: 200, status: "enabled" });
+  const leaderOptions = React.useMemo(
+    () =>
+      (usersListQuery.data?.items ?? []).map((u) => ({
+        value: u.id,
+        label: u.displayName || u.username,
+      })),
+    [usersListQuery.data],
+  );
 
   const createMut = useCreateDepartment();
   const updateMut = useUpdateDepartment();
   const deleteMut = useDeleteDepartment();
 
-  // 关键字 / 状态按客户端过滤（树结构天然按层级呈现，过滤命中节点会保留其父链）
+  // 名称 / 状态按客户端过滤（树结构天然按层级呈现，过滤命中节点会保留其父链）。
+  // 客户端过滤使用 draft，提交按钮仅承担"对齐 ResourcePage 形态"职责，行为即时生效。
   const filteredTree = React.useMemo(
-    () => filterTree(tree, filters.keyword.trim(), filters.status),
-    [tree, filters.keyword, filters.status],
+    () => filterTree(tree, draft.name.trim(), draft.status),
+    [tree, draft.name, draft.status],
   );
 
   const flatRows = React.useMemo(
@@ -196,19 +202,19 @@ function AdminDepartmentsPage() {
   const total = flatRows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleResetFilters = React.useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
+    setDraft(DEFAULT_FILTERS);
     setPage(1);
   }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅作为 filter 变化的触发器
   React.useEffect(() => {
     setPage(1);
-  }, [filters.keyword, filters.status]);
+  }, [draft.name, draft.status]);
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
@@ -232,8 +238,8 @@ function AdminDepartmentsPage() {
     setEditing(row);
     setEditForm({
       name: row.name,
-      code: row.code,
       parentId: row.parentId ?? null,
+      leaderId: row.leaderId ?? null,
       sort: row.sort,
       status: row.status,
     });
@@ -271,16 +277,13 @@ function AdminDepartmentsPage() {
     [deleteMut],
   );
 
-  const dismissDeleteError = React.useCallback(() => {
-    deleteMut.reset();
-  }, [deleteMut]);
-
   const handleEditSubmit = async () => {
     if (!editing) return;
     await updateMut.mutateAsync({
       id: editing.id,
       name: editForm.name,
       parentId: editForm.parentId,
+      leaderId: editForm.leaderId,
       sort: editForm.sort,
       status: editForm.status,
     });
@@ -290,8 +293,8 @@ function AdminDepartmentsPage() {
   const handleCreateSubmit = async () => {
     await createMut.mutateAsync({
       name: createForm.name,
-      code: createForm.code,
       parentId: createForm.parentId,
+      leaderId: createForm.leaderId,
       sort: createForm.sort,
       status: createForm.status,
     });
@@ -321,8 +324,8 @@ function AdminDepartmentsPage() {
   const columns: ResourceColumn<FlatDepartmentRow>[] = [
     {
       key: "name",
-      header: "名称",
-      width: "300px",
+      header: "部门名称",
+      width: "260px",
       cell: (row) => (
         <div
           className="flex items-center gap-1 whitespace-nowrap"
@@ -347,19 +350,38 @@ function AdminDepartmentsPage() {
           ) : (
             <span aria-hidden className="inline-block size-5 shrink-0" />
           )}
-          <span className="truncate text-[13px] text-text-strong" title={row.name}>
+          <span
+            className="break-words whitespace-normal text-[13px] text-text-strong"
+            title={row.name}
+          >
             {row.name}
           </span>
         </div>
       ),
     },
     {
-      key: "code",
-      header: "编码",
+      key: "parentName",
+      header: "上级部门",
       width: "160px",
       cell: (row) => (
-        <span className="truncate font-mono text-[13px] text-text-soft" title={row.code}>
-          {row.code}
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.parentName ?? ""}
+        >
+          {row.parentName ?? <span className="text-text-mute">--</span>}
+        </span>
+      ),
+    },
+    {
+      key: "leaderName",
+      header: "负责人",
+      width: "120px",
+      cell: (row) => (
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.leaderName ?? ""}
+        >
+          {row.leaderName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -371,29 +393,6 @@ function AdminDepartmentsPage() {
       cell: (row) => <span className="text-[13px] text-text-soft">{row.sort}</span>,
     },
     {
-      key: "childCount",
-      header: "关联子部门",
-      width: "110px",
-      align: "center",
-      cell: (row) => (
-        <span className="text-[13px] text-text-soft">
-          {row.childCount > 0 ? `${row.childCount} 个` : "--"}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: "状态",
-      width: "90px",
-      cell: (row) => (
-        <StatusBadge
-          tone={row.status === "enabled" ? "success" : "danger"}
-          label={row.status === "enabled" ? "启用" : "已禁用"}
-          variant="soft"
-        />
-      ),
-    },
-    {
       key: "createdAt",
       header: "创建时间",
       width: "170px",
@@ -402,10 +401,30 @@ function AdminDepartmentsPage() {
       ),
     },
     {
+      key: "updatedAt",
+      header: "更新时间",
+      width: "170px",
+      cell: (row) => (
+        <span className="text-[13px] text-text-soft">{formatDateTime(row.updatedAt)}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "状态",
+      width: "90px",
+      cell: (row) => (
+        <StatusBadge
+          tone="info"
+          label={row.status === "enabled" ? "启用" : "已禁用"}
+          variant="soft"
+        />
+      ),
+    },
+    {
       key: "actions",
       header: "操作",
       align: "right",
-      width: "260px",
+      width: "220px",
       sticky: "right",
       cell: (row) => (
         <div className="flex items-center justify-end gap-3 whitespace-nowrap">
@@ -432,7 +451,20 @@ function AdminDepartmentsPage() {
             }}
           >
             <Plus className="size-3.5" aria-hidden />
-            新增子部门
+            新建子部门
+          </Button>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className={TABLE_DANGER_ACTION_CLASS}
+            disabled={deleteMut.isPending}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPopconfirmRowId(row.id);
+            }}
+          >
+            删除
           </Button>
           <Popconfirm
             open={popconfirmRowId === row.id}
@@ -449,19 +481,7 @@ function AdminDepartmentsPage() {
             align="end"
             sideOffset={6}
           >
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={TABLE_DANGER_ACTION_CLASS}
-              disabled={deleteMut.isPending}
-              onClick={(e) => {
-                e.stopPropagation();
-                setPopconfirmRowId(row.id);
-              }}
-            >
-              删除
-            </Button>
+            <span aria-hidden className="size-0" />
           </Popconfirm>
         </div>
       ),
@@ -470,47 +490,27 @@ function AdminDepartmentsPage() {
 
   return (
     <>
-      {deleteMut.isError ? (
-        <div
-          role="alert"
-          className="mb-4 flex items-start justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-[13px] text-destructive"
-        >
-          <span>
-            删除失败：
-            {deleteMut.error instanceof Error ? deleteMut.error.message : "未知错误"}
-          </span>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className="h-auto px-0 py-0 text-[13px] font-normal text-destructive hover:no-underline"
-            onClick={dismissDeleteError}
-          >
-            知道了
-          </Button>
-        </div>
-      ) : null}
       <ResourcePage
         title="部门管理"
-        description="维护组织部门树，支持新增 / 编辑 / 启停 / 删除。"
-        filterColumns={2}
+        filterColumns={3}
+        filterCollapsible
         filterDefaultCollapsed
         filter={
           <>
-            <QueryFormItem label="关键字" htmlFor="filter-keyword">
+            <QueryFormItem label="部门名称" htmlFor="filter-name">
               <Input
-                id="filter-keyword"
+                id="filter-name"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="按名称或编码模糊搜索"
-                value={filters.keyword}
-                onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
+                placeholder="请输入"
+                value={draft.name}
+                onChange={(e) => applyDraftPatch({ name: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -524,20 +524,14 @@ function AdminDepartmentsPage() {
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            keyword: String(next.keyword ?? ""),
-            status: (next.status as StatusFilter) ?? "all",
-          })
-        }
+        filterValues={draft}
         onFilterReset={handleResetFilters}
         filterLoading={treeQuery.isFetching}
         toolbarTitle="部门树"
         toolbarActions={
           <Button type="button" size="sm" onClick={() => handleOpenCreate(null)}>
             <Plus className="size-3.5" aria-hidden />
-            新增顶级部门
+            新建
           </Button>
         }
         tableProps={{
@@ -553,10 +547,19 @@ function AdminDepartmentsPage() {
             setPage(1);
           },
           loading: treeQuery.isFetching,
-          emptyTitle: "暂无部门",
+          // 区分两种 empty：①真空（无任何部门）→ 大图标 + 新建引导；②过滤空（有数据但被过滤掉）→ dashed 横幅 + 清空筛选
+          emptyIcon: treeQuery.isError ? undefined : tree.length === 0 ? FolderTree : SearchX,
+          emptyTitle: treeQuery.isError
+            ? "加载失败"
+            : tree.length === 0
+              ? "暂无部门"
+              : "未找到匹配的部门",
           emptyDescription: treeQuery.isError
             ? "加载部门列表失败，请稍后重试或检查后端日志。"
-            : "尚未配置任何部门，点击「新增顶级部门」开始搭建组织树。",
+            : tree.length === 0
+              ? "尚未配置任何部门，点击「新建」开始搭建组织树。"
+              : `当前筛选条件下没有匹配的部门（共 ${tree.length} 个）。`,
+          emptyVariant: !treeQuery.isError && tree.length > 0 ? "dashed" : "default",
           emptyAction: treeQuery.isError ? (
             <Button
               type="button"
@@ -566,7 +569,7 @@ function AdminDepartmentsPage() {
             >
               重试
             </Button>
-          ) : (
+          ) : tree.length === 0 ? (
             <Button
               type="button"
               size="sm"
@@ -574,7 +577,11 @@ function AdminDepartmentsPage() {
               onClick={() => handleOpenCreate(null)}
             >
               <Plus className="size-3.5" aria-hidden />
-              新增顶级部门
+              新建
+            </Button>
+          ) : (
+            <Button type="button" size="sm" variant="outline" onClick={handleResetFilters}>
+              清空筛选
             </Button>
           ),
           error: treeQuery.isError
@@ -591,7 +598,7 @@ function AdminDepartmentsPage() {
           if (!next) handleCloseEdit();
         }}
         title="编辑部门"
-        description={editing?.code}
+        description={editing?.parentName ? `上级部门：${editing.parentName}` : "顶级部门"}
         dialogSize="md"
         sheetSize="md"
         submitLabel="保存"
@@ -610,6 +617,7 @@ function AdminDepartmentsPage() {
             key={editing.id}
             value={editForm}
             parentOptions={editParentOptions}
+            leaderOptions={leaderOptions}
             allowClearParent
             onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))}
           />
@@ -621,7 +629,7 @@ function AdminDepartmentsPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增部门"
+        title="新建部门"
         description={createParentName ? `所属上级：${createParentName}` : "顶级部门"}
         dialogSize="md"
         sheetSize="md"
@@ -640,6 +648,7 @@ function AdminDepartmentsPage() {
           key="create-form"
           value={createForm}
           parentOptions={createParentOptions}
+          leaderOptions={leaderOptions}
           allowClearParent
           onChange={(patch) => setCreateForm((s) => ({ ...s, ...patch }))}
         />
@@ -652,33 +661,25 @@ function EditDepartmentFields({
   value,
   parentOptions,
   allowClearParent,
+  leaderOptions,
   onChange,
 }: {
   value: EditDepartmentFormValue;
   parentOptions: Array<{ value: string; label: string }>;
   allowClearParent?: boolean;
+  leaderOptions: Array<{ value: string; label: string }>;
   onChange: (patch: Partial<EditDepartmentFormValue>) => void;
 }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="dept-name">名称</Label>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="dept-name">部门名称</Label>
           <Input
             id="dept-name"
             value={value.name}
             onChange={(e) => onChange({ name: e.target.value })}
             placeholder="部门显示名"
-            maxLength={50}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="dept-code">编码</Label>
-          <Input
-            id="dept-code"
-            value={value.code}
-            onChange={(e) => onChange({ code: e.target.value })}
-            placeholder="小写字母、数字、下划线、点、中划线"
             maxLength={50}
           />
         </div>
@@ -714,6 +715,25 @@ function EditDepartmentFields({
               onChange({ sort: Number.isFinite(next) && next >= 0 ? Math.min(next, 9999) : 0 });
             }}
           />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="dept-leader">负责人</Label>
+          <Select
+            value={value.leaderId ?? "__none__"}
+            onValueChange={(v) => onChange({ leaderId: v === "__none__" ? null : v })}
+          >
+            <SelectTrigger id="dept-leader">
+              <SelectValue placeholder="不指定" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">不指定</SelectItem>
+              {leaderOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="dept-status">状态</Label>

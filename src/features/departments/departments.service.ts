@@ -1,4 +1,5 @@
 import { type SQL, and, asc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
@@ -13,12 +14,31 @@ import type {
   UpdateDepartmentService,
 } from "./departments.types";
 
-function toDto(row: typeof schema.department.$inferSelect): DepartmentDto {
+/**
+ * 单行映射：department 主行 + LEFT JOIN 父部门(取 parentName)+ LEFT JOIN 用户(取 leaderName)。
+ * 三个表都是可选,本函数对 null 都安全。
+ */
+type DepartmentRow = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  leaderId: string | null;
+  sort: number;
+  status: "enabled" | "disabled";
+  createdAt: Date;
+  updatedAt: Date;
+  parentName: string | null;
+  leaderName: string | null;
+};
+
+function toDto(row: DepartmentRow): DepartmentDto {
   return {
     id: row.id,
     parentId: row.parentId,
+    parentName: row.parentName,
     name: row.name,
-    code: row.code,
+    leaderId: row.leaderId,
+    leaderName: row.leaderName,
     sort: row.sort,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
@@ -26,27 +46,44 @@ function toDto(row: typeof schema.department.$inferSelect): DepartmentDto {
   };
 }
 
+function buildQuery(where: SQL[] = []) {
+  const parent = alias(schema.department, "parent_dept");
+  const leader = alias(schema.user, "leader_user");
+  const baseQuery = getDb()
+    .select({
+      id: schema.department.id,
+      parentId: schema.department.parentId,
+      name: schema.department.name,
+      leaderId: schema.department.leaderId,
+      sort: schema.department.sort,
+      status: schema.department.status,
+      createdAt: schema.department.createdAt,
+      updatedAt: schema.department.updatedAt,
+      parentName: parent.name,
+      leaderName: leader.username,
+    })
+    .from(schema.department)
+    .leftJoin(parent, eq(parent.id, schema.department.parentId))
+    .leftJoin(leader, eq(leader.id, schema.department.leaderId));
+  if (where.length > 0) baseQuery.where(and(...where));
+  return baseQuery;
+}
+
 export const listDepartmentsService: ListDepartmentsService = async ({
   page,
   pageSize,
-  keyword,
+  name,
   status,
 }) => {
   const where: SQL[] = [isNull(schema.department.deletedAt)];
   if (status) where.push(eq(schema.department.status, status));
-  if (keyword) {
-    const cond = or(
-      like(schema.department.name, `%${keyword}%`),
-      like(schema.department.code, `%${keyword}%`),
-    );
+  if (name) {
+    const cond = or(like(schema.department.name, `%${name}%`));
     if (cond) where.push(cond);
   }
   const offset = (page - 1) * pageSize;
   const [rows, totalRow] = await Promise.all([
-    getDb()
-      .select()
-      .from(schema.department)
-      .where(and(...where))
+    buildQuery(where)
       .orderBy(asc(schema.department.sort), asc(schema.department.createdAt))
       .limit(pageSize)
       .offset(offset),
@@ -55,16 +92,18 @@ export const listDepartmentsService: ListDepartmentsService = async ({
       .from(schema.department)
       .where(and(...where)),
   ]);
-  return { items: rows.map(toDto), total: Number(totalRow[0]?.count ?? 0) };
+  return {
+    items: rows.map((r) => toDto(r as DepartmentRow)),
+    total: Number(totalRow[0]?.count ?? 0),
+  };
 };
 
 export const getDepartmentTreeService: GetDepartmentTreeService = async () => {
-  const rows = await getDb()
-    .select()
-    .from(schema.department)
-    .where(isNull(schema.department.deletedAt))
-    .orderBy(asc(schema.department.sort), asc(schema.department.createdAt));
-  return buildDepartmentTree(rows.map(toDto));
+  const rows = await buildQuery().orderBy(
+    asc(schema.department.sort),
+    asc(schema.department.createdAt),
+  );
+  return buildDepartmentTree(rows.map((r) => toDto(r as DepartmentRow)));
 };
 
 export function buildDepartmentTree(items: DepartmentDto[]): DepartmentNode[] {
@@ -117,14 +156,12 @@ export function isDescendantOfInList(
 }
 
 export const getDepartmentService: GetDepartmentService = async (id) => {
-  const rows = await getDb()
-    .select()
-    .from(schema.department)
+  const rows = await buildQuery()
     .where(and(eq(schema.department.id, id), isNull(schema.department.deletedAt)))
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  return toDto(row);
+  return toDto(row as DepartmentRow);
 };
 
 export const createDepartmentService: CreateDepartmentService = async (input) => {
@@ -137,27 +174,31 @@ export const createDepartmentService: CreateDepartmentService = async (input) =>
       .limit(1);
     if (!parent[0]) throw Errors.notFound("上级部门不存在");
   }
-
-  const existing = await db
-    .select({ id: schema.department.id })
-    .from(schema.department)
-    .where(eq(schema.department.code, input.code))
-    .limit(1);
-  if (existing[0]) throw Errors.conflict("部门编码已存在");
+  if (input.leaderId) {
+    const leader = await db
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(eq(schema.user.id, input.leaderId))
+      .limit(1);
+    if (!leader[0]) throw Errors.notFound("负责人用户不存在");
+  }
 
   const rows = await db
     .insert(schema.department)
     .values({
       parentId: input.parentId ?? null,
       name: input.name,
-      code: input.code,
+      leaderId: input.leaderId ?? null,
       sort: input.sort ?? 0,
       status: input.status ?? "enabled",
     })
     .returning();
   const row = rows[0];
   if (!row) throw Errors.internal("创建部门失败");
-  return toDto(row);
+  // 重新查询以填充 parentName / leaderName
+  const enriched = await buildQuery().where(eq(schema.department.id, row.id)).limit(1);
+  if (!enriched[0]) throw Errors.internal("创建部门失败");
+  return toDto(enriched[0] as DepartmentRow);
 };
 
 export const updateDepartmentService: UpdateDepartmentService = async (id, input) => {
@@ -184,22 +225,28 @@ export const updateDepartmentService: UpdateDepartmentService = async (id, input
     }
   }
 
+  if (input.leaderId !== undefined && input.leaderId !== null) {
+    const leader = await db
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(eq(schema.user.id, input.leaderId))
+      .limit(1);
+    if (!leader[0]) throw Errors.notFound("负责人用户不存在");
+  }
+
   const patch: Partial<typeof schema.department.$inferInsert> = {};
   if (input.parentId !== undefined) patch.parentId = input.parentId;
   if (input.name !== undefined) patch.name = input.name;
+  if (input.leaderId !== undefined) patch.leaderId = input.leaderId;
   if (input.sort !== undefined) patch.sort = input.sort;
   if (input.status !== undefined) patch.status = input.status;
   if (Object.keys(patch).length > 0) {
     await db.update(schema.department).set(patch).where(eq(schema.department.id, id));
   }
-  const refreshed = await db
-    .select()
-    .from(schema.department)
-    .where(eq(schema.department.id, id))
-    .limit(1);
+  const refreshed = await buildQuery().where(eq(schema.department.id, id)).limit(1);
   const row = refreshed[0];
   if (!row) throw Errors.notFound("部门不存在");
-  return toDto(row);
+  return toDto(row as DepartmentRow);
 };
 
 export const deleteDepartmentService: DeleteDepartmentService = async (id) => {

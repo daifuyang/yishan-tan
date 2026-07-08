@@ -3,8 +3,14 @@ import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+  TEXTAREA_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
-import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { DateRangePicker, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +36,9 @@ import {
   useDeleteDictType,
   useUpdateDictType,
 } from "~/features/dicts/dicts.use-mutations";
+import { MONO_CELL } from "~/lib/classes";
+import { placeholders } from "~/lib/copy";
+import { normalizeDateRange } from "~/lib/date-range";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -51,14 +60,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdTo: "",
 };
 
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
-const TEXTAREA_CLASS =
-  "border-line flex w-full min-w-0 rounded-[4px] border bg-white px-3 py-2 text-[13px] leading-[1.5] text-text-strong transition-colors outline-none focus-visible:border-brand-500 focus-visible:ring-brand-500 focus-visible:ring-[1px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40";
-
 export const Route = createFileRoute("/admin/dicts")({
   component: AdminDictsPage,
 });
@@ -72,6 +73,7 @@ function formatDateTime(iso: string): string {
 
 function AdminDictsPage() {
   const navigate = useNavigate();
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -80,6 +82,7 @@ function AdminDictsPage() {
   const [editForm, setEditForm] = React.useState<EditDictTypeFormValue>(EMPTY_TYPE_FORM);
   const [createForm, setCreateForm] = React.useState<CreateDictTypeFormValue>(EMPTY_TYPE_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
 
   const query = dictTypeListQuerySchema.parse(buildListQuery(filters, page, pageSize));
   const list = useDictTypesList(query);
@@ -99,24 +102,29 @@ function AdminDictsPage() {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
   React.useEffect(() => {
     resetPageOnFilterChange();
   }, [
-    filters.name,
-    filters.code,
-    filters.description,
-    filters.status,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.name,
+    draft.code,
+    draft.description,
+    draft.status,
+    draft.createdFrom,
+    draft.createdTo,
     resetPageOnFilterChange,
   ]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -185,7 +193,10 @@ function AdminDictsPage() {
       header: "名称",
       width: "160px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.name}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.name}
+        >
           {row.name}
         </span>
       ),
@@ -195,9 +206,9 @@ function AdminDictsPage() {
       header: "编码",
       width: "160px",
       cell: (row) => (
-        <code className="truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-text-soft">
+        <span className={MONO_CELL} title={row.code}>
           {row.code}
-        </code>
+        </span>
       ),
     },
     {
@@ -205,7 +216,10 @@ function AdminDictsPage() {
       header: "描述",
       width: "240px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.description ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.description ?? ""}
+        >
           {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -258,19 +272,35 @@ function AdminDictsPage() {
             >
               编辑
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleToggleStatus(row);
-              }}
-              disabled={updateMut.isPending}
-            >
-              {isDisabled ? "启用" : "禁用"}
-            </Button>
+            {isDisabled ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleToggleStatus(row);
+                }}
+                disabled={updateMut.isPending}
+              >
+                启用
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_DANGER_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDisablePopconfirmRowId(row.id);
+                }}
+                disabled={updateMut.isPending}
+              >
+                禁用
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -323,6 +353,23 @@ function AdminDictsPage() {
             >
               <span aria-hidden className="size-0" />
             </Popconfirm>
+            <Popconfirm
+              open={disablePopconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+              title="禁用字典类型"
+              description="禁用后该字典类型不再可用，已有的字典数据保留但无法再次使用。"
+              confirmLabel="禁用"
+              tone="danger"
+              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+              onConfirm={() => handleToggleStatus(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
           </div>
         );
       },
@@ -354,8 +401,8 @@ function AdminDictsPage() {
     <>
       <ResourcePage
         title="字典管理"
-        description="维护字典类型与字典数据。"
         filterColumns={3}
+        filterCollapsible
         filterDefaultCollapsed
         filter={
           <>
@@ -364,9 +411,9 @@ function AdminDictsPage() {
                 id="filter-name"
                 className={FILTER_CONTROL_CLASS}
                 allowClear
-                placeholder="如:用户状态"
-                value={filters.name}
-                onChange={(e) => applyFilterPatch({ name: e.target.value })}
+                placeholder={placeholders.input}
+                value={draft.name}
+                onChange={(e) => applyDraftPatch({ name: e.target.value })}
               />
             </QueryFormItem>
 
@@ -375,9 +422,9 @@ function AdminDictsPage() {
                 id="filter-code"
                 className={FILTER_CONTROL_CLASS}
                 allowClear
-                placeholder="如:user_status"
-                value={filters.code}
-                onChange={(e) => applyFilterPatch({ code: e.target.value })}
+                placeholder={placeholders.input}
+                value={draft.code}
+                onChange={(e) => applyDraftPatch({ code: e.target.value })}
               />
             </QueryFormItem>
 
@@ -386,16 +433,16 @@ function AdminDictsPage() {
                 id="filter-description"
                 className={FILTER_CONTROL_CLASS}
                 allowClear
-                placeholder="如:状态描述"
-                value={filters.description}
-                onChange={(e) => applyFilterPatch({ description: e.target.value })}
+                placeholder={placeholders.input}
+                value={draft.description}
+                onChange={(e) => applyDraftPatch({ description: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -408,47 +455,26 @@ function AdminDictsPage() {
               </Select>
             </QueryFormItem>
 
-            <QueryFormItem label="创建时间起" htmlFor="filter-created-from">
-              <Input
-                id="filter-created-from"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdFrom}
-                onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
-              />
-            </QueryFormItem>
-
-            <QueryFormItem label="创建时间止" htmlFor="filter-created-to">
-              <Input
-                id="filter-created-to"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdTo}
-                onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+            <QueryFormItem label="创建时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+                onChange={(r) =>
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
               />
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            name: String(next.name ?? ""),
-            code: String(next.code ?? ""),
-            description: String(next.description ?? ""),
-            status: (next.status as StatusFilter) ?? "all",
-            createdFrom: String(next.createdFrom ?? ""),
-            createdTo: String(next.createdTo ?? ""),
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="字典类型"
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新增字典类型
+            新建字典类型
           </Button>
         }
         tableProps={{
@@ -519,8 +545,7 @@ function AdminDictsPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增字典类型"
-        description="填写基础信息创建字典类型。"
+        title="新建字典类型"
         dialogSize="md"
         sheetSize="md"
         submitLabel="创建"
@@ -567,8 +592,10 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   const code = trim(filters.code);
   const description = trim(filters.description);
   const status = filters.status === "all" ? undefined : filters.status;
-  const createdFrom = trim(filters.createdFrom);
-  const createdTo = trim(filters.createdTo);
+  const { createdFrom, createdTo } = normalizeDateRange({
+    start: filters.createdFrom || null,
+    end: filters.createdTo || null,
+  });
   const keyword = [name, code, description].filter(Boolean).join(" ") || undefined;
   return {
     page,

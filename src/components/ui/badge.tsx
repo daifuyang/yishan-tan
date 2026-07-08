@@ -2,15 +2,27 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-type BadgeVariant = "default" | "secondary" | "soft" | "outline" | "destructive" | "glow";
+type BadgeVariant =
+  | "default"
+  | "secondary"
+  | "soft"
+  | "outline"
+  | "destructive"
+  | "success"
+  | "warning"
+  | "neutral"
+  | "glow";
 
 const VARIANT_CLASS: Record<BadgeVariant, string> = {
-  default: "border-transparent bg-brand-600 text-white",
-  secondary: "border-transparent bg-brand-50 text-brand-700",
-  soft: "border border-brand-200 bg-brand-50 text-brand-700",
+  default: "border-transparent bg-brand-500 text-white",
+  secondary: "border border-line bg-muted text-text-soft",
+  soft: "border border-brand-100 bg-brand-50 text-brand-600",
   outline: "border border-line text-text-soft",
-  destructive: "border-transparent bg-destructive/10 text-destructive",
-  glow: "border-brand-200/60 bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200/80",
+  destructive: "border border-danger-100 bg-danger-50 text-danger-600",
+  success: "border border-success-100 bg-success-50 text-success-600",
+  warning: "border border-warning-100 bg-warning-50 text-warning-600",
+  neutral: "border border-line bg-muted text-text-soft",
+  glow: "border border-brand-100 bg-brand-50 text-brand-600 ring-1 ring-inset ring-brand-100",
 };
 
 type BadgeProps = React.ComponentProps<"span"> & {
@@ -22,7 +34,7 @@ export function Badge({ className, variant = "soft", ...props }: BadgeProps) {
     <span
       data-slot="badge"
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium leading-none transition-colors",
+        "inline-flex items-center gap-1 rounded-[3px] border px-2 py-0.5 text-[12px] font-normal leading-[1.5] transition-colors",
         VARIANT_CLASS[variant],
         className,
       )}

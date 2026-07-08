@@ -35,7 +35,7 @@ function parseCli(argv: readonly string[]): CliValues {
       email: { type: "string", default: "admin@example.com" },
       username: { type: "string", default: "admin" },
       password: { type: "string", default: "admin123" },
-      "display-name": { type: "string", default: "系统管理员" },
+      "display-name": { type: "string", default: "超级管理员" },
     },
     strict: true,
     allowPositionals: false,
@@ -114,7 +114,7 @@ function printAuthorizationBanner(roleId: string, menuCount: number) {
  *   - 用户管理            → /admin/users
  *   - 角色管理            → /admin/roles
  *   - 部门管理            → /admin/departments
- *   - 岗位管理            → /admin/posts            [占位，feature 未建]
+ *   - 岗位管理            → /admin/posts
  *   - 菜单管理            → /admin/menus
  *   - 字典管理            → /admin/dicts
  *   - 站点配置            → /admin/settings         [合并自原「系统设置」]
@@ -322,15 +322,15 @@ async function ensureAdminRole(): Promise<string> {
   const existing = await db
     .select({ id: role.id })
     .from(role)
-    .where(eq(role.name, "系统管理员"))
+    .where(eq(role.name, "超级管理员"))
     .limit(1);
   if (existing[0]) return existing[0].id;
 
   const inserted = await db
     .insert(role)
     .values({
-      name: "系统管理员",
-      description: "seed 默认管理员角色，拥有全部菜单权限",
+      name: "超级管理员",
+      description: "拥有系统最高权限",
       status: "enabled",
       isSystemDefault: true,
     })
@@ -402,82 +402,92 @@ async function ensureDefaultPortal(): Promise<string> {
 
 async function ensureDepartments(
   items: Array<{
-    code: string;
     name: string;
-    parentCode: string | null;
+    parentName: string | null;
     sort: number;
     description?: string;
   }>,
 ): Promise<Map<string, string>> {
   const db = getDb();
-  const idByCode = new Map<string, string>();
-  // 先顶层，再子层
-  for (const item of items.filter((i) => i.parentCode === null)) {
+  const idByName = new Map<string, string>();
+  // 两阶段插入：先按 parentName===null 顶层，再按 parentName 找父节点。
+  // 判存改用 (name, parentId) 组合，避免重名部门误命中。
+  for (const item of items.filter((i) => i.parentName === null)) {
     const existing = await db
       .select({ id: department.id })
       .from(department)
-      .where(eq(department.code, item.code))
+      .where(
+        and(
+          eq(department.name, item.name),
+          isNull(department.parentId),
+          isNull(department.deletedAt),
+        ),
+      )
       .limit(1);
     if (existing[0]) {
-      idByCode.set(item.code, existing[0].id);
+      idByName.set(item.name, existing[0].id);
       continue;
     }
     const inserted = await db
       .insert(department)
       .values({
         name: item.name,
-        code: item.code,
         parentId: null,
         sort: item.sort,
         status: "enabled",
       })
       .returning({ id: department.id });
     if (!inserted[0]) throw new Error(`部门 seed 失败：${item.name}`);
-    idByCode.set(item.code, inserted[0].id);
+    idByName.set(item.name, inserted[0].id);
   }
-  for (const item of items.filter((i) => i.parentCode !== null)) {
-    const parentId = idByCode.get(item.parentCode ?? "");
-    if (!parentId) throw new Error(`父部门缺失：${item.parentCode}`);
+  for (const item of items.filter((i) => i.parentName !== null)) {
+    const parentId = idByName.get(item.parentName ?? "");
+    if (!parentId) throw new Error(`父部门缺失：${item.parentName}`);
     const existing = await db
       .select({ id: department.id })
       .from(department)
-      .where(eq(department.code, item.code))
+      .where(
+        and(
+          eq(department.name, item.name),
+          eq(department.parentId, parentId),
+          isNull(department.deletedAt),
+        ),
+      )
       .limit(1);
     if (existing[0]) {
-      idByCode.set(item.code, existing[0].id);
+      idByName.set(item.name, existing[0].id);
       continue;
     }
     const inserted = await db
       .insert(department)
       .values({
         name: item.name,
-        code: item.code,
         parentId,
         sort: item.sort,
         status: "enabled",
       })
       .returning({ id: department.id });
     if (!inserted[0]) throw new Error(`部门 seed 失败：${item.name}`);
-    idByCode.set(item.code, inserted[0].id);
+    idByName.set(item.name, inserted[0].id);
   }
-  return idByCode;
+  return idByName;
 }
 
 async function ensurePosts(
   items: Array<{
     code: string;
     name: string;
-    departmentCode: string;
+    departmentName: string;
     sort: number;
     description?: string;
   }>,
-  deptIdByCode: Map<string, string>,
+  deptIdByName: Map<string, string>,
 ): Promise<Map<string, string>> {
   const db = getDb();
   const idByCode = new Map<string, string>();
   for (const item of items) {
-    const deptId = deptIdByCode.get(item.departmentCode);
-    if (!deptId) throw new Error(`岗位依赖部门缺失：${item.departmentCode}`);
+    const deptId = deptIdByName.get(item.departmentName);
+    if (!deptId) throw new Error(`岗位依赖部门缺失：${item.departmentName}`);
     // post 表没有 code 列，按 (name, departmentId) 唯一判存
     const existing = await db
       .select({ id: post.id })
@@ -614,97 +624,109 @@ async function ensureSystemOptions(
  * 与 ensureAdminRole / ensureDefaultLocalStorage / ensureDefaultPortal 一起
  * 由 seedAuthorization 串起来。所有写入均为 idempotent，重跑不重复 insert。
  */
+// 1:1 对齐 yishan-api (apps/yishan-api/src/scripts/seed/config.ts:89) 的 deptTreeSeed。
+// yishan-tan department 表不再有 code 列,parent 用 name 引用。
 const DEPARTMENTS_SEED = [
-  { code: "hq", name: "移山总部", parentCode: null, sort: 0 },
-  { code: "tech", name: "技术中心", parentCode: "hq", sort: 0 },
-  { code: "biz", name: "业务中心", parentCode: "hq", sort: 1 },
-  { code: "admin_c", name: "行政中心", parentCode: "hq", sort: 2 },
-  { code: "fe", name: "前端组", parentCode: "tech", sort: 0 },
-  { code: "be", name: "后端组", parentCode: "tech", sort: 1 },
-  { code: "qa", name: "测试组", parentCode: "tech", sort: 2 },
-  { code: "ops", name: "运维组", parentCode: "tech", sort: 3 },
-  { code: "pd", name: "产品组", parentCode: "biz", sort: 0 },
-  { code: "sales", name: "销售组", parentCode: "biz", sort: 1 },
-  { code: "hr", name: "人事组", parentCode: "admin_c", sort: 0 },
-  { code: "fin", name: "财务组", parentCode: "admin_c", sort: 1 },
+  { name: "愚公软件", parentName: null, sort: 0 },
+  { name: "上海总公司", parentName: "愚公软件", sort: 1 },
+  { name: "常州分公司", parentName: "愚公软件", sort: 2 },
+  { name: "研发部门（上海）", parentName: "上海总公司", sort: 1 },
+  { name: "市场部门（上海）", parentName: "上海总公司", sort: 2 },
+  { name: "测试部门（上海）", parentName: "上海总公司", sort: 3 },
+  { name: "财务部门（上海）", parentName: "上海总公司", sort: 4 },
+  { name: "运维部门（上海）", parentName: "上海总公司", sort: 5 },
+  { name: "市场部门（常州）", parentName: "常州分公司", sort: 1 },
+  { name: "财务部门（常州）", parentName: "常州分公司", sort: 2 },
 ];
 
+// 1:1 对齐 yishan-api (apps/yishan-api/src/scripts/seed/config.ts:118) 的 postsSeed。
+// yishan-api 的 post 不绑定部门,我们按职位语义归口:愚公软件(总部)放董事长/人力资源,上海总公司放项目经理/普通员工。
+// description 取自 yishan-api seed;yishan-tan post 表无 description 列,这里仅保留 name 维度。
 const POSTS_SEED = [
-  { code: "ceo", name: "CEO", departmentCode: "hq", sort: 0 },
-  { code: "cto", name: "CTO", departmentCode: "tech", sort: 0 },
-  { code: "fe_eng", name: "前端工程师", departmentCode: "fe", sort: 0 },
-  { code: "be_eng", name: "后端工程师", departmentCode: "be", sort: 0 },
-  { code: "qa_eng", name: "测试工程师", departmentCode: "qa", sort: 0 },
-  { code: "ops_eng", name: "运维工程师", departmentCode: "ops", sort: 0 },
-  { code: "pm", name: "产品经理", departmentCode: "pd", sort: 0 },
+  {
+    code: "ceo",
+    name: "董事长",
+    departmentName: "愚公软件",
+    sort: 1,
+    description: "公司最高负责人",
+  },
+  {
+    code: "pm",
+    name: "项目经理",
+    departmentName: "上海总公司",
+    sort: 2,
+    description: "项目管理与协调",
+  },
+  { code: "hr", name: "人力资源", departmentName: "愚公软件", sort: 3, description: "人事管理" },
+  {
+    code: "staff",
+    name: "普通员工",
+    departmentName: "上海总公司",
+    sort: 4,
+    description: "基础岗位",
+  },
 ];
 
-const AUX_ROLES_SEED = [
-  { name: "部门管理员", description: "可管理部门范围内的用户与角色" },
-  { name: "普通成员", description: "无后台管理权限的默认业务角色" },
-  { name: "审计员", description: "只读审计权限：登录日志、操作日志、报表" },
-];
+const AUX_ROLES_SEED = [{ name: "普通管理员", description: "拥有基础管理权限" }];
 
+// 1:1 对齐 yishan-api (apps/yishan-api/src/scripts/seed/config.ts:125) 的 dictsSeed。
+// yishan-tan dictData 多 code 列(本 seed 用 value 字符串作为 code,保持稳定)。
+// yishan-api 的 isDefault 标记 yishan-tan schema 不支持,这里用"排序前置"传达同等语义。
 const DICTS_SEED = [
-  {
-    typeCode: "user_status",
-    typeName: "用户状态",
-    description: "用户启停状态枚举，与 user.status 字段保持一致",
-    data: [
-      { code: "enabled", label: "启用", value: "enabled", sort: 0 },
-      { code: "disabled", label: "已禁用", value: "disabled", sort: 1 },
-    ],
-  },
-  {
-    typeCode: "sys_yes_no",
-    typeName: "系统是否",
-    description: "通用布尔字典",
-    data: [
-      { code: "yes", label: "是", value: "yes", sort: 0 },
-      { code: "no", label: "否", value: "no", sort: 1 },
-    ],
-  },
   {
     typeCode: "user_gender",
     typeName: "用户性别",
-    description: "性别枚举",
+    description: "用户性别字典",
     data: [
-      { code: "male", label: "男", value: "male", sort: 0 },
-      { code: "female", label: "女", value: "female", sort: 1 },
-      { code: "unknown", label: "未填", value: "unknown", sort: 2 },
+      { code: "0", label: "保密", value: "0", sort: 0 },
+      { code: "1", label: "男", value: "1", sort: 1 },
+      { code: "2", label: "女", value: "2", sort: 2 },
+    ],
+  },
+  {
+    typeCode: "user_status",
+    typeName: "用户状态",
+    description: "用户状态字典",
+    data: [
+      { code: "0", label: "禁用", value: "0", sort: 0 },
+      { code: "1", label: "启用", value: "1", sort: 1 },
+      { code: "2", label: "拉黑", value: "2", sort: 2 },
+    ],
+  },
+  {
+    typeCode: "default_status",
+    typeName: "默认状态",
+    description: "通用启用/禁用状态字典",
+    data: [
+      { code: "0", label: "禁用", value: "0", sort: 0 },
+      { code: "1", label: "启用", value: "1", sort: 1 },
     ],
   },
 ];
 
+// 1:1 对齐 yishan-api (apps/yishan-api/src/scripts/seed/config.ts:222) 的 sysOptionsSeed。
+// yishan-tan 站点/登录/上传相关字段由 src/features/system-settings/system-settings.groups.ts
+// 的表单定义负责,seed 仅提供基础 K-V 初始值。
 const SYSTEM_OPTIONS_SEED = [
-  {
-    key: "site.name",
-    value: "移山后台管理系统",
-    description: "站点名称（浏览器标题、登录页 logo 旁文字）",
-  },
-  { key: "site.logo", value: "", description: "站点 Logo URL（PNG/SVG）" },
-  { key: "site.copyright", value: "© yishan", description: "页脚版权文字" },
-  { key: "auth.login.maxRetries", value: 5, description: "登录失败最大次数（超过后账号临时锁定）" },
-  { key: "auth.login.rateLimitPerMin", value: 10, description: "单 IP 每分钟登录请求上限" },
-  { key: "auth.session.timeout", value: 7, description: "会话有效期（天）" },
-  { key: "upload.maxSizeMb", value: 20, description: "上传文件最大尺寸（MB）" },
-  {
-    key: "upload.allowedTypes",
-    value: ["jpg", "jpeg", "png", "gif", "webp", "pdf", "doc", "docx", "xls", "xlsx"],
-    description: "允许上传的文件扩展名",
-  },
+  { key: "basicConfig", value: "{}", description: "站点基本配置" },
+  { key: "systemStorage", value: "0", description: "系统存储驱动 ID（0 表示本地存储）" },
+  { key: "qiniuConfig", value: "{}", description: "七牛云存储配置(JSON 字符串)" },
+  { key: "aliyunOssConfig", value: "{}", description: "阿里云 OSS 存储配置(JSON 字符串)" },
+  { key: "defaultArticleTemplateId", value: "1", description: "默认文章模板 ID" },
+  { key: "defaultPageTemplateId", value: "2", description: "默认页面模板 ID" },
 ];
 
 async function seedBusinessData() {
-  const deptIdByCode = await ensureDepartments(DEPARTMENTS_SEED);
-  const postIdByCode = await ensurePosts(POSTS_SEED, deptIdByCode);
+  const deptIdByName = await ensureDepartments(DEPARTMENTS_SEED);
+  const postIdByCode = await ensurePosts(POSTS_SEED, deptIdByName);
   const auxRoleIdByName = await ensureAuxRoles(AUX_ROLES_SEED);
   await ensureDicts(DICTS_SEED);
   await ensureSystemOptions(SYSTEM_OPTIONS_SEED);
+  // 部门负责人不在 seed 里绑定(对齐 yishan-api,留空由管理员通过 UI 指派)
   console.log(
     `✔ 部门 (${DEPARTMENTS_SEED.length} 项) / 岗位 (${POSTS_SEED.length} 项) / 业务角色 (${AUX_ROLES_SEED.length + 1} 个含 admin) / 字典 (${DICTS_SEED.length} 类型) / 系统选项 (${SYSTEM_OPTIONS_SEED.length} 项) seed 完成`,
   );
-  return { deptIdByCode, postIdByCode, auxRoleIdByName };
+  return { deptIdByName, postIdByCode, auxRoleIdByName };
 }
 
 async function seedAuthorization(adminUserId: string) {
@@ -724,8 +746,8 @@ async function seedAuthorization(adminUserId: string) {
       .values({ userId: adminUserId, postId: adminPostId })
       .onConflictDoNothing();
   }
-  // 给 admin 也绑上一个业务角色（部门管理员），证明 RBAC 多角色并行能工作
-  const auxRoleId = auxRoleIdByName.get("部门管理员");
+  // 给 admin 也绑上一个业务角色（普通管理员），证明 RBAC 多角色并行能工作
+  const auxRoleId = auxRoleIdByName.get("普通管理员");
   if (auxRoleId) {
     await db
       .insert(userRole)

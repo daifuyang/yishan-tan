@@ -3,8 +3,13 @@ import { ChevronDown, Plus } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
-import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { DateRangePicker, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +32,8 @@ import { usePostsList } from "~/features/posts/posts.queries";
 import { postListQuerySchema } from "~/features/posts/posts.schema";
 import type { PostDto } from "~/features/posts/posts.types";
 import { useCreatePost, useDeletePost, useUpdatePost } from "~/features/posts/posts.use-mutations";
+import { placeholders } from "~/lib/copy";
+import { normalizeDateRange } from "~/lib/date-range";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -47,12 +54,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdFrom: "",
   createdTo: "",
 };
-
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
 
 type EditPostFormValue = {
   name: string;
@@ -82,6 +83,7 @@ function formatDateTime(iso: string): string {
 }
 
 function AdminPostsPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -93,6 +95,7 @@ function AdminPostsPage() {
   const [createForm, setCreateForm] = React.useState<EditPostFormValue>(EMPTY_EDIT_FORM);
 
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
 
   const list = usePostsListPage(filters, page, pageSize);
   const departments = useDepartmentsList(DEPARTMENT_QUERY);
@@ -106,27 +109,32 @@ function AdminPostsPage() {
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as reset trigger
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as reset trigger
   React.useEffect(() => {
     setPage(1);
   }, [
-    filters.keyword,
-    filters.departmentId,
-    filters.sortMin,
-    filters.status,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.keyword,
+    draft.departmentId,
+    draft.sortMin,
+    draft.status,
+    draft.createdFrom,
+    draft.createdTo,
   ]);
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -208,7 +216,10 @@ function AdminPostsPage() {
       header: "名称",
       width: "180px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.name}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.name}
+        >
           {row.name}
         </span>
       ),
@@ -218,7 +229,10 @@ function AdminPostsPage() {
       header: "部门",
       width: "200px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.departmentName}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.departmentName}
+        >
           {row.departmentName}
         </span>
       ),
@@ -279,19 +293,35 @@ function AdminPostsPage() {
             >
               编辑
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleToggleStatus(row);
-              }}
-              disabled={updateMut.isPending}
-            >
-              {isDisabled ? "启用" : "禁用"}
-            </Button>
+            {isDisabled ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleToggleStatus(row);
+                }}
+                disabled={updateMut.isPending}
+              >
+                启用
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_DANGER_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDisablePopconfirmRowId(row.id);
+                }}
+                disabled={updateMut.isPending}
+              >
+                禁用
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -329,6 +359,23 @@ function AdminPostsPage() {
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
               onConfirm={() => handleDeleteConfirm(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
+            <Popconfirm
+              open={disablePopconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+              title="禁用岗位"
+              description="禁用后该岗位不再可用，关联用户的岗位绑定会自动解绑。"
+              confirmLabel="禁用"
+              tone="danger"
+              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+              onConfirm={() => handleToggleStatus(row)}
               side="top"
               align="end"
               sideOffset={6}
@@ -387,8 +434,8 @@ function AdminPostsPage() {
       ) : null}
       <ResourcePage
         title="岗位管理"
-        description="维护岗位及其所属部门。"
         filterColumns={3}
+        filterCollapsible
         filterDefaultCollapsed
         filter={
           <>
@@ -397,16 +444,16 @@ function AdminPostsPage() {
                 id="filter-keyword"
                 className={FILTER_CONTROL_CLASS}
                 allowClear
-                placeholder="按名称模糊搜索"
-                value={filters.keyword}
-                onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
+                placeholder={placeholders.input}
+                value={draft.keyword}
+                onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="部门" htmlFor="filter-department">
               <Select
-                value={filters.departmentId || "all"}
-                onValueChange={(v) => applyFilterPatch({ departmentId: v === "all" ? "" : v })}
+                value={draft.departmentId || "all"}
+                onValueChange={(v) => applyDraftPatch({ departmentId: v === "all" ? "" : v })}
               >
                 <SelectTrigger id="filter-department" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -430,15 +477,15 @@ function AdminPostsPage() {
                 className={FILTER_CONTROL_CLASS}
                 allowClear
                 placeholder="0"
-                value={filters.sortMin}
-                onChange={(e) => applyFilterPatch({ sortMin: e.target.value })}
+                value={draft.sortMin}
+                onChange={(e) => applyDraftPatch({ sortMin: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -451,47 +498,26 @@ function AdminPostsPage() {
               </Select>
             </QueryFormItem>
 
-            <QueryFormItem label="创建时间起" htmlFor="filter-created-from">
-              <Input
-                id="filter-created-from"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdFrom}
-                onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
-              />
-            </QueryFormItem>
-
-            <QueryFormItem label="创建时间止" htmlFor="filter-created-to">
-              <Input
-                id="filter-created-to"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdTo}
-                onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+            <QueryFormItem label="创建时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+                onChange={(r) =>
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
               />
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            keyword: String(next.keyword ?? ""),
-            departmentId: String(next.departmentId ?? ""),
-            sortMin: String(next.sortMin ?? ""),
-            status: (next.status as StatusFilter) ?? "all",
-            createdFrom: String(next.createdFrom ?? ""),
-            createdTo: String(next.createdTo ?? ""),
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="岗位列表"
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新增岗位
+            新建岗位
           </Button>
         }
         tableProps={{
@@ -510,7 +536,7 @@ function AdminPostsPage() {
           emptyTitle: "暂无岗位",
           emptyDescription: list.isError
             ? "加载岗位列表失败，请稍后重试或检查后端日志。"
-            : "尚未配置任何岗位，点击「新增岗位」开始搭建岗位体系。",
+            : "尚未配置任何岗位，点击「新建岗位」开始搭建岗位体系。",
           emptyAction: list.isError ? (
             <Button type="button" size="sm" variant="outline" onClick={() => void list.refetch()}>
               重试
@@ -518,7 +544,7 @@ function AdminPostsPage() {
           ) : (
             <Button type="button" size="sm" variant="outline" onClick={handleOpenCreate}>
               <Plus className="size-3.5" aria-hidden />
-              新增岗位
+              新建岗位
             </Button>
           ),
           error: list.isError
@@ -563,8 +589,7 @@ function AdminPostsPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增岗位"
-        description="填写名称并指定所属部门。"
+        title="新建岗位"
         dialogSize="md"
         sheetSize="md"
         submitLabel="创建"
@@ -617,6 +642,10 @@ function collectDescendantIds(
 function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   const trim = (v: string) => v.trim() || undefined;
   const sortMinNum = filters.sortMin.trim() === "" ? undefined : Number(filters.sortMin);
+  const { createdFrom, createdTo } = normalizeDateRange({
+    start: filters.createdFrom || null,
+    end: filters.createdTo || null,
+  });
   return postListQuerySchema.parse({
     page,
     pageSize,
@@ -624,8 +653,8 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     departmentId: trim(filters.departmentId),
     sortMin: sortMinNum !== undefined && Number.isFinite(sortMinNum) ? sortMinNum : undefined,
     status: filters.status === "all" ? undefined : filters.status,
-    createdFrom: trim(filters.createdFrom),
-    createdTo: trim(filters.createdTo),
+    createdFrom,
+    createdTo,
   });
 }
 

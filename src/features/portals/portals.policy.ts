@@ -4,6 +4,6 @@ import type { ServiceContext } from "~/lib/service-context";
 
 export async function assertCanManagePortals(ctx: ServiceContext): Promise<void> {
   if (!isSystemAdmin(ctx)) {
-    throw Errors.forbidden("仅系统管理员可管理门户");
+    throw Errors.forbidden("仅超级管理员可管理门户");
   }
 }

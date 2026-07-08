@@ -3,8 +3,13 @@ import { ChevronDown, LayoutTemplate, Plus, Star } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
-import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { DateRangePicker, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,6 +37,9 @@ import {
   useSetDefaultPortal,
   useUpdatePortal,
 } from "~/features/portals/portals.use-mutations";
+import { MONO_CELL } from "~/lib/classes";
+import { placeholders } from "~/lib/copy";
+import { normalizeDateRange } from "~/lib/date-range";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 type DefaultFilter = "all" | "default" | "non-default";
@@ -52,12 +60,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdTo: "",
 };
 
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
-
 const THEME_MODE_LABELS: Record<PortalThemeMode, string> = {
   light: "浅色",
   dark: "深色",
@@ -76,18 +78,23 @@ function formatDateTime(iso: string): string {
 
 function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   const trim = (v: string) => v.trim() || undefined;
+  const { createdFrom, createdTo } = normalizeDateRange({
+    start: filters.createdFrom || null,
+    end: filters.createdTo || null,
+  });
   return portalListQuerySchema.parse({
     page,
     pageSize,
     keyword: trim(filters.keyword),
     isDefault: filters.isDefault === "all" ? undefined : filters.isDefault === "default",
     status: filters.status === "all" ? undefined : filters.status,
-    createdFrom: trim(filters.createdFrom),
-    createdTo: trim(filters.createdTo),
+    createdFrom,
+    createdTo,
   });
 }
 
 function AdminPortalsPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -96,6 +103,7 @@ function AdminPortalsPage() {
   const [createForm, setCreateForm] = React.useState<EditPortalFormValue>(EMPTY_CREATE_FORM);
   const [editForm, setEditForm] = React.useState<EditPortalFormValue>(EMPTY_EDIT_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
 
   const query = buildListQuery(filters, page, pageSize);
   const list = usePortalsList(query);
@@ -120,19 +128,24 @@ function AdminPortalsPage() {
   React.useEffect(() => {
     resetPageOnFilterChange();
   }, [
-    filters.keyword,
-    filters.isDefault,
-    filters.status,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.keyword,
+    draft.isDefault,
+    draft.status,
+    draft.createdFrom,
+    draft.createdTo,
     resetPageOnFilterChange,
   ]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -210,17 +223,14 @@ function AdminPortalsPage() {
       cell: (row) => (
         <div className="flex items-center gap-2 truncate">
           <LayoutTemplate className="size-3.5 shrink-0 text-text-mute" aria-hidden />
-          <span className="truncate text-[13px] text-text-strong" title={row.name}>
+          <span
+            className="break-words whitespace-normal text-[13px] text-text-strong"
+            title={row.name}
+          >
             {row.name}
           </span>
           {row.isDefault ? (
-            <span
-              className="inline-flex items-center gap-0.5 rounded-[3px] border border-[#ffd591] bg-[#fff7e6] px-1.5 py-0.5 text-[11px] font-normal text-[#d46b08]"
-              aria-label="默认门户"
-            >
-              <Star className="size-3" aria-hidden />
-              默认
-            </span>
+            <StatusBadge tone="warning" label="默认" icon={Star} variant="soft" />
           ) : null}
         </div>
       ),
@@ -230,10 +240,7 @@ function AdminPortalsPage() {
       header: "编码",
       width: "140px",
       cell: (row) => (
-        <span
-          className="inline-flex items-center rounded-[3px] border border-line bg-muted px-2 py-0.5 text-[12px] font-mono text-text-soft"
-          title={row.code}
-        >
+        <span className={MONO_CELL} title={row.code}>
           {row.code}
         </span>
       ),
@@ -243,7 +250,10 @@ function AdminPortalsPage() {
       header: "域名",
       width: "240px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.domain ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.domain ?? ""}
+        >
           {row.domain ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -263,12 +273,7 @@ function AdminPortalsPage() {
           ) : (
             <span className="inline-block size-4 shrink-0 rounded-[3px] border border-line bg-muted" />
           )}
-          <span
-            className="inline-flex items-center rounded-[3px] border border-line bg-muted px-2 py-0.5 text-[12px] font-mono text-text-soft"
-            title={row.themeMode}
-          >
-            {THEME_MODE_LABELS[row.themeMode]}
-          </span>
+          <StatusBadge tone="neutral" label={THEME_MODE_LABELS[row.themeMode]} variant="soft" />
         </div>
       ),
     },
@@ -331,19 +336,35 @@ function AdminPortalsPage() {
             >
               {row.isDefault ? "默认中" : "设为默认"}
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleToggleStatus(row);
-              }}
-              disabled={updateMut.isPending}
-            >
-              {isDisabled ? "启用" : "禁用"}
-            </Button>
+            {isDisabled ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleToggleStatus(row);
+                }}
+                disabled={updateMut.isPending}
+              >
+                启用
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_DANGER_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDisablePopconfirmRowId(row.id);
+                }}
+                disabled={updateMut.isPending}
+              >
+                禁用
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -381,6 +402,23 @@ function AdminPortalsPage() {
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
               onConfirm={() => handleDeleteConfirm(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
+            <Popconfirm
+              open={disablePopconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+              title="禁用门户"
+              description="禁用后该门户将不再作为可访问的入口。"
+              confirmLabel="禁用"
+              tone="danger"
+              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+              onConfirm={() => handleToggleStatus(row)}
               side="top"
               align="end"
               sideOffset={6}
@@ -429,8 +467,8 @@ function AdminPortalsPage() {
     <>
       <ResourcePage
         title="门户管理"
-        description="管理多套 C 端门户配置；同一时间仅一套门户为默认。"
         filterColumns={3}
+        filterCollapsible
         filterDefaultCollapsed
         filter={
           <>
@@ -438,16 +476,17 @@ function AdminPortalsPage() {
               <Input
                 id="filter-keyword"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="模糊匹配"
-                value={filters.keyword}
-                onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
+                allowClear
+                placeholder={placeholders.input}
+                value={draft.keyword}
+                onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="是否默认" htmlFor="filter-default">
               <Select
-                value={filters.isDefault}
-                onValueChange={(v) => applyFilterPatch({ isDefault: v as DefaultFilter })}
+                value={draft.isDefault}
+                onValueChange={(v) => applyDraftPatch({ isDefault: v as DefaultFilter })}
               >
                 <SelectTrigger id="filter-default" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -462,8 +501,8 @@ function AdminPortalsPage() {
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -476,44 +515,26 @@ function AdminPortalsPage() {
               </Select>
             </QueryFormItem>
 
-            <QueryFormItem label="创建时间起" htmlFor="filter-created-from">
-              <Input
-                id="filter-created-from"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                value={filters.createdFrom}
-                onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
-              />
-            </QueryFormItem>
-
-            <QueryFormItem label="创建时间止" htmlFor="filter-created-to">
-              <Input
-                id="filter-created-to"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                value={filters.createdTo}
-                onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+            <QueryFormItem label="创建时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+                onChange={(r) =>
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
               />
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            keyword: String(next.keyword ?? ""),
-            isDefault: (next.isDefault as DefaultFilter) ?? "all",
-            status: (next.status as StatusFilter) ?? "all",
-            createdFrom: String(next.createdFrom ?? ""),
-            createdTo: String(next.createdTo ?? ""),
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="门户列表"
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新增门户
+            新建门户
           </Button>
         }
         tableProps={{
@@ -556,7 +577,6 @@ function AdminPortalsPage() {
           if (!next) handleCloseEdit();
         }}
         title="编辑门户"
-        description="修改门户配置；设为默认将自动取消其他默认门户。"
         dialogSize="lg"
         sheetSize="lg"
         submitLabel="保存"
@@ -584,8 +604,7 @@ function AdminPortalsPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增门户"
-        description="配置一套新的 C 端门户；设为默认将自动取消其他默认门户。"
+        title="新建门户"
         dialogSize="lg"
         sheetSize="lg"
         submitLabel="创建"

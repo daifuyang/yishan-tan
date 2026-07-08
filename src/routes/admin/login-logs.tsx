@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import { FILTER_CONTROL_CLASS, TABLE_ACTION_CLASS } from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
+import { DateRangePicker, DetailSheet, DetailSheetRow } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,16 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { useLoginLogsList } from "~/features/login-logs/login-logs.queries";
 import type { ListLoginLogsQuery } from "~/features/login-logs/login-logs.schema";
 import type { LoginLogDto } from "~/features/login-logs/login-logs.types";
+import { MONO_CELL } from "~/lib/classes";
 
 type StatusFilter = "all" | "success" | "failed";
 
@@ -43,11 +39,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdFrom: "",
   createdTo: "",
 };
-
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const MONO_CLASS = "font-mono text-[12px] text-text-soft";
 
 export const Route = createFileRoute("/admin/login-logs")({
   component: AdminLoginLogsPage,
@@ -91,6 +82,7 @@ function matchesUserAgentFilter(value: string | null | undefined, needle: string
 }
 
 function AdminLoginLogsPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -101,15 +93,16 @@ function AdminLoginLogsPage() {
 
   const allItems = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
-  // IP / User Agent 是只读客户端筛选，避免再发一次查询
+  // IP / User Agent 是只读客户端筛选，避免再发一次查询。
+  // 客户端过滤使用 draft，IP/UA 输入即生效，提交按钮仅承担"对齐 ResourcePage 形态"职责。
   const items = React.useMemo(
     () =>
       allItems.filter(
         (item) =>
-          matchesIpFilter(item.ipAddress, filters.ipAddress) &&
-          matchesUserAgentFilter(item.userAgent, filters.userAgent),
+          matchesIpFilter(item.ipAddress, draft.ipAddress) &&
+          matchesUserAgentFilter(item.userAgent, draft.userAgent),
       ),
-    [allItems, filters.ipAddress, filters.userAgent],
+    [allItems, draft.ipAddress, draft.userAgent],
   );
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -118,23 +111,28 @@ function AdminLoginLogsPage() {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
   React.useEffect(() => {
     setPage(1);
   }, [
-    filters.keyword,
-    filters.status,
-    filters.ipAddress,
-    filters.userAgent,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.keyword,
+    draft.status,
+    draft.ipAddress,
+    draft.userAgent,
+    draft.createdFrom,
+    draft.createdTo,
   ]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -145,7 +143,10 @@ function AdminLoginLogsPage() {
       header: "账号",
       width: "160px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.username ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.username ?? ""}
+        >
           {row.username ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -155,7 +156,7 @@ function AdminLoginLogsPage() {
       header: "IP",
       width: "130px",
       cell: (row) => (
-        <span className={MONO_CLASS} title={row.ipAddress ?? ""}>
+        <span className={MONO_CELL} title={row.ipAddress ?? ""}>
           {row.ipAddress ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -165,7 +166,10 @@ function AdminLoginLogsPage() {
       header: "User Agent",
       width: "240px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.userAgent ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.userAgent ?? ""}
+        >
           {row.userAgent ? truncate(row.userAgent, 60) : <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -187,7 +191,10 @@ function AdminLoginLogsPage() {
       header: "消息",
       width: "200px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.message ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.message ?? ""}
+        >
           {row.message ? truncate(row.message, 40) : <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -229,9 +236,9 @@ function AdminLoginLogsPage() {
     <>
       <ResourcePage
         title="登录日志"
-        description="记录所有用户的登录尝试（仅管理员可见，只读）。"
         filterColumns={3}
         filterCollapsible
+        filterDefaultCollapsed
         filter={
           <>
             <QueryFormItem label="用户名" htmlFor="filter-keyword">
@@ -240,15 +247,15 @@ function AdminLoginLogsPage() {
                 className={FILTER_CONTROL_CLASS}
                 allowClear
                 placeholder="模糊匹配"
-                value={filters.keyword}
-                onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
+                value={draft.keyword}
+                onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -267,8 +274,8 @@ function AdminLoginLogsPage() {
                 className={FILTER_CONTROL_CLASS}
                 allowClear
                 placeholder="客户端过滤"
-                value={filters.ipAddress}
-                onChange={(e) => applyFilterPatch({ ipAddress: e.target.value })}
+                value={draft.ipAddress}
+                onChange={(e) => applyDraftPatch({ ipAddress: e.target.value })}
               />
             </QueryFormItem>
 
@@ -278,45 +285,24 @@ function AdminLoginLogsPage() {
                 className={FILTER_CONTROL_CLASS}
                 allowClear
                 placeholder="客户端过滤"
-                value={filters.userAgent}
-                onChange={(e) => applyFilterPatch({ userAgent: e.target.value })}
+                value={draft.userAgent}
+                onChange={(e) => applyDraftPatch({ userAgent: e.target.value })}
               />
             </QueryFormItem>
 
-            <QueryFormItem label="开始时间" htmlFor="filter-from">
-              <Input
-                id="filter-from"
-                type="date"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdFrom}
-                onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
-              />
-            </QueryFormItem>
-
-            <QueryFormItem label="结束时间" htmlFor="filter-to">
-              <Input
-                id="filter-to"
-                type="date"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdTo}
-                onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+            <QueryFormItem label="登录时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+                onChange={(r) =>
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
               />
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            keyword: String(next.keyword ?? ""),
-            status: (next.status as StatusFilter) ?? "all",
-            ipAddress: String(next.ipAddress ?? ""),
-            userAgent: String(next.userAgent ?? ""),
-            createdFrom: String(next.createdFrom ?? ""),
-            createdTo: String(next.createdTo ?? ""),
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="日志列表"
@@ -367,62 +353,30 @@ function LoginLogDetailSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Sheet open={log !== null} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>登录日志详情</SheetTitle>
-          <SheetDescription>{log ? formatDateTime(log.createdAt) : ""}</SheetDescription>
-        </SheetHeader>
-
-        {log ? (
-          <div className="mt-6 space-y-4 text-[13px]">
-            <DetailRow label="账号" value={log.username ?? "--"} mono />
-            <DetailRow label="状态">
-              <StatusBadge
-                tone={log.status === "success" ? "success" : "danger"}
-                label={log.status === "success" ? "成功" : "失败"}
-                variant="soft"
-              />
-            </DetailRow>
-            <DetailRow label="IP 地址" value={log.ipAddress ?? "--"} mono />
-            <DetailRow label="User Agent" value={log.userAgent ?? "--"} mono break />
-            <DetailRow label="消息" value={log.message ?? "--"} break />
-            <DetailRow label="登录时间" value={formatDateTime(log.createdAt)} />
-            <DetailRow label="用户 ID" value={log.userId ?? "--"} mono />
-          </div>
-        ) : null}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function DetailRow({
-  label,
-  value,
-  children,
-  mono,
-  break: shouldBreak,
-}: {
-  label: string;
-  value?: string;
-  children?: React.ReactNode;
-  mono?: boolean;
-  break?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-[100px_minmax(0,1fr)] items-start gap-3">
-      <span className="text-text-mute">{label}</span>
-      <div className="min-w-0 text-text-strong">
-        {children ?? (
-          <span
-            className={[mono ? "font-mono text-[12px]" : "", shouldBreak ? "break-all" : ""]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            {value}
-          </span>
-        )}
-      </div>
-    </div>
+    <DetailSheet
+      open={log !== null}
+      onOpenChange={onOpenChange}
+      title="登录日志详情"
+      description={log ? formatDateTime(log.createdAt) : ""}
+      size="md"
+    >
+      {log ? (
+        <>
+          <DetailSheetRow label="账号" value={log.username ?? "--"} mono />
+          <DetailSheetRow label="状态">
+            <StatusBadge
+              tone={log.status === "success" ? "success" : "danger"}
+              label={log.status === "success" ? "成功" : "失败"}
+              variant="soft"
+            />
+          </DetailSheetRow>
+          <DetailSheetRow label="IP 地址" value={log.ipAddress ?? "--"} mono />
+          <DetailSheetRow label="User Agent" value={log.userAgent ?? "--"} mono break />
+          <DetailSheetRow label="消息" value={log.message ?? "--"} break />
+          <DetailSheetRow label="登录时间" value={formatDateTime(log.createdAt)} />
+          <DetailSheetRow label="用户 ID" value={log.userId ?? "--"} mono />
+        </>
+      ) : null}
+    </DetailSheet>
   );
 }

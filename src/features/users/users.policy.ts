@@ -8,7 +8,7 @@ export function isSystemAdmin(userId: string): boolean {
 
 export async function assertCanManageUsers(ctx: ServiceContext): Promise<void> {
   if (!isSystemAdmin(ctx.userId)) {
-    throw Errors.forbidden("仅系统管理员可执行该操作");
+    throw Errors.forbidden("仅超级管理员可执行该操作");
   }
 }
 
@@ -17,6 +17,6 @@ export function assertNotSelfOrSystemAdmin(targetUserId: string, operatorId: str
     throw Errors.invalid("不能对当前登录用户执行该操作");
   }
   if (isSystemAdmin(targetUserId)) {
-    throw Errors.invalid("不能对系统管理员执行该操作");
+    throw Errors.invalid("不能对超级管理员执行该操作");
   }
 }

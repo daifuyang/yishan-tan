@@ -180,7 +180,7 @@ function TreeSelect({
     setOpen(true);
     requestAnimationFrame(() => {
       searchRef.current?.focus();
-      if (searchRef.current && searchRef.current.value) {
+      if (searchRef.current?.value) {
         searchRef.current.select();
       }
     });

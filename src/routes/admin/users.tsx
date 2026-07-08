@@ -3,6 +3,11 @@ import { ChevronDown, Plus, ShieldOff } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
 import {
   DatePicker,
@@ -66,7 +71,6 @@ const DEFAULT_FILTERS: FilterState = {
   status: "all",
 };
 
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
 const USER_FILTER_PLACEHOLDERS = {
   username: "请输入",
   name: "请输入",
@@ -74,10 +78,6 @@ const USER_FILTER_PLACEHOLDERS = {
   email: "请输入",
   phone: "请输入",
 } as const;
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -258,7 +258,10 @@ function AdminUsersPage() {
       header: "用户名",
       width: "140px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.username}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.username}
+        >
           {row.username}
         </span>
       ),
@@ -268,7 +271,10 @@ function AdminUsersPage() {
       header: "姓名",
       width: "120px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.name}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.name}
+        >
           {row.name || <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -278,7 +284,10 @@ function AdminUsersPage() {
       header: "昵称",
       width: "120px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-strong" title={row.displayName ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-strong"
+          title={row.displayName ?? ""}
+        >
           {row.displayName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -288,7 +297,10 @@ function AdminUsersPage() {
       header: "邮箱",
       width: "220px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.email}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.email}
+        >
           {row.email}
         </span>
       ),
@@ -298,21 +310,12 @@ function AdminUsersPage() {
       header: "手机号",
       width: "140px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.phone ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.phone ?? ""}
+        >
           {row.phone ?? <span className="text-text-mute">--</span>}
         </span>
-      ),
-    },
-    {
-      key: "role",
-      header: "系统角色",
-      width: "100px",
-      cell: (row) => (
-        <StatusBadge
-          tone={row.role === "admin" ? "info" : "neutral"}
-          label={row.role === "admin" ? "管理员" : "成员"}
-          variant="soft"
-        />
       ),
     },
     {
@@ -321,7 +324,7 @@ function AdminUsersPage() {
       width: "90px",
       cell: (row) => (
         <StatusBadge
-          tone={row.status === "enabled" ? "success" : "danger"}
+          tone="info"
           label={row.status === "enabled" ? "启用" : "已禁用"}
           variant="soft"
         />
@@ -522,7 +525,6 @@ function AdminUsersPage() {
     <>
       <ResourcePage
         title="用户管理"
-        description="维护后台账号、角色与启停状态。"
         filterColumns={3}
         filterCollapsible
         filterDefaultCollapsed
@@ -624,11 +626,11 @@ function AdminUsersPage() {
                 <TooltipTrigger asChild>
                   <Button type="button" size="sm" onClick={handleOpenCreate}>
                     <Plus className="size-3.5" aria-hidden />
-                    新增
+                    新建
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p>后台新增用户（仅 admin）</p>
+                  <p>后台新建用户（仅 admin）</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -698,7 +700,7 @@ function AdminUsersPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增用户"
+        title="新建用户"
         dialogSize="full"
         sheetSize="md"
         submitLabel="创建"

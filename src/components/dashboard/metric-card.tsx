@@ -1,5 +1,7 @@
 import type { LucideIcon } from "lucide-react";
+import type * as React from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type MetricCardProps = {
@@ -12,10 +14,13 @@ type MetricCardProps = {
   className?: string;
 };
 
-const TREND_COLOR: Record<NonNullable<MetricCardProps["trend"]>, string> = {
-  up: "text-emerald-600 bg-emerald-50 border-emerald-200/70",
-  down: "text-rose-600 bg-rose-50 border-rose-200/70",
-  neutral: "text-brand-700 bg-brand-50 border-brand-200/70",
+const TREND_BADGE_VARIANT: Record<
+  NonNullable<MetricCardProps["trend"]>,
+  React.ComponentProps<typeof Badge>["variant"]
+> = {
+  up: "success",
+  down: "destructive",
+  neutral: "soft",
 };
 
 export function MetricCard({
@@ -41,16 +46,7 @@ export function MetricCard({
         >
           <Icon className="size-5" aria-hidden />
         </span>
-        {tag ? (
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
-              TREND_COLOR[trend],
-            )}
-          >
-            {tag}
-          </span>
-        ) : null}
+        {tag ? <Badge variant={TREND_BADGE_VARIANT[trend]}>{tag}</Badge> : null}
       </div>
 
       <div className="relative mt-4">

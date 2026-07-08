@@ -9,8 +9,10 @@ function makeDept(over: Partial<DepartmentDto>): DepartmentDto {
   return {
     id: "123e4567-e89b-12d3-a456-426614174000",
     parentId: null,
+    parentName: null,
     name: "X",
-    code: "x",
+    leaderId: null,
+    leaderName: null,
     sort: 0,
     status: "enabled",
     createdAt: "2026-01-01T00:00:00.000Z",

@@ -3,8 +3,10 @@ import type { DbDepartment } from "~/../db/schema";
 export type DepartmentDto = {
   id: string;
   parentId: string | null;
+  parentName: string | null;
   name: string;
-  code: string;
+  leaderId: string | null;
+  leaderName: string | null;
   sort: number;
   status: "enabled" | "disabled";
   createdAt: string;
@@ -16,7 +18,7 @@ export type DepartmentNode = DepartmentDto & { children: DepartmentNode[] };
 export type ListDepartmentsService = (input: {
   page: number;
   pageSize: number;
-  keyword?: string;
+  name?: string;
   status?: "enabled" | "disabled";
 }) => Promise<{ items: DepartmentDto[]; total: number }>;
 
@@ -27,7 +29,7 @@ export type GetDepartmentService = (id: string) => Promise<DepartmentDto | null>
 export type CreateDepartmentService = (input: {
   parentId?: string | null;
   name: string;
-  code: string;
+  leaderId?: string | null;
   sort?: number;
   status?: "enabled" | "disabled";
 }) => Promise<DepartmentDto>;
@@ -37,6 +39,7 @@ export type UpdateDepartmentService = (
   input: {
     parentId?: string | null;
     name?: string;
+    leaderId?: string | null;
     sort?: number;
     status?: "enabled" | "disabled";
   },

@@ -3,8 +3,13 @@ import { ChevronDown, Cloud, Plus, Star } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
-import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { DateRangePicker, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,6 +41,9 @@ import {
   useSetDefaultStorage,
   useUpdateStorage,
 } from "~/features/storages/storages.use-mutations";
+import { MONO_CELL } from "~/lib/classes";
+import { placeholders } from "~/lib/copy";
+import { normalizeDateRange } from "~/lib/date-range";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 type DefaultFilter = "all" | "default" | "non-default";
@@ -59,12 +67,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdTo: "",
 };
 
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
-
 const DRIVER_LABELS: Record<StorageDriver, string> = {
   local: "本地",
   "aliyun-oss": "阿里云 OSS",
@@ -87,6 +89,10 @@ function formatDateTime(iso: string): string {
 
 function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   const trim = (v: string) => v.trim() || undefined;
+  const { createdFrom, createdTo } = normalizeDateRange({
+    start: filters.createdFrom || null,
+    end: filters.createdTo || null,
+  });
   return storageListQuerySchema.parse({
     page,
     pageSize,
@@ -94,12 +100,13 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     driver: filters.driver === "all" ? undefined : filters.driver,
     isDefault: filters.isDefault === "all" ? undefined : filters.isDefault === "default",
     status: filters.status === "all" ? undefined : filters.status,
-    createdFrom: trim(filters.createdFrom),
-    createdTo: trim(filters.createdTo),
+    createdFrom,
+    createdTo,
   });
 }
 
 function AdminStoragesPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -108,6 +115,7 @@ function AdminStoragesPage() {
   const [createForm, setCreateForm] = React.useState<EditStorageFormValue>(EMPTY_CREATE_FORM);
   const [editForm, setEditForm] = React.useState<EditStorageFormValue>(EMPTY_EDIT_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
 
   const query = buildListQuery(filters, page, pageSize);
   const list = useStoragesList(query);
@@ -128,24 +136,29 @@ function AdminStoragesPage() {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
   React.useEffect(() => {
     resetPageOnFilterChange();
   }, [
-    filters.keyword,
-    filters.driver,
-    filters.isDefault,
-    filters.status,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.keyword,
+    draft.driver,
+    draft.isDefault,
+    draft.status,
+    draft.createdFrom,
+    draft.createdTo,
     resetPageOnFilterChange,
   ]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -220,17 +233,14 @@ function AdminStoragesPage() {
       cell: (row) => (
         <div className="flex items-center gap-2 truncate">
           <Cloud className="size-3.5 shrink-0 text-text-mute" aria-hidden />
-          <span className="truncate text-[13px] text-text-strong" title={row.name}>
+          <span
+            className="break-words whitespace-normal text-[13px] text-text-strong"
+            title={row.name}
+          >
             {row.name}
           </span>
           {row.isDefault ? (
-            <span
-              className="inline-flex items-center gap-0.5 rounded-[3px] border border-[#ffd591] bg-[#fff7e6] px-1.5 py-0.5 text-[11px] font-normal text-[#d46b08]"
-              aria-label="默认驱动"
-            >
-              <Star className="size-3" aria-hidden />
-              默认
-            </span>
+            <StatusBadge tone="warning" label="默认" icon={Star} variant="soft" />
           ) : null}
         </div>
       ),
@@ -240,10 +250,7 @@ function AdminStoragesPage() {
       header: "驱动",
       width: "140px",
       cell: (row) => (
-        <span
-          className="inline-flex items-center rounded-[3px] border border-line bg-muted px-2 py-0.5 text-[12px] font-mono text-text-soft"
-          title={row.driver}
-        >
+        <span className={MONO_CELL} title={row.driver}>
           {DRIVER_LABELS[row.driver] ?? row.driver}
         </span>
       ),
@@ -265,7 +272,10 @@ function AdminStoragesPage() {
       header: "描述",
       width: "240px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.description ?? ""}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.description ?? ""}
+        >
           {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -329,19 +339,35 @@ function AdminStoragesPage() {
             >
               {row.isDefault ? "默认中" : "设为默认"}
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleToggleStatus(row);
-              }}
-              disabled={updateMut.isPending}
-            >
-              {isDisabled ? "启用" : "禁用"}
-            </Button>
+            {isDisabled ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleToggleStatus(row);
+                }}
+                disabled={updateMut.isPending}
+              >
+                启用
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_DANGER_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDisablePopconfirmRowId(row.id);
+                }}
+                disabled={updateMut.isPending}
+              >
+                禁用
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -385,6 +411,23 @@ function AdminStoragesPage() {
             >
               <span aria-hidden className="size-0" />
             </Popconfirm>
+            <Popconfirm
+              open={disablePopconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+              title="禁用存储驱动"
+              description="禁用后该驱动将不再被选为新上传目标；已上传文件不受影响。"
+              confirmLabel="禁用"
+              tone="danger"
+              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+              onConfirm={() => handleToggleStatus(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
           </div>
         );
       },
@@ -421,8 +464,8 @@ function AdminStoragesPage() {
     <>
       <ResourcePage
         title="云存储"
-        description="配置站点默认与备用对象存储驱动。修改默认前请先启用其他驱动。"
         filterColumns={3}
+        filterCollapsible
         filterDefaultCollapsed
         filter={
           <>
@@ -431,16 +474,16 @@ function AdminStoragesPage() {
                 id="filter-keyword"
                 className={FILTER_CONTROL_CLASS}
                 allowClear
-                placeholder="搜索存储名"
-                value={filters.keyword}
-                onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
+                placeholder={placeholders.input}
+                value={draft.keyword}
+                onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="驱动" htmlFor="filter-driver">
               <Select
-                value={filters.driver}
-                onValueChange={(v) => applyFilterPatch({ driver: v as DriverFilter })}
+                value={draft.driver}
+                onValueChange={(v) => applyDraftPatch({ driver: v as DriverFilter })}
               >
                 <SelectTrigger id="filter-driver" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -458,8 +501,8 @@ function AdminStoragesPage() {
 
             <QueryFormItem label="是否默认" htmlFor="filter-default">
               <Select
-                value={filters.isDefault}
-                onValueChange={(v) => applyFilterPatch({ isDefault: v as DefaultFilter })}
+                value={draft.isDefault}
+                onValueChange={(v) => applyDraftPatch({ isDefault: v as DefaultFilter })}
               >
                 <SelectTrigger id="filter-default" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -474,8 +517,8 @@ function AdminStoragesPage() {
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -488,47 +531,26 @@ function AdminStoragesPage() {
               </Select>
             </QueryFormItem>
 
-            <QueryFormItem label="创建时间起" htmlFor="filter-created-from">
-              <Input
-                id="filter-created-from"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdFrom}
-                onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
-              />
-            </QueryFormItem>
-
-            <QueryFormItem label="创建时间止" htmlFor="filter-created-to">
-              <Input
-                id="filter-created-to"
-                type="datetime-local"
-                className={FILTER_CONTROL_CLASS}
-                allowClear
-                value={filters.createdTo}
-                onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+            <QueryFormItem label="创建时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+                onChange={(r) =>
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
               />
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            keyword: String(next.keyword ?? ""),
-            driver: (next.driver as DriverFilter) ?? "all",
-            isDefault: (next.isDefault as DefaultFilter) ?? "all",
-            status: (next.status as StatusFilter) ?? "all",
-            createdFrom: String(next.createdFrom ?? ""),
-            createdTo: String(next.createdTo ?? ""),
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="存储列表"
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新增存储
+            新建存储
           </Button>
         }
         tableProps={{
@@ -571,7 +593,6 @@ function AdminStoragesPage() {
           if (!next) handleCloseEdit();
         }}
         title="编辑存储"
-        description="修改存储连接信息；敏感字段用 ****** 占位，需覆盖请重新输入。"
         dialogSize="md"
         sheetSize="md"
         submitLabel="保存"
@@ -599,8 +620,7 @@ function AdminStoragesPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseCreate();
         }}
-        title="新增存储"
-        description="配置一套对象存储驱动，设为默认后系统上传将走此驱动。"
+        title="新建存储"
         dialogSize="md"
         sheetSize="md"
         submitLabel="创建"

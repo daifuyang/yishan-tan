@@ -1,5 +1,4 @@
 import { cva } from "class-variance-authority";
-import { CircleAlert, CircleDot, Info, TriangleAlert } from "lucide-react";
 import type * as React from "react";
 
 import { cn } from "@/lib/utils";
@@ -42,14 +41,6 @@ const TONE_VARIANT: Record<StatusTone, Record<NonNullable<StatusBadgeProps["vari
   },
 };
 
-const TONE_DEFAULT_ICON: Record<StatusTone, StatusIcon> = {
-  success: CircleDot,
-  info: Info,
-  warning: TriangleAlert,
-  danger: CircleAlert,
-  neutral: CircleDot,
-};
-
 const statusBadgeVariants = cva(
   "inline-flex items-center gap-1 rounded-[3px] px-2 py-0.5 text-[12px] font-normal leading-[1.5] transition-colors",
   {
@@ -82,7 +73,7 @@ export function StatusBadge({
   className,
   ...props
 }: StatusBadgeProps) {
-  const ResolvedIcon = icon ?? TONE_DEFAULT_ICON[tone];
+  const ResolvedIcon = icon;
   return (
     <span
       data-slot="status-badge"
@@ -90,7 +81,7 @@ export function StatusBadge({
       className={cn(statusBadgeVariants({ tone, variant }), TONE_VARIANT[tone][variant], className)}
       {...props}
     >
-      <ResolvedIcon className="size-3" aria-hidden />
+      {ResolvedIcon ? <ResolvedIcon className="size-3" aria-hidden /> : null}
       <span className="whitespace-nowrap">{label}</span>
     </span>
   );

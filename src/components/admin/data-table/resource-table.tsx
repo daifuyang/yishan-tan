@@ -53,6 +53,7 @@ type ResourceTableProps<Row> = {
   emptyDescription?: React.ReactNode;
   emptyAction?: React.ReactNode;
   emptyVariant?: "default" | "dashed";
+  emptyIcon?: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   error?: React.ReactNode;
   onRowClick?: (row: Row) => void;
   rowClassName?: (row: Row, index: number) => string;
@@ -318,6 +319,7 @@ export function ResourceTable<Row>({
   emptyDescription,
   emptyAction,
   emptyVariant,
+  emptyIcon,
   error,
   onRowClick,
   rowClassName,
@@ -426,7 +428,7 @@ export function ResourceTable<Row>({
     if (empty) return empty;
     return (
       <EmptyState
-        icon={Inbox}
+        icon={emptyIcon ?? Inbox}
         title={emptyTitle}
         description={emptyDescription}
         action={emptyAction}

@@ -217,7 +217,7 @@ function UserMenu({ displayName, username, email, role, disabled, onLogout }: Us
               <p className="truncate text-xs text-text-soft">@{username || "unknown"}</p>
               <p className="truncate text-xs text-text-mute">{email || "--"}</p>
               <p className="mt-1 text-xs text-text-mute">
-                {role === "admin" ? "系统管理员" : "成员"}
+                {role === "admin" ? "超级管理员" : "成员"}
               </p>
             </div>
           </div>

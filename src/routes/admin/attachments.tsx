@@ -13,9 +13,15 @@ import * as React from "react";
 
 import { UploadAttachment } from "@/components/admin/attachments/upload-attachment";
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge, type StatusTone } from "@/components/admin/display";
-import { Popconfirm } from "@/components/admin/form";
+import { DateRangePicker, Popconfirm } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,6 +38,8 @@ import {
 import type { AttachmentCategory } from "~/features/attachments/attachments.schema";
 import type { AttachmentDto } from "~/features/attachments/attachments.types";
 import { useDeleteAttachment } from "~/features/attachments/attachments.use-mutations";
+import { MONO_CHIP } from "~/lib/classes";
+import { cn } from "~/lib/utils";
 
 type CategoryFilter = "all" | AttachmentCategory;
 
@@ -50,12 +58,6 @@ const DEFAULT_FILTERS: FilterState = {
   createdFrom: "",
   createdTo: "",
 };
-
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const TABLE_DANGER_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-destructive hover:bg-transparent hover:text-destructive hover:no-underline disabled:text-text-mute";
 
 const CATEGORY_LABELS: Record<AttachmentCategory, string> = {
   image: "图片",
@@ -149,6 +151,7 @@ function AttachmentCategoryBadge({ category }: { category: AttachmentCategory })
 }
 
 function AdminAttachmentsPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
@@ -168,15 +171,15 @@ function AdminAttachmentsPage() {
     setPage(1);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
   React.useEffect(() => {
     resetPageOnFilterChange();
   }, [
-    filters.keyword,
-    filters.mime,
-    filters.category,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.keyword,
+    draft.mime,
+    draft.category,
+    draft.createdFrom,
+    draft.createdTo,
     resetPageOnFilterChange,
   ]);
 
@@ -184,11 +187,16 @@ function AdminAttachmentsPage() {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -255,15 +263,15 @@ function AdminAttachmentsPage() {
       width: "240px",
       cell: (row) => (
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-[13px] text-text-strong" title={row.name}>
+          <span
+            className="break-words whitespace-normal text-[13px] text-text-strong"
+            title={row.name}
+          >
             {row.name}
           </span>
-          <span
-            className="shrink-0 rounded-[3px] border border-line bg-muted px-1.5 py-0.5 font-mono text-[11px] text-text-mute"
-            title={row.mime}
-          >
+          <Badge variant="neutral" className={cn("shrink-0 px-1.5", MONO_CHIP)} title={row.mime}>
             {row.mime.split("/")[1]?.toUpperCase() ?? row.mime}
-          </span>
+          </Badge>
         </div>
       ),
     },
@@ -287,7 +295,10 @@ function AdminAttachmentsPage() {
       header: "存储驱动",
       width: "120px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.storageName ?? "--"}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.storageName ?? "--"}
+        >
           {row.storageName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -297,7 +308,10 @@ function AdminAttachmentsPage() {
       header: "上传者",
       width: "100px",
       cell: (row) => (
-        <span className="truncate text-[13px] text-text-soft" title={row.uploaderName ?? "--"}>
+        <span
+          className="break-words whitespace-normal text-[13px] text-text-soft"
+          title={row.uploaderName ?? "--"}
+        >
           {row.uploaderName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -388,8 +402,8 @@ function AdminAttachmentsPage() {
   return (
     <ResourcePage
       title="媒体库"
-      description="管理站点图片 / 文档 / 视频等附件，默认走当前默认存储驱动。"
       filterColumns={3}
+      filterCollapsible
       filterDefaultCollapsed
       filter={
         <>
@@ -399,8 +413,8 @@ function AdminAttachmentsPage() {
               className={FILTER_CONTROL_CLASS}
               allowClear
               placeholder="搜索附件名"
-              value={filters.keyword}
-              onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
+              value={draft.keyword}
+              onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
             />
           </QueryFormItem>
 
@@ -410,15 +424,15 @@ function AdminAttachmentsPage() {
               className={FILTER_CONTROL_CLASS}
               allowClear
               placeholder="例如 image、application/pdf"
-              value={filters.mime}
-              onChange={(e) => applyFilterPatch({ mime: e.target.value })}
+              value={draft.mime}
+              onChange={(e) => applyDraftPatch({ mime: e.target.value })}
             />
           </QueryFormItem>
 
           <QueryFormItem label="分类" htmlFor="filter-category">
             <Select
-              value={filters.category}
-              onValueChange={(v) => applyFilterPatch({ category: v as CategoryFilter })}
+              value={draft.category}
+              onValueChange={(v) => applyDraftPatch({ category: v as CategoryFilter })}
             >
               <SelectTrigger id="filter-category" className={FILTER_CONTROL_CLASS}>
                 <SelectValue placeholder="请选择" />
@@ -434,39 +448,19 @@ function AdminAttachmentsPage() {
             </Select>
           </QueryFormItem>
 
-          <QueryFormItem label="上传时间起" htmlFor="filter-created-from">
-            <Input
-              id="filter-created-from"
-              type="datetime-local"
-              className={FILTER_CONTROL_CLASS}
-              allowClear
-              value={filters.createdFrom}
-              onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
-            />
-          </QueryFormItem>
-
-          <QueryFormItem label="上传时间止" htmlFor="filter-created-to">
-            <Input
-              id="filter-created-to"
-              type="datetime-local"
-              className={FILTER_CONTROL_CLASS}
-              allowClear
-              value={filters.createdTo}
-              onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+          <QueryFormItem label="上传时间" htmlFor="filter-created-range">
+            <DateRangePicker
+              id="filter-created-range"
+              value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+              onChange={(r) =>
+                applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+              }
             />
           </QueryFormItem>
         </>
       }
-      filterValues={filters}
-      onFilterChange={(next) =>
-        setFilters({
-          keyword: String(next.keyword ?? ""),
-          mime: String(next.mime ?? ""),
-          category: (next.category as CategoryFilter) ?? "all",
-          createdFrom: String(next.createdFrom ?? ""),
-          createdTo: String(next.createdTo ?? ""),
-        })
-      }
+      filterValues={draft}
+      onFilterSubmit={handleFilterSubmit}
       onFilterReset={handleResetFilters}
       filterLoading={list.isFetching}
       toolbarTitle="媒体列表"

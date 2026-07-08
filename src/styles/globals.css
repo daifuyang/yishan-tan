@@ -105,6 +105,7 @@
   --text-ex-15: 15px;
   --text-ex-24: 24px;
   --leading-system: 1.5;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 :root {

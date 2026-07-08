@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import { FILTER_CONTROL_CLASS, TABLE_ACTION_CLASS } from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
 import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { ResourcePage, resolveMenuIcon } from "@/components/admin/layout";
@@ -26,6 +27,8 @@ import { useMenuTree } from "~/features/menus/menus.queries";
 import type { CreateMenuInput, UpdateMenuInput } from "~/features/menus/menus.schema";
 import type { MenuDto, MenuNode } from "~/features/menus/menus.types";
 import { useCreateMenu, useDeleteMenu, useUpdateMenu } from "~/features/menus/menus.use-mutations";
+import { MONO_CELL } from "~/lib/classes";
+import { placeholders } from "~/lib/copy";
 
 type MenuTypeFilter = "all" | "group" | "menu" | "action";
 type StatusFilter = "all" | "enabled" | "disabled";
@@ -41,12 +44,6 @@ const DEFAULT_FILTERS: FilterState = {
   type: "all",
   status: "all",
 };
-
-const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
-const TABLE_ACTION_CLASS =
-  "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
-const SELECT_TRIGGER_LG =
-  "border-line flex h-9 w-full rounded-[4px] border bg-white px-3 text-[13px]";
 
 const PROTECTED_TOP_NAMES = new Set(["工作台", "系统管理"]);
 
@@ -72,6 +69,7 @@ function menuTypeTone(type: MenuNode["type"]): "info" | "warning" | "neutral" {
 }
 
 function AdminMenusPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set());
   const [editing, setEditing] = React.useState<{
@@ -81,6 +79,7 @@ function AdminMenusPage() {
   } | null>(null);
   const [editForm, setEditForm] = React.useState<EditMenuFormValue>(EMPTY_EDIT_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
 
   const treeQuery = useMenuTree();
   const createMut = useCreateMenu();
@@ -183,12 +182,17 @@ function AdminMenusPage() {
     [deleteMut],
   );
 
-  const handleResetFilters = React.useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
+  const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
+    setFilters(DEFAULT_FILTERS);
   }, []);
 
   const handleEditSubmit = async () => {
@@ -254,7 +258,10 @@ function AdminMenusPage() {
               <span aria-hidden className="inline-block h-5 w-5 shrink-0" />
             )}
             <Icon className="size-3.5 shrink-0 text-text-soft" aria-hidden />
-            <span className="truncate text-[13px] text-text-strong" title={row.node.name}>
+            <span
+              className="break-words whitespace-normal text-[13px] text-text-strong"
+              title={row.node.name}
+            >
               {row.node.name}
             </span>
           </div>
@@ -279,7 +286,7 @@ function AdminMenusPage() {
       width: "220px",
       cell: (row) =>
         row.node.path ? (
-          <span className="truncate font-mono text-[12.5px] text-text-soft" title={row.node.path}>
+          <span className={MONO_CELL} title={row.node.path}>
             {row.node.path}
           </span>
         ) : (
@@ -294,10 +301,7 @@ function AdminMenusPage() {
         row.node.type === "group" ? (
           <span className="text-[13px] text-text-mute">--</span>
         ) : row.node.permission ? (
-          <span
-            className="truncate font-mono text-[12.5px] text-text-soft"
-            title={row.node.permission}
-          >
+          <span className={MONO_CELL} title={row.node.permission}>
             {row.node.permission}
           </span>
         ) : (
@@ -346,6 +350,35 @@ function AdminMenusPage() {
             >
               编辑
             </Button>
+            {isDisabled ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleToggleStatus(row);
+                }}
+                disabled={updateMut.isPending}
+              >
+                启用
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDisablePopconfirmRowId(row.node.id);
+                }}
+                disabled={updateMut.isPending}
+              >
+                禁用
+              </Button>
+            )}
             <Button
               type="button"
               variant="link"
@@ -357,7 +390,7 @@ function AdminMenusPage() {
               }}
             >
               <Plus className="size-3.5" aria-hidden />
-              新增子菜单
+              新建子菜单
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -373,15 +406,6 @@ function AdminMenusPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="w-32 rounded-[4px]">
-                <DropdownMenuItem
-                  disabled={updateMut.isPending}
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    void handleToggleStatus(row);
-                  }}
-                >
-                  {isDisabled ? "启用" : "禁用"}
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={isProtected || deleteMut.isPending}
@@ -415,6 +439,24 @@ function AdminMenusPage() {
             >
               <span aria-hidden className="size-0" />
             </Popconfirm>
+            <Popconfirm
+              open={disablePopconfirmRowId === row.node.id}
+              onOpenChange={(next) => {
+                if (!next && disablePopconfirmRowId === row.node.id)
+                  setDisablePopconfirmRowId(null);
+              }}
+              title="禁用菜单"
+              description="禁用后该菜单及其子菜单将隐藏，已绑定的角色权限将丢失该节点。"
+              confirmLabel="禁用"
+              tone="danger"
+              loading={updateMut.isPending && disablePopconfirmRowId === row.node.id}
+              onConfirm={() => handleToggleStatus(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
           </div>
         );
       },
@@ -436,7 +478,6 @@ function AdminMenusPage() {
     <>
       <ResourcePage
         title="菜单管理"
-        description="维护后台菜单树（修改后左导航自动同步）"
         filterColumns={3}
         filterCollapsible
         filter={
@@ -445,16 +486,17 @@ function AdminMenusPage() {
               <Input
                 id="filter-keyword"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="搜索名称 / 路径 / 权限"
-                value={filters.keyword}
-                onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
+                allowClear
+                placeholder={placeholders.input}
+                value={draft.keyword}
+                onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="类型" htmlFor="filter-type">
               <Select
-                value={filters.type}
-                onValueChange={(v) => applyFilterPatch({ type: v as MenuTypeFilter })}
+                value={draft.type}
+                onValueChange={(v) => applyDraftPatch({ type: v as MenuTypeFilter })}
               >
                 <SelectTrigger id="filter-type" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -470,8 +512,8 @@ function AdminMenusPage() {
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -485,21 +527,15 @@ function AdminMenusPage() {
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            keyword: String(next.keyword ?? ""),
-            type: (next.type as MenuTypeFilter) ?? "all",
-            status: (next.status as StatusFilter) ?? "all",
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={treeQuery.isFetching}
         toolbarTitle="菜单列表"
         toolbarActions={
           <Button type="button" size="sm" onClick={handleStartCreateTop}>
             <Plus className="size-3.5" aria-hidden />
-            新增顶级菜单
+            新建顶级菜单
           </Button>
         }
         tableProps={{
@@ -543,7 +579,7 @@ function AdminMenusPage() {
         onOpenChange={(next: boolean) => {
           if (!next) handleCloseEdit();
         }}
-        title={editing?.mode === "create" ? "新增菜单" : "编辑菜单"}
+        title={editing?.mode === "create" ? "新建菜单" : "编辑菜单"}
         description={
           editing?.mode === "create"
             ? "选择类型与父级后填写基础信息"
@@ -646,7 +682,7 @@ function EditMenuFields({
             value={value.type}
             onValueChange={(v) => onChange({ type: v as EditMenuFormValue["type"] })}
           >
-            <SelectTrigger id="menu-type" className={SELECT_TRIGGER_LG}>
+            <SelectTrigger id="menu-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -729,7 +765,7 @@ function EditMenuFields({
             value={value.status}
             onValueChange={(v) => onChange({ status: v as EditMenuFormValue["status"] })}
           >
-            <SelectTrigger id="menu-status" className={SELECT_TRIGGER_LG}>
+            <SelectTrigger id="menu-status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -773,7 +809,7 @@ function ParentSelect({
   const serialized = value ?? "__ROOT__";
   return (
     <Select value={serialized} onValueChange={(v) => onChange(v === "__ROOT__" ? null : v)}>
-      <SelectTrigger className={SELECT_TRIGGER_LG}>
+      <SelectTrigger>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -816,7 +852,7 @@ function IconPicker({
   const selected = value || "ListTree";
   return (
     <Select value={selected} onValueChange={onChange}>
-      <SelectTrigger className={SELECT_TRIGGER_LG}>
+      <SelectTrigger>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

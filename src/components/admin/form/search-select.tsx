@@ -74,7 +74,7 @@ function SearchSelect({
     setOpen(true);
     requestAnimationFrame(() => {
       searchRef.current?.focus();
-      if (searchRef.current && searchRef.current.value) {
+      if (searchRef.current?.value) {
         searchRef.current.select();
       }
     });
@@ -183,42 +183,40 @@ function SearchSelect({
               {search.trim() ? noMatchText : emptyText}
             </div>
           ) : (
-            <ul role="listbox" aria-label={ariaLabel ?? placeholder}>
+            // biome-ignore lint/a11y/useSemanticElements: custom select pattern
+            <div role="listbox" aria-label={ariaLabel ?? placeholder} tabIndex={0}>
               {filteredOptions.map((option) => {
                 const selected = option.value === value;
                 return (
-                  <li key={option.value}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      disabled={option.disabled}
-                      onClick={() => {
-                        onChange(option.value === value && clearable ? null : option.value);
-                        setOpen(false);
-                      }}
-                      className={cn(
-                        "flex w-full items-start gap-2 px-2.5 py-1.5 text-left text-[13px] hover:bg-line-soft",
-                        selected && "bg-brand-50/60",
-                        option.disabled && "cursor-not-allowed opacity-50",
-                      )}
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-text-strong">{option.label}</span>
-                        {option.description ? (
-                          <span className="block truncate text-[11px] text-text-mute">
-                            {option.description}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="mt-0.5 inline-flex size-3.5 shrink-0 items-center justify-center text-brand-600">
-                        {selected ? <Check className="size-3.5" aria-hidden /> : null}
-                      </span>
-                    </button>
-                  </li>
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={option.disabled}
+                    onClick={() => {
+                      onChange(option.value === value && clearable ? null : option.value);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-start gap-2 px-2.5 py-1.5 text-left text-[13px] hover:bg-line-soft",
+                      selected && "bg-brand-50/60",
+                      option.disabled && "cursor-not-allowed opacity-50",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-text-strong">{option.label}</span>
+                      {option.description ? (
+                        <span className="block truncate text-[11px] text-text-mute">
+                          {option.description}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="mt-0.5 inline-flex size-3.5 shrink-0 items-center justify-center text-brand-600">
+                      {selected ? <Check className="size-3.5" aria-hidden /> : null}
+                    </span>
+                  </button>
                 );
               })}
-            </ul>
+            </div>
           )}
         </div>
       </PopoverContent>

@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { PageHeader } from "@/components/admin/layout";
 import { OptionRow } from "@/components/admin/settings/option-row";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -15,6 +16,7 @@ import {
 } from "~/features/system-settings/system-settings.groups";
 import { useSystemOptionGroup } from "~/features/system-settings/system-settings.queries";
 import { useSaveSystemOptionGroup } from "~/features/system-settings/system-settings.use-mutations";
+import { MONO_CHIP } from "~/lib/classes";
 
 export const Route = createFileRoute("/admin/settings")({
   component: AdminSettingsPage,
@@ -23,10 +25,7 @@ export const Route = createFileRoute("/admin/settings")({
 function AdminSettingsPage() {
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="站点配置"
-        description="按业务分组的系统配置；每组独立保存，未点击保存的修改不会被持久化。"
-      />
+      <PageHeader title="站点配置" />
       <div className="space-y-4">
         {SYSTEM_OPTION_GROUPS.map((group) => (
           <SettingsGroupCard key={group.code} group={group} />
@@ -105,9 +104,9 @@ function SettingsGroupCard({ group }: { group: SystemOptionGroupDef }) {
                     {group.name}
                   </Button>
                 </CollapsibleTrigger>
-                <span className="rounded-[3px] bg-muted px-1.5 py-0.5 font-mono text-[11px] text-text-mute">
+                <Badge variant="neutral" className={MONO_CHIP}>
                   {group.code}
-                </span>
+                </Badge>
               </div>
               {group.description ? (
                 <p className="text-[12px] text-text-mute">{group.description}</p>

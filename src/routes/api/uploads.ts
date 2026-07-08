@@ -21,7 +21,7 @@ function dayPrefix(date: Date): string {
  * 不走 server-fn（server-fn 序列化二进制较麻烦）。
  *
  * 流程：
- *   1. 解析请求 → ServiceContext，要求系统管理员
+ *   1. 解析请求 → ServiceContext，要求超级管理员
  *   2. 取默认 storage 驱动
  *   3. 读 multipart file
  *   4. 调用 putObject 写对象 → 拿到 URL
