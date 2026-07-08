@@ -9,6 +9,11 @@ export type AdminUserDto = {
   phone: string | null;
   role: "admin" | "member";
   status: "enabled" | "disabled";
+  deptId: string | null;
+  postIds: string[];
+  gender: "male" | "female" | "other" | null;
+  birthDate: string | null;
+  remark: string | null;
   roleIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -48,6 +53,7 @@ export type ListUsersService = (input: {
   status?: "enabled" | "disabled";
   systemRole?: "admin" | "member";
   roleId?: string;
+  deptId?: string;
 }) => Promise<{ items: AdminUserDto[]; total: number }>;
 
 export type GetUserService = (id: string) => Promise<AdminUserDto | null>;
@@ -60,6 +66,11 @@ export type UpdateUserService = (
     phone?: string;
     email?: string;
     status?: "enabled" | "disabled";
+    deptId?: string | null;
+    postIds?: string[];
+    gender?: "male" | "female" | "other" | null;
+    birthDate?: string | null;
+    remark?: string | null;
     roleIds?: string[];
   },
 ) => Promise<AdminUserDto>;

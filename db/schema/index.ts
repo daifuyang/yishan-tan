@@ -12,8 +12,10 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role_kind", ["admin", "member"]);
+export const userGenderEnum = pgEnum("user_gender", ["male", "female", "other"]);
 export const statusEnum = pgEnum("status", ["enabled", "disabled"]);
 export const menuTypeEnum = pgEnum("menu_type", ["group", "menu", "action"]);
+export const dataScopeEnum = pgEnum("data_scope", ["1", "2", "3", "4", "5"]);
 export const storageDriver = pgEnum("storage_driver", [
   "local",
   "aliyun-oss",
@@ -47,6 +49,10 @@ export const user = pgTable("user", {
   displayName: text("display_name"),
   phone: text("phone"),
   role: userRoleEnum("role").notNull().default("member"),
+  deptId: uuid("dept_id").references(() => department.id, { onDelete: "set null" }),
+  gender: userGenderEnum("gender"),
+  birthDate: timestamp("birth_date", { mode: "date" }),
+  remark: text("remark"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
@@ -104,8 +110,9 @@ export const verification = pgTable("verification", {
     .$onUpdate(() => new Date()),
 });
 
-export const apiKey = pgTable("apikey", {
+export const apikey = pgTable("apikey", {
   id: uuid("id").primaryKey().defaultRandom(),
+  configId: text("config_id").notNull().default("default"),
   name: text("name"),
   start: text("start"),
   prefix: text("prefix"),
@@ -117,10 +124,17 @@ export const apiKey = pgTable("apikey", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   lastRequest: timestamp("last_request", { withTimezone: true }),
+  lastRefillAt: timestamp("last_refill_at", { withTimezone: true }),
+  enabled: boolean("enabled").notNull().default(true),
   rateLimitEnabled: boolean("rate_limit_enabled").notNull().default(true),
   rateLimitMax: text("rate_limit_max"),
   rateLimitTimeWindow: text("rate_limit_time_window"),
+  refillInterval: text("refill_interval"),
+  refillAmount: text("refill_amount"),
+  remaining: text("remaining"),
   requestCount: text("request_count").notNull().default("0"),
+  permissions: text("permissions"),
+  metadata: text("metadata"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -134,6 +148,10 @@ export const role = pgTable("role", {
   name: text("name").notNull(),
   description: text("description"),
   status: statusEnum("status").notNull().default("enabled"),
+  dataScope: dataScopeEnum("data_scope").notNull().default("1"),
+  isSystemDefault: boolean("is_system_default").notNull().default(false),
+  creatorId: uuid("creator_id").references(() => user.id, { onDelete: "set null" }),
+  updaterId: uuid("updater_id").references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
@@ -387,7 +405,7 @@ export const attachment = pgTable("attachment", {
 export type DbUser = typeof user.$inferSelect;
 export type DbSession = typeof session.$inferSelect;
 export type DbAccount = typeof account.$inferSelect;
-export type DbApiKey = typeof apiKey.$inferSelect;
+export type DbApiKey = typeof apikey.$inferSelect;
 export type DbSystemOption = typeof systemOption.$inferSelect;
 export type DbRole = typeof role.$inferSelect;
 export type DbDepartment = typeof department.$inferSelect;

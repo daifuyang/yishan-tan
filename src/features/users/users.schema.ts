@@ -27,12 +27,23 @@ export const userListQuerySchema = z.object({
   roleId: z.string().uuid().optional(),
 });
 
+export const genderSchema = z.enum(["male", "female", "other"]);
+
 export const updateUserSchema = z.object({
   name: z.string().min(1, "姓名不能为空").max(50, "姓名过长").optional(),
   displayName: z.string().min(1).max(50).optional(),
   phone: phoneSchema,
   email: z.string().email().optional(),
   status: statusSchema.optional(),
+  deptId: z.string().uuid().nullable().optional(),
+  postIds: z.array(z.string().uuid()).optional(),
+  gender: genderSchema.nullable().optional(),
+  birthDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "日期格式应为 YYYY-MM-DD")
+    .nullable()
+    .optional(),
+  remark: z.string().max(500, "备注不超过 500 字").nullable().optional(),
   roleIds: z.array(z.string().uuid()).optional(),
 });
 

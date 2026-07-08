@@ -32,6 +32,12 @@ npm run gen:resource -- <domain>   # 生成新 feature 目录脚手架
 
 CI 前置门槛：`typecheck` + `lint` + `arch:check` + `test` 都要过。改动跨层引用后务必跑 `arch:check`，它是脚本级硬约束，不是建议。
 
+## UI 一致性约束
+
+后台 admin 的设计规约见 [`docs/DESIGN_CHARTER.md`](./docs/DESIGN_CHARTER.md),包含设计价值观、设计令牌、文字与排版、布局、组件 API、反馈与消息、表格与列表、表单与录入、按钮层级、响应式、暗黑模式、治理守卫、反模式清单等章节。改动 admin UI 前必读;重大 UI 改动须在 PR 描述引用宪章章节号(如 §9.1)。
+
+> **宪章落地追踪**:Phase 1 / 2 / 3 进度详见 `docs/DESIGN_CHARTER.md` 附录 C;2026-07 当前 arch:check 仅含 4 个 P0 守卫(`check-routes` / `-actions` / `-services` / `-naming`,见宪章 §12.1)。宪章 §12.2 的 `check-ui-tokens`(P1)/ `check-ui-naming`(P2)与 §12.3 的 biome `noRestrictedImports` 禁 antd 均待补;Phase 1 立即落地的 5 项中 1 项已完成(文案"您"→"你/我"),其余 4 项本轮代码合规一并修复。
+
 ## 请求流与分层（核心心智模型）
 
 有两条并行的入口，但都汇聚到同一个 **service 层**，且都必须先构造 `ServiceContext` 才能触达业务：

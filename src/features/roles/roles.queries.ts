@@ -1,8 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { listMenus } from "~/features/menus/menus.actions";
-import type { MenuListQuery } from "~/features/menus/menus.schema";
-import type { MenuDto } from "~/features/menus/menus.types";
+import { getMenuTree } from "~/features/menus/menus.actions";
+import type { MenuNode } from "~/features/menus/menus.types";
 import { listRoles } from "~/features/roles/roles.actions";
 import type { RoleListQuery } from "~/features/roles/roles.schema";
 import type { RoleListItemDto } from "~/features/roles/roles.types";
@@ -27,21 +26,19 @@ export function useRolesList(input: RoleListQuery) {
   return useQuery(rolesListQueryOptions(input));
 }
 
-const ASSIGNABLE_MENUS_QUERY: MenuListQuery = {
-  page: 1,
-  pageSize: 100,
-  status: "enabled",
-};
-
-const assignableMenusQueryOptions = () =>
-  queryOptions<{ items: MenuDto[]; total: number }>({
+/**
+ * 仅启用中、可分配给角色的菜单。
+ * 通过菜单树接口拿整树（含 group/menu/action），由 MenuTree 自行渲染与筛选。
+ */
+const assignableMenuTreeQueryOptions = () =>
+  queryOptions<MenuNode[]>({
     queryKey: rolesQueryKey.assignableMenus(),
-    queryFn: async () => listMenus({ data: ASSIGNABLE_MENUS_QUERY }),
+    queryFn: async () => getMenuTree(),
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
 export function useAssignableMenus() {
-  return useQuery(assignableMenusQueryOptions());
+  return useQuery(assignableMenuTreeQueryOptions());
 }

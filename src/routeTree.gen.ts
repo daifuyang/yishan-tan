@@ -33,6 +33,7 @@ import { Route as ApiV1MenusRouteImport } from './routes/api/v1/menus'
 import { Route as ApiV1DictsDataRouteImport } from './routes/api/v1/dicts-data'
 import { Route as ApiV1DictTypesRouteImport } from './routes/api/v1/dict-types'
 import { Route as ApiV1DepartmentsRouteImport } from './routes/api/v1/departments'
+import { Route as ApiOpenapiJsonRouteImport } from './routes/api/openapi.json'
 import { Route as AdminDictsTypeCodeRouteImport } from './routes/admin/dicts/$typeCode'
 import { Route as ApiV1UsersIndexRouteImport } from './routes/api/v1/users/index'
 import { Route as ApiV1SystemOptionsIndexRouteImport } from './routes/api/v1/system-options/index'
@@ -174,6 +175,11 @@ const ApiV1DepartmentsRoute = ApiV1DepartmentsRouteImport.update({
   path: '/api/v1/departments',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOpenapiJsonRoute = ApiOpenapiJsonRouteImport.update({
+  id: '/api/openapi/json',
+  path: '/api/openapi/json',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDictsTypeCodeRoute = AdminDictsTypeCodeRouteImport.update({
   id: '/$typeCode',
   path: '/$typeCode',
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/api/uploads': typeof ApiUploadsRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/dicts/$typeCode': typeof AdminDictsTypeCodeRoute
+  '/api/openapi/json': typeof ApiOpenapiJsonRoute
   '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
   '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
   '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/api/uploads': typeof ApiUploadsRoute
   '/admin': typeof AdminIndexRoute
   '/admin/dicts/$typeCode': typeof AdminDictsTypeCodeRoute
+  '/api/openapi/json': typeof ApiOpenapiJsonRoute
   '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
   '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
   '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
@@ -385,6 +393,7 @@ export interface FileRoutesById {
   '/api/uploads': typeof ApiUploadsRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/dicts/$typeCode': typeof AdminDictsTypeCodeRoute
+  '/api/openapi/json': typeof ApiOpenapiJsonRoute
   '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
   '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
   '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
@@ -433,6 +442,7 @@ export interface FileRouteTypes {
     | '/api/uploads'
     | '/admin/'
     | '/admin/dicts/$typeCode'
+    | '/api/openapi/json'
     | '/api/v1/departments'
     | '/api/v1/dict-types'
     | '/api/v1/dicts-data'
@@ -478,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/uploads'
     | '/admin'
     | '/admin/dicts/$typeCode'
+    | '/api/openapi/json'
     | '/api/v1/departments'
     | '/api/v1/dict-types'
     | '/api/v1/dicts-data'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/api/uploads'
     | '/admin/'
     | '/admin/dicts/$typeCode'
+    | '/api/openapi/json'
     | '/api/v1/departments'
     | '/api/v1/dict-types'
     | '/api/v1/dicts-data'
@@ -557,6 +569,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiUploadsRoute: typeof ApiUploadsRoute
+  ApiOpenapiJsonRoute: typeof ApiOpenapiJsonRoute
   ApiV1DepartmentsRoute: typeof ApiV1DepartmentsRouteWithChildren
   ApiV1DictTypesRoute: typeof ApiV1DictTypesRouteWithChildren
   ApiV1DictsDataRoute: typeof ApiV1DictsDataRouteWithChildren
@@ -743,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/departments'
       fullPath: '/api/v1/departments'
       preLoaderRoute: typeof ApiV1DepartmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/openapi/json': {
+      id: '/api/openapi/json'
+      path: '/api/openapi/json'
+      fullPath: '/api/openapi/json'
+      preLoaderRoute: typeof ApiOpenapiJsonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/dicts/$typeCode': {
@@ -1039,6 +1059,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiUploadsRoute: ApiUploadsRoute,
+  ApiOpenapiJsonRoute: ApiOpenapiJsonRoute,
   ApiV1DepartmentsRoute: ApiV1DepartmentsRouteWithChildren,
   ApiV1DictTypesRoute: ApiV1DictTypesRouteWithChildren,
   ApiV1DictsDataRoute: ApiV1DictsDataRouteWithChildren,

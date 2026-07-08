@@ -65,7 +65,7 @@ export const Route = createFileRoute("/admin/dicts")({
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -206,7 +206,7 @@ function AdminDictsPage() {
       width: "240px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-soft" title={row.description ?? ""}>
-          {row.description ?? <span className="text-text-mute">—</span>}
+          {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -363,7 +363,8 @@ function AdminDictsPage() {
               <Input
                 id="filter-name"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
+                allowClear
+                placeholder="如:用户状态"
                 value={filters.name}
                 onChange={(e) => applyFilterPatch({ name: e.target.value })}
               />
@@ -373,7 +374,8 @@ function AdminDictsPage() {
               <Input
                 id="filter-code"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
+                allowClear
+                placeholder="如:user_status"
                 value={filters.code}
                 onChange={(e) => applyFilterPatch({ code: e.target.value })}
               />
@@ -383,7 +385,8 @@ function AdminDictsPage() {
               <Input
                 id="filter-description"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
+                allowClear
+                placeholder="如:状态描述"
                 value={filters.description}
                 onChange={(e) => applyFilterPatch({ description: e.target.value })}
               />
@@ -410,6 +413,7 @@ function AdminDictsPage() {
                 id="filter-created-from"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdFrom}
                 onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
               />
@@ -420,6 +424,7 @@ function AdminDictsPage() {
                 id="filter-created-to"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdTo}
                 onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
               />

@@ -26,6 +26,13 @@ export type CreateUserServiceInput = {
   name?: string;
   displayName?: string;
   phone?: string;
+  status?: "enabled" | "disabled";
+  deptId?: string | null;
+  postIds?: string[];
+  gender?: "male" | "female" | "other" | null;
+  birthDate?: string | null;
+  remark?: string | null;
+  roleIds?: string[];
 };
 export type CreateUserServiceOutput = PublicUser;
 

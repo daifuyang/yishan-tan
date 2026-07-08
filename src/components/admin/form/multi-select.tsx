@@ -1,4 +1,4 @@
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Search, X } from "lucide-react";
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export type MultiSelectOption = {
@@ -28,6 +29,12 @@ export type MultiSelectProps = {
   className?: string;
   /** 已选项超过该数时折叠为「+N」。默认 3。 */
   maxVisibleChips?: number;
+  /** 是否展示搜索框;默认 true。 */
+  searchable?: boolean;
+  /** 搜索框 placeholder;默认 "搜索"。 */
+  searchPlaceholder?: string;
+  /** 搜索无结果时文案;默认 "未找到匹配项"。 */
+  noMatchText?: string;
   /** 触发器 button 的 aria-label；不传则按 placeholder 推断。 */
   ariaLabel?: string;
 };
@@ -43,8 +50,15 @@ export function MultiSelect({
   disabled,
   className,
   maxVisibleChips = VISIBLE_CHIP_LIMIT_DEFAULT,
+  searchable = true,
+  searchPlaceholder = "搜索",
+  noMatchText = "未找到匹配项",
   ariaLabel,
 }: MultiSelectProps) {
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const searchRef = React.useRef<HTMLInputElement>(null);
+
   const selectedSet = React.useMemo(() => new Set(value), [value]);
 
   const toggle = React.useCallback(
@@ -75,10 +89,24 @@ export function MultiSelect({
     return m;
   }, [options]);
 
+  const filteredOptions = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, search]);
+
   const triggerLabel = ariaLabel ?? placeholder;
 
+  React.useEffect(() => {
+    if (open) {
+      // 打开时重置搜索 + 聚焦
+      setSearch("");
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }
+  }, [open]);
+
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -139,12 +167,27 @@ export function MultiSelect({
         align="start"
         className="min-w-[var(--radix-dropdown-menu-trigger-width)]"
       >
-        {options.length === 0 ? (
+        {searchable ? (
+          <div className="border-b border-line p-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-text-mute" />
+              <Input
+                ref={searchRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+                placeholder={searchPlaceholder}
+                className="h-8 pl-8 text-[13px]"
+              />
+            </div>
+          </div>
+        ) : null}
+        {filteredOptions.length === 0 ? (
           <DropdownMenuItem disabled>
-            <span className="text-text-mute">{emptyText}</span>
+            <span className="text-text-mute">{search.trim() ? noMatchText : emptyText}</span>
           </DropdownMenuItem>
         ) : (
-          options.map((opt) => {
+          filteredOptions.map((opt) => {
             const checked = selectedSet.has(opt.value);
             return (
               <DropdownMenuItem

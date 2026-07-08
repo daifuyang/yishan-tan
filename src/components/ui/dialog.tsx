@@ -27,12 +27,12 @@ function DialogOverlay({
 }
 
 const dialogContentVariants = cva(
-  "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border border-line bg-white p-6 shadow-brand duration-200 outline-none",
+  "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 flex w-full translate-x-[-50%] translate-y-[-50%] flex-col gap-0 rounded-2xl border border-line bg-white p-0 shadow-brand duration-200 outline-none",
   {
     variants: {
       size: {
         sm: "max-w-sm",
-        md: "max-w-md",
+        md: "max-w-[520px]",
         lg: "max-w-lg",
         xl: "max-w-2xl",
         full: "max-w-[min(96vw,840px)]",
@@ -60,16 +60,12 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        className={cn(
-          dialogContentVariants({ size }),
-          "max-h-[90vh] overflow-x-hidden overflow-y-auto",
-          className,
-        )}
+        className={cn(dialogContentVariants({ size }), "max-h-[90vh] overflow-hidden", className)}
         {...props}
       >
         {children}
         {showClose ? (
-          <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 disabled:pointer-events-none">
+          <DialogPrimitive.Close className="absolute top-4 right-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 disabled:pointer-events-none">
             <XIcon className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>

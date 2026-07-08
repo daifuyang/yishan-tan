@@ -116,7 +116,21 @@ export const deleteSessionService: DeleteSessionService = async (ctx) => {
 };
 
 export const createUserService: CreateUserService = async (
-  { email, password, username, name, displayName, phone },
+  {
+    email,
+    password,
+    username,
+    name,
+    displayName,
+    phone,
+    status,
+    deptId,
+    postIds,
+    gender,
+    birthDate,
+    remark,
+    roleIds,
+  },
   headers,
 ) => {
   const existing = await getDb()
@@ -138,6 +152,40 @@ export const createUserService: CreateUserService = async (
     headers,
     asResponse: false,
   })) as { user: { id: string } };
+
+  const profilePatch: Partial<typeof schema.user.$inferInsert> = {};
+  if (deptId !== undefined) profilePatch.deptId = deptId ?? null;
+  if (gender !== undefined) profilePatch.gender = gender ?? null;
+  if (birthDate !== undefined) {
+    profilePatch.birthDate = birthDate ? new Date(`${birthDate}T00:00:00Z`) : null;
+  }
+  if (remark !== undefined) profilePatch.remark = remark ?? null;
+  if (status === "disabled") profilePatch.deletedAt = new Date();
+
+  if (Object.keys(profilePatch).length > 0 || roleIds !== undefined || postIds !== undefined) {
+    const db = getDb();
+    await db.transaction(async (tx) => {
+      if (Object.keys(profilePatch).length > 0) {
+        await tx.update(schema.user).set(profilePatch).where(eq(schema.user.id, result.user.id));
+      }
+      if (roleIds !== undefined) {
+        await tx.delete(schema.userRole).where(eq(schema.userRole.userId, result.user.id));
+        if (roleIds.length) {
+          await tx
+            .insert(schema.userRole)
+            .values(roleIds.map((roleId) => ({ userId: result.user.id, roleId })));
+        }
+      }
+      if (postIds !== undefined) {
+        await tx.delete(schema.userPost).where(eq(schema.userPost.userId, result.user.id));
+        if (postIds.length) {
+          await tx
+            .insert(schema.userPost)
+            .values(postIds.map((postId) => ({ userId: result.user.id, postId })));
+        }
+      }
+    });
+  }
 
   const me = await getDb()
     .select()

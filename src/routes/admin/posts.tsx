@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Briefcase, ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -76,7 +76,7 @@ export const Route = createFileRoute("/admin/posts")({
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -396,6 +396,7 @@ function AdminPostsPage() {
               <Input
                 id="filter-keyword"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 placeholder="按名称模糊搜索"
                 value={filters.keyword}
                 onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
@@ -427,6 +428,7 @@ function AdminPostsPage() {
                 type="number"
                 min={0}
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 placeholder="0"
                 value={filters.sortMin}
                 onChange={(e) => applyFilterPatch({ sortMin: e.target.value })}
@@ -454,6 +456,7 @@ function AdminPostsPage() {
                 id="filter-created-from"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdFrom}
                 onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
               />
@@ -464,6 +467,7 @@ function AdminPostsPage() {
                 id="filter-created-to"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdTo}
                 onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
               />
@@ -486,7 +490,7 @@ function AdminPostsPage() {
         toolbarTitle="岗位列表"
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
-            <Briefcase className="size-3.5" aria-hidden />
+            <Plus className="size-3.5" aria-hidden />
             新增岗位
           </Button>
         }
@@ -513,6 +517,7 @@ function AdminPostsPage() {
             </Button>
           ) : (
             <Button type="button" size="sm" variant="outline" onClick={handleOpenCreate}>
+              <Plus className="size-3.5" aria-hidden />
               新增岗位
             </Button>
           ),

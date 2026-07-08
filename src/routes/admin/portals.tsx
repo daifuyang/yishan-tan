@@ -69,7 +69,7 @@ export const Route = createFileRoute("/admin/portals")({
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -244,7 +244,7 @@ function AdminPortalsPage() {
       width: "240px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-soft" title={row.domain ?? ""}>
-          {row.domain ?? <span className="text-text-mute">—</span>}
+          {row.domain ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },

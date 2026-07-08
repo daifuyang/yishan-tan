@@ -16,6 +16,8 @@ type ResourcePageProps<Row> = {
   defaultFilterValues?: Record<string, unknown>;
   onFilterChange?: (values: Record<string, unknown>) => void;
   onFilterReset?: () => void;
+  onFilterSubmit?: (values: Record<string, unknown>) => void;
+  filterSubmitLabel?: string;
   filterLoading?: boolean;
   filterColumns?: number;
   filterCollapsible?: boolean;
@@ -36,6 +38,8 @@ export function ResourcePage<Row>({
   defaultFilterValues,
   onFilterChange,
   onFilterReset,
+  onFilterSubmit,
+  filterSubmitLabel,
   filterLoading,
   filterColumns,
   filterCollapsible,
@@ -58,6 +62,8 @@ export function ResourcePage<Row>({
             defaultValues={defaultFilterValues}
             onChange={onFilterChange}
             onReset={onFilterReset}
+            onSubmit={onFilterSubmit}
+            submitLabel={filterSubmitLabel}
             loading={filterLoading}
             columns={filterColumns}
             collapsible={filterCollapsible}

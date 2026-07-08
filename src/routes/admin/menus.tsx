@@ -283,7 +283,7 @@ function AdminMenusPage() {
             {row.node.path}
           </span>
         ) : (
-          <span className="text-[13px] text-text-mute">—</span>
+          <span className="text-[13px] text-text-mute">--</span>
         ),
     },
     {
@@ -292,7 +292,7 @@ function AdminMenusPage() {
       width: "140px",
       cell: (row) =>
         row.node.type === "group" ? (
-          <span className="text-[13px] text-text-mute">—</span>
+          <span className="text-[13px] text-text-mute">--</span>
         ) : row.node.permission ? (
           <span
             className="truncate font-mono text-[12.5px] text-text-soft"
@@ -301,7 +301,7 @@ function AdminMenusPage() {
             {row.node.permission}
           </span>
         ) : (
-          <span className="text-[13px] text-text-mute">—</span>
+          <span className="text-[13px] text-text-mute">--</span>
         ),
     },
     {
@@ -356,6 +356,7 @@ function AdminMenusPage() {
                 handleStartCreateChild(row.node);
               }}
             >
+              <Plus className="size-3.5" aria-hidden />
               新增子菜单
             </Button>
             <DropdownMenu>

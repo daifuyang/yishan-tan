@@ -77,7 +77,7 @@ function SelectContent({
         className={cn(
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[4px] border border-line bg-white text-text-strong shadow-brand",
           position === "popper" &&
-            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+            "w-[var(--radix-select-trigger-width)] data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
         )}
         position={position}
@@ -87,8 +87,7 @@ function SelectContent({
         <SelectPrimitive.Viewport
           className={cn(
             "p-1",
-            position === "popper" &&
-              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full",
           )}
         >
           {children}
@@ -121,19 +120,19 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-[3px] py-2 pl-8 pr-2 text-[13px] leading-[1.5] outline-none transition-colors",
+        "relative flex w-full cursor-default select-none items-center justify-between gap-2 rounded-[3px] px-2.5 py-2 text-[13px] leading-[1.5] outline-none transition-colors",
         "focus:bg-line-soft focus:text-text-strong",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
         className,
       )}
       {...props}
     >
-      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <SelectPrimitive.ItemText className="min-w-0 truncate">{children}</SelectPrimitive.ItemText>
+      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-brand-600">
         <SelectPrimitive.ItemIndicator>
           <CheckIcon className="h-4 w-4 text-brand-600" />
         </SelectPrimitive.ItemIndicator>
       </span>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   );
 }

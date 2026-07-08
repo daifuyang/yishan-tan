@@ -8,7 +8,8 @@
       "dist",
       "fc-deploy/code",
       "**/routeTree.gen.ts",
-      "db/migrations"
+      "db/migrations",
+      "openapi.generated.json"
     ]
   },
   "formatter": {

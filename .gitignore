@@ -9,6 +9,9 @@ coverage
 fc-deploy/prod.env
 fc-deploy/code
 
+# OpenAPI spec 是 npm run openapi:gen 的产物，每次构建重新生成
+openapi.generated.json
+
 .DS_Store
 *.log
 npm-debug.log*

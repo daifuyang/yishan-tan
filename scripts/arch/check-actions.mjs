@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 规则：
+ * 规则（宪章 §12.1 / DESIGN_CHARTER.md）：
  *  - features/<domain>/<domain>.actions.ts 不能直接访问 db.server / drizzle-orm / postgres
  *  - actions 必须经过 service
  */

@@ -6,7 +6,8 @@ import { usersQueryKey } from "~/features/users/users.queries";
 
 /**
  * admin 新增用户输入：与 createUserSchema 字段对应（auth.feature）。
- * phone / displayName 在 createUserSchema 都是 optional；status 默认 enabled。
+ * phone / displayName / roleIds 在 createUserSchema 都是 optional；status 默认 enabled。
+ * roleIds：未传 = 不处理；传空数组 = 清空；传非空 = 全量替换（事务 delete+insert，与 updateUserService 同语义）。
  */
 type CreateUserInput = {
   email: string;
@@ -15,6 +16,13 @@ type CreateUserInput = {
   name?: string;
   displayName?: string;
   phone?: string;
+  status?: "enabled" | "disabled";
+  deptId?: string | null;
+  postIds?: string[];
+  gender?: "male" | "female" | "other" | null;
+  birthDate?: string | null;
+  remark?: string | null;
+  roleIds?: string[];
 };
 
 export function useCreateUser() {
@@ -37,6 +45,11 @@ type UpdateUserInput = {
     phone?: string;
     email?: string;
     status?: "enabled" | "disabled";
+    deptId?: string | null;
+    postIds?: string[];
+    gender?: "male" | "female" | "other" | null;
+    birthDate?: string | null;
+    remark?: string | null;
     roleIds?: string[];
   };
 };

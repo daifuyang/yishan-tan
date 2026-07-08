@@ -3,6 +3,21 @@
 ## 适用范围
 Yishan Tan 是后续 TanStack Start 企业级项目的默认底座。
 
+> **UI 规约**:分层与硬约束见本文;后台 admin 的**设计规约见 [`docs/DESIGN_CHARTER.md`](./docs/DESIGN_CHARTER.md)**。两者同级,本文约束代码分层,宪章约束 UI 一致性。
+
+## UI 硬约束(以 DESIGN_CHARTER 为准)
+
+> **改动 admin UI 前必读宪章**(§0.4);本节列出 OWN 级别**必须遵守**的硬约束条款,review 必查:
+
+- **§9.1** 同区主按钮 ≤1(`variant="default"` 同区域最多 1 个;批量停用必 `variant="outline"`)
+- **§3.1** 文案统一"你/我",禁止使用"您"
+- **§3.3** placeholder 默认走企业 中台惯例:Input `请输入`、Select `请选择`、搜索 `搜索 XXX`、格式敏感字段(邮箱/手机/API Key)用格式示例(`example@email.com` / `138 0000 0000` / `sk-xxxxxx`);AntD 风格 `如:XXX` 需 PR 引用 §3.3;禁止重复 label(`请输入姓名`)与规则说明
+- **§7.2** 表格无数据占位统一 `--`,禁止混用 `-` / `空` / `暂无`
+- **§9.5** 危险按钮搭配 Popconfirm,焦点默认落取消按钮
+- **§13** 反模式清单(15+ 条,review 必查)— 详见 `docs/DESIGN_CHARTER.md` §13
+- **§12.4** PR 必须引用宪章章节号(如 `DESIGN_CHARTER §9.1`)
+- **§2.1** 业务组件禁止裸 hex,所有颜色必须走 `globals.css` token
+
 ## 技术决策
 - 框架：TanStack Start + Vite。
 - ORM：Drizzle。

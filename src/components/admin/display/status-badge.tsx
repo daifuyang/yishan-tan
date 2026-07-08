@@ -16,9 +16,9 @@ type StatusBadgeProps = React.ComponentProps<"span"> & {
 
 const TONE_VARIANT: Record<StatusTone, Record<NonNullable<StatusBadgeProps["variant"]>, string>> = {
   success: {
-    soft: "border border-[#b7eb8f] bg-[#f6ffed] text-[#389e0d]",
-    solid: "border-transparent bg-[#52c41a] text-white",
-    outline: "border border-[#b7eb8f] text-[#389e0d]",
+    soft: "border border-success-100 bg-success-50 text-success-600",
+    solid: "border-transparent bg-success-500 text-white",
+    outline: "border border-success-100 text-success-600",
   },
   info: {
     soft: "border border-brand-100 bg-brand-50 text-brand-600",
@@ -26,14 +26,14 @@ const TONE_VARIANT: Record<StatusTone, Record<NonNullable<StatusBadgeProps["vari
     outline: "border border-brand-100 text-brand-600",
   },
   warning: {
-    soft: "border border-[#ffd591] bg-[#fff7e6] text-[#d46b08]",
-    solid: "border-transparent bg-[#fa8c16] text-white",
-    outline: "border border-[#ffd591] text-[#d46b08]",
+    soft: "border border-warning-100 bg-warning-50 text-warning-600",
+    solid: "border-transparent bg-warning-500 text-white",
+    outline: "border border-warning-100 text-warning-600",
   },
   danger: {
-    soft: "border border-[#ffccc7] bg-[#fff2f0] text-[#cf1322]",
+    soft: "border border-danger-100 bg-danger-50 text-danger-600",
     solid: "border-transparent bg-destructive text-white",
-    outline: "border border-[#ffccc7] text-[#cf1322]",
+    outline: "border border-danger-100 text-danger-600",
   },
   neutral: {
     soft: "border border-line bg-muted text-text-soft",

@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/v1/roles/$id")({
         try {
           await ensureAdminCtx(request);
           const { id } = parseParams(idParamSchema, params);
-          const role = await getRoleService(id);
+          const role = await getRoleService({ id });
           if (!role) throw Errors.notFound("角色不存在");
           return ok(role);
         } catch (error) {
@@ -36,10 +36,10 @@ export const Route = createFileRoute("/api/v1/roles/$id")({
       },
       PATCH: async ({ request, params }) => {
         try {
-          await ensureAdminCtx(request);
+          const ctx = await ensureAdminCtx(request);
           const { id } = parseParams(idParamSchema, params);
           const body = await parseJsonBody(request, updateRoleSchema);
-          const role = await updateRoleService(id, body);
+          const role = await updateRoleService({ ctx, id, data: body });
           return ok(role);
         } catch (error) {
           return handleApiError(error);
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/api/v1/roles/$id")({
         try {
           await ensureAdminCtx(request);
           const { id } = parseParams(idParamSchema, params);
-          await deleteRoleService(id);
+          await deleteRoleService({ id });
           return ok({ ok: true });
         } catch (error) {
           return handleApiError(error);

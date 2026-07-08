@@ -46,7 +46,7 @@ export function AdminHeader({
   const role = user?.role ?? "member";
 
   return (
-    <header className="sticky top-0 z-30 flex h-12 items-center border-b border-[#F0F0F0] bg-white">
+    <header className="sticky top-0 z-30 flex h-12 items-center border-b border-line bg-white">
       <div className="flex h-full w-full min-w-0 items-center">
         <div className="flex h-full shrink-0 items-center gap-0 px-0">
           <Button
@@ -145,7 +145,7 @@ function HeaderSearch() {
         type="search"
         placeholder="搜索"
         aria-label="搜索"
-        className="h-8 w-full rounded-[4px] border-transparent bg-[#F7F8FA] pl-9 pr-3 text-[13px] text-text-strong shadow-none hover:bg-line-soft focus-visible:border-brand-500 focus-visible:bg-white focus-visible:ring-0"
+        className="h-8 w-full rounded-[4px] border-transparent bg-surface-soft pl-9 pr-3 text-[13px] text-text-strong shadow-none hover:bg-line-soft focus-visible:border-brand-500 focus-visible:bg-white focus-visible:ring-0"
       />
     </form>
   );
@@ -215,7 +215,7 @@ function UserMenu({ displayName, username, email, role, disabled, onLogout }: Us
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-text-strong">{displayName}</p>
               <p className="truncate text-xs text-text-soft">@{username || "unknown"}</p>
-              <p className="truncate text-xs text-text-mute">{email || "—"}</p>
+              <p className="truncate text-xs text-text-mute">{email || "--"}</p>
               <p className="mt-1 text-xs text-text-mute">
                 {role === "admin" ? "系统管理员" : "成员"}
               </p>

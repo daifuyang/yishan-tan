@@ -70,7 +70,7 @@ export const Route = createFileRoute("/admin/departments")({
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -377,7 +377,7 @@ function AdminDepartmentsPage() {
       align: "center",
       cell: (row) => (
         <span className="text-[13px] text-text-soft">
-          {row.childCount > 0 ? `${row.childCount} 个` : "—"}
+          {row.childCount > 0 ? `${row.childCount} 个` : "--"}
         </span>
       ),
     },
@@ -573,6 +573,7 @@ function AdminDepartmentsPage() {
               variant="outline"
               onClick={() => handleOpenCreate(null)}
             >
+              <Plus className="size-3.5" aria-hidden />
               新增顶级部门
             </Button>
           ),

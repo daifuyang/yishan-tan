@@ -8,9 +8,11 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "vite dev --host 0.0.0.0",
+    "dev": "npm run openapi:gen && vite dev --host 0.0.0.0",
     "build": "NODE_ENV=production vite build",
     "start": "node .output/server/index.mjs",
+    "prebuild": "npm run openapi:gen",
+    "openapi:gen": "tsx scripts/generate-openapi.ts",
     "build:fc": "node scripts/build-fc.mjs",
     "deploy": "bash scripts/deploy-fc.sh apply",
     "deploy:plan": "bash scripts/deploy-fc.sh plan",
@@ -69,6 +71,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@biomejs/biome": "^1.9.4",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^22.10.0",

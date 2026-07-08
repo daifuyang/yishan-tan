@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, ShieldOff } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
-import { StatusBadge } from "@/components/admin/display";
-import { MultiSelect, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { StatusBadge, type StatusTone } from "@/components/admin/display";
+import {
+  MenuTree,
+  type MenuTreeNode,
+  Popconfirm,
+  ResponsiveFormLayer,
+} from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAssignableMenus, useRolesList } from "~/features/roles/roles.queries";
-import { roleListQuerySchema } from "~/features/roles/roles.schema";
+import { type DataScope, roleListQuerySchema } from "~/features/roles/roles.schema";
 import type { RoleListItemDto } from "~/features/roles/roles.types";
 import { useCreateRole, useDeleteRole, useUpdateRole } from "~/features/roles/roles.use-mutations";
 
@@ -53,18 +58,35 @@ const TABLE_DANGER_ACTION_CLASS =
 const TEXTAREA_CLASS =
   "border-line flex w-full min-w-0 rounded-[4px] border bg-white px-3 py-2 text-[13px] leading-[1.5] text-text-strong transition-colors outline-none focus-visible:border-brand-500 focus-visible:ring-brand-500 focus-visible:ring-[1px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40";
 
+const DATA_SCOPE_OPTIONS: Array<{ value: DataScope; label: string }> = [
+  { value: "1", label: "全部数据" },
+  { value: "2", label: "本部门数据" },
+  { value: "3", label: "本部门及子部门数据" },
+  { value: "4", label: "仅本人数据" },
+  { value: "5", label: "自定义数据" },
+];
+
+const DATA_SCOPE_TAG_COLORS: Record<DataScope, { tone: StatusTone; label: string }> = {
+  "1": { tone: "info", label: "全部数据" },
+  "2": { tone: "success", label: "本部门数据" },
+  "3": { tone: "info", label: "本部门及子部门数据" },
+  "4": { tone: "warning", label: "仅本人数据" },
+  "5": { tone: "neutral", label: "自定义数据" },
+};
+
 export const Route = createFileRoute("/admin/roles")({
   component: AdminRolesPage,
 });
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function AdminRolesPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -74,12 +96,17 @@ function AdminRolesPage() {
   const [createForm, setCreateForm] = React.useState<CreateRoleFormValue>(EMPTY_CREATE_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
 
-  const list = useRolesList(buildListQuery(filters, page, pageSize));
+  const query = buildListQuery(filters, page, pageSize);
+  const list = useRolesList(query);
   const createMut = useCreateRole();
   const updateMut = useUpdateRole();
   const deleteMut = useDeleteRole();
   const assignableMenusQuery = useAssignableMenus();
-  const assignableMenus = assignableMenusQuery.data?.items ?? [];
+  const menuTree = assignableMenusQuery.data ?? [];
+  const menuTreeOptions: MenuTreeNode[] = React.useMemo(
+    () => toMenuTreeNodes(menuTree),
+    [menuTree],
+  );
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
@@ -93,23 +120,28 @@ function AdminRolesPage() {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
   React.useEffect(() => {
     resetPageOnFilterChange();
   }, [
-    filters.name,
-    filters.description,
-    filters.status,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.name,
+    draft.description,
+    draft.status,
+    draft.createdFrom,
+    draft.createdTo,
     resetPageOnFilterChange,
   ]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -120,6 +152,7 @@ function AdminRolesPage() {
       name: row.name ?? "",
       description: row.description ?? "",
       status: row.status,
+      dataScope: row.dataScope ?? "1",
       menuIds: [],
     });
   };
@@ -165,9 +198,18 @@ function AdminRolesPage() {
 
   const columns: ResourceColumn<RoleListItemDto>[] = [
     {
+      key: "id",
+      header: "ID",
+      width: "80px",
+      align: "right",
+      cell: (row) => (
+        <span className="font-mono text-[12px] text-text-mute">{row.id.slice(0, 8)}</span>
+      ),
+    },
+    {
       key: "name",
       header: "名称",
-      width: "180px",
+      width: "140px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-strong" title={row.name}>
           {row.name}
@@ -177,29 +219,37 @@ function AdminRolesPage() {
     {
       key: "description",
       header: "描述",
-      width: "240px",
+      width: "220px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-soft" title={row.description ?? ""}>
-          {row.description ?? <span className="text-text-mute">—</span>}
+          {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
     {
-      key: "userCount",
-      header: "关联用户",
-      width: "100px",
-      cell: (row) => <span className="text-[13px] text-text-soft">{row.userCount} 人</span>,
+      key: "isSystemDefault",
+      header: "系统角色",
+      width: "120px",
+      cell: (row) =>
+        row.isSystemDefault ? (
+          <StatusBadge tone="info" label="系统" variant="soft" />
+        ) : (
+          <StatusBadge tone="success" label="自定义" variant="soft" />
+        ),
     },
     {
-      key: "menuCount",
-      header: "关联菜单",
-      width: "100px",
-      cell: (row) => <span className="text-[13px] text-text-soft">{row.menuCount} 个</span>,
+      key: "dataScope",
+      header: "数据权限",
+      width: "170px",
+      cell: (row) => {
+        const meta = DATA_SCOPE_TAG_COLORS[row.dataScope] ?? DATA_SCOPE_TAG_COLORS["1"];
+        return <StatusBadge tone={meta.tone} label={meta.label} variant="soft" />;
+      },
     },
     {
       key: "status",
       header: "状态",
-      width: "90px",
+      width: "100px",
       cell: (row) => (
         <StatusBadge
           tone={row.status === "enabled" ? "success" : "danger"}
@@ -211,9 +261,17 @@ function AdminRolesPage() {
     {
       key: "createdAt",
       header: "创建时间",
-      width: "170px",
+      width: "180px",
       cell: (row) => (
         <span className="text-[13px] text-text-soft">{formatDateTime(row.createdAt)}</span>
+      ),
+    },
+    {
+      key: "updatedAt",
+      header: "更新时间",
+      width: "180px",
+      cell: (row) => (
+        <span className="text-[13px] text-text-soft">{formatDateTime(row.updatedAt)}</span>
       ),
     },
     {
@@ -223,6 +281,7 @@ function AdminRolesPage() {
       width: "200px",
       sticky: "right",
       cell: (row) => {
+        const isSystem = row.isSystemDefault;
         const isDisabled = row.status === "disabled";
         return (
           <div className="flex items-center justify-end gap-3 whitespace-nowrap">
@@ -245,11 +304,11 @@ function AdminRolesPage() {
               className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
               onClick={(e) => {
                 e.stopPropagation();
-                void handleToggleStatus(row);
+                setPopconfirmRowId(row.id);
               }}
-              disabled={updateMut.isPending}
+              disabled={deleteMut.isPending}
             >
-              {isDisabled ? "启用" : "禁用"}
+              删除
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -259,6 +318,7 @@ function AdminRolesPage() {
                   size="sm"
                   className={TABLE_ACTION_CLASS}
                   onClick={(e) => e.stopPropagation()}
+                  disabled={isSystem || updateMut.isPending}
                 >
                   更多
                   <ChevronDown className="size-3.5" aria-hidden />
@@ -266,14 +326,13 @@ function AdminRolesPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="w-32 rounded-[4px]">
                 <DropdownMenuItem
-                  variant="destructive"
-                  disabled={deleteMut.isPending}
                   onSelect={(e) => {
                     e.preventDefault();
-                    setPopconfirmRowId(row.id);
+                    void handleToggleStatus(row);
                   }}
+                  disabled={isSystem}
                 >
-                  删除
+                  {isDisabled ? "启用" : "禁用"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -307,6 +366,7 @@ function AdminRolesPage() {
       name: editForm.name,
       description: editForm.description,
       status: editForm.status,
+      dataScope: editForm.dataScope,
       menuIds: editForm.menuIds,
     });
     setEditing(null);
@@ -317,6 +377,7 @@ function AdminRolesPage() {
       name: createForm.name,
       description: createForm.description || undefined,
       status: createForm.status,
+      dataScope: createForm.dataScope,
       menuIds: createForm.menuIds,
     });
     setCreating(false);
@@ -328,6 +389,7 @@ function AdminRolesPage() {
         title="角色管理"
         description="维护业务角色与菜单权限。"
         filterColumns={3}
+        filterCollapsible
         filterDefaultCollapsed
         filter={
           <>
@@ -335,9 +397,10 @@ function AdminRolesPage() {
               <Input
                 id="filter-name"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
-                value={filters.name}
-                onChange={(e) => applyFilterPatch({ name: e.target.value })}
+                allowClear
+                placeholder="如:管理员"
+                value={draft.name}
+                onChange={(e) => applyDraftPatch({ name: e.target.value })}
               />
             </QueryFormItem>
 
@@ -345,16 +408,17 @@ function AdminRolesPage() {
               <Input
                 id="filter-description"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
-                value={filters.description}
-                onChange={(e) => applyFilterPatch({ description: e.target.value })}
+                allowClear
+                placeholder="如:系统最高权限"
+                value={draft.description}
+                onChange={(e) => applyDraftPatch({ description: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -372,8 +436,9 @@ function AdminRolesPage() {
                 id="filter-created-from"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
-                value={filters.createdFrom}
-                onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
+                allowClear
+                value={draft.createdFrom}
+                onChange={(e) => applyDraftPatch({ createdFrom: e.target.value })}
               />
             </QueryFormItem>
 
@@ -382,28 +447,21 @@ function AdminRolesPage() {
                 id="filter-created-to"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
-                value={filters.createdTo}
-                onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
+                allowClear
+                value={draft.createdTo}
+                onChange={(e) => applyDraftPatch({ createdTo: e.target.value })}
               />
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            name: String(next.name ?? ""),
-            description: String(next.description ?? ""),
-            status: (next.status as StatusFilter) ?? "all",
-            createdFrom: String(next.createdFrom ?? ""),
-            createdTo: String(next.createdTo ?? ""),
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="角色列表"
         toolbarActions={
           <Button type="button" size="sm" onClick={handleOpenCreate}>
-            <ShieldOff className="size-3.5" aria-hidden />
+            <Plus className="size-3.5" aria-hidden />
             新增角色
           </Button>
         }
@@ -461,10 +519,11 @@ function AdminRolesPage() {
         onSubmit={handleEditSubmit}
       >
         {editing ? (
-          <EditRoleFields
-            key={editing.id}
+          <RoleFields
+            key={`edit-${editing.id}`}
+            role={editing}
             value={editForm}
-            assignableMenus={assignableMenus}
+            menuTree={menuTreeOptions}
             onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))}
           />
         ) : null}
@@ -490,10 +549,10 @@ function AdminRolesPage() {
         }
         onSubmit={handleCreateSubmit}
       >
-        <EditRoleFields
+        <RoleFields
           key="create-form"
           value={createForm}
-          assignableMenus={assignableMenus}
+          menuTree={menuTreeOptions}
           onChange={(patch) => setCreateForm((s) => ({ ...s, ...patch }))}
         />
       </ResponsiveFormLayer>
@@ -505,20 +564,17 @@ type EditRoleFormValue = {
   name: string;
   description: string;
   status: "enabled" | "disabled";
+  dataScope: DataScope;
   menuIds: string[];
 };
 
-type CreateRoleFormValue = {
-  name: string;
-  description: string;
-  status: "enabled" | "disabled";
-  menuIds: string[];
-};
+type CreateRoleFormValue = EditRoleFormValue;
 
 const EMPTY_EDIT_FORM: EditRoleFormValue = {
   name: "",
   description: "",
   status: "enabled",
+  dataScope: "1",
   menuIds: [],
 };
 
@@ -526,6 +582,7 @@ const EMPTY_CREATE_FORM: CreateRoleFormValue = {
   name: "",
   description: "",
   status: "enabled",
+  dataScope: "1",
   menuIds: [],
 };
 
@@ -547,20 +604,40 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   });
 }
 
-function EditRoleFields({
+type MenuApiTreeNode = {
+  id: string;
+  name: string;
+  children?: MenuApiTreeNode[];
+};
+
+function toMenuTreeNodes(nodes: MenuApiTreeNode[]): MenuTreeNode[] {
+  if (!nodes?.length) return [];
+  return nodes.map((n) => ({
+    value: n.id,
+    label: n.name,
+    children: n.children?.length ? toMenuTreeNodes(n.children) : undefined,
+  }));
+}
+
+function RoleFields({
+  role,
   value,
-  assignableMenus,
+  menuTree,
   onChange,
 }: {
+  role?: RoleListItemDto;
   value: EditRoleFormValue | CreateRoleFormValue;
-  assignableMenus: Array<{ id: string; name: string; path: string | null }>;
+  menuTree: MenuTreeNode[];
   onChange: (patch: Partial<EditRoleFormValue>) => void;
 }) {
+  const isSystem = role?.isSystemDefault ?? false;
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="role-name">名称</Label>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="role-name">
+            名称 <span className="text-destructive">*</span>
+          </Label>
           <Input
             id="role-name"
             value={value.name}
@@ -568,6 +645,52 @@ function EditRoleFields({
             placeholder="角色显示名"
             maxLength={50}
           />
+        </div>
+        <div className="space-y-1.5">
+          <Label>状态</Label>
+          <div className="flex h-8 items-center gap-5 rounded-[4px] border border-transparent px-0.5 text-[13px]">
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="role-status"
+                checked={value.status === "enabled"}
+                onChange={() => onChange({ status: "enabled" })}
+                disabled={isSystem}
+                className="size-4"
+              />
+              <span>启用</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="role-status"
+                checked={value.status === "disabled"}
+                onChange={() => onChange({ status: "disabled" })}
+                disabled={isSystem}
+                className="size-4"
+              />
+              <span>禁用</span>
+            </label>
+          </div>
+          {isSystem ? <p className="text-[11px] text-text-mute">系统默认角色不可禁用</p> : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="role-data-scope">数据权限</Label>
+          <Select
+            value={value.dataScope}
+            onValueChange={(v) => onChange({ dataScope: v as DataScope })}
+          >
+            <SelectTrigger id="role-data-scope">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATA_SCOPE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -585,34 +708,11 @@ function EditRoleFields({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="role-status">状态</Label>
-        <Select
-          value={value.status}
-          onValueChange={(v) => onChange({ status: v as "enabled" | "disabled" })}
-        >
-          <SelectTrigger id="role-status">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="enabled">启用</SelectItem>
-            <SelectItem value="disabled">禁用</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="role-menus">菜单权限</Label>
-        <MultiSelect
-          ariaLabel="菜单权限"
+        <Label>菜单权限</Label>
+        <MenuTree
           value={value.menuIds}
           onChange={(next) => onChange({ menuIds: next })}
-          options={assignableMenus.map((m) => ({
-            value: m.id,
-            label: m.name,
-            description: m.path ?? undefined,
-          }))}
-          placeholder="选择该角色可访问的菜单"
-          emptyText="暂无可分配的菜单"
+          options={menuTree}
         />
         <p className="text-[11px] text-text-mute">
           未选择将清空该角色全部菜单权限；仅展示启用中的菜单。

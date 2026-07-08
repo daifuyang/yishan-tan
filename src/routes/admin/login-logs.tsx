@@ -67,7 +67,7 @@ function toQuery(state: FilterState, page: number, pageSize: number): ListLoginL
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
@@ -146,7 +146,7 @@ function AdminLoginLogsPage() {
       width: "160px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-strong" title={row.username ?? ""}>
-          {row.username ?? <span className="text-text-mute">—</span>}
+          {row.username ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -156,7 +156,7 @@ function AdminLoginLogsPage() {
       width: "130px",
       cell: (row) => (
         <span className={MONO_CLASS} title={row.ipAddress ?? ""}>
-          {row.ipAddress ?? <span className="text-text-mute">—</span>}
+          {row.ipAddress ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -166,7 +166,7 @@ function AdminLoginLogsPage() {
       width: "240px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-soft" title={row.userAgent ?? ""}>
-          {row.userAgent ? truncate(row.userAgent, 60) : <span className="text-text-mute">—</span>}
+          {row.userAgent ? truncate(row.userAgent, 60) : <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -188,7 +188,7 @@ function AdminLoginLogsPage() {
       width: "200px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-soft" title={row.message ?? ""}>
-          {row.message ? truncate(row.message, 40) : <span className="text-text-mute">—</span>}
+          {row.message ? truncate(row.message, 40) : <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -238,6 +238,7 @@ function AdminLoginLogsPage() {
               <Input
                 id="filter-keyword"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 placeholder="模糊匹配"
                 value={filters.keyword}
                 onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
@@ -264,6 +265,7 @@ function AdminLoginLogsPage() {
               <Input
                 id="filter-ip"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 placeholder="客户端过滤"
                 value={filters.ipAddress}
                 onChange={(e) => applyFilterPatch({ ipAddress: e.target.value })}
@@ -274,6 +276,7 @@ function AdminLoginLogsPage() {
               <Input
                 id="filter-ua"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 placeholder="客户端过滤"
                 value={filters.userAgent}
                 onChange={(e) => applyFilterPatch({ userAgent: e.target.value })}
@@ -285,6 +288,7 @@ function AdminLoginLogsPage() {
                 id="filter-from"
                 type="date"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdFrom}
                 onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
               />
@@ -295,6 +299,7 @@ function AdminLoginLogsPage() {
                 id="filter-to"
                 type="date"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdTo}
                 onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
               />
@@ -371,7 +376,7 @@ function LoginLogDetailSheet({
 
         {log ? (
           <div className="mt-6 space-y-4 text-[13px]">
-            <DetailRow label="账号" value={log.username ?? "—"} mono />
+            <DetailRow label="账号" value={log.username ?? "--"} mono />
             <DetailRow label="状态">
               <StatusBadge
                 tone={log.status === "success" ? "success" : "danger"}
@@ -379,11 +384,11 @@ function LoginLogDetailSheet({
                 variant="soft"
               />
             </DetailRow>
-            <DetailRow label="IP 地址" value={log.ipAddress ?? "—"} mono />
-            <DetailRow label="User Agent" value={log.userAgent ?? "—"} mono break />
-            <DetailRow label="消息" value={log.message ?? "—"} break />
+            <DetailRow label="IP 地址" value={log.ipAddress ?? "--"} mono />
+            <DetailRow label="User Agent" value={log.userAgent ?? "--"} mono break />
+            <DetailRow label="消息" value={log.message ?? "--"} break />
             <DetailRow label="登录时间" value={formatDateTime(log.createdAt)} />
-            <DetailRow label="用户 ID" value={log.userId ?? "—"} mono />
+            <DetailRow label="用户 ID" value={log.userId ?? "--"} mono />
           </div>
         ) : null}
       </SheetContent>

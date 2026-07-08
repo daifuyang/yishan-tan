@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { type SQL, and, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { auth } from "~/lib/auth.server";
@@ -23,6 +23,7 @@ import type {
 function toAdminUser(
   row: typeof schema.user.$inferSelect,
   roleIds: string[],
+  postIds: string[],
   lastLoginAt: Date | null,
 ): AdminUserDto {
   return {
@@ -34,6 +35,11 @@ function toAdminUser(
     phone: row.phone,
     role: row.role,
     status: row.deletedAt ? "disabled" : "enabled",
+    deptId: row.deptId,
+    postIds,
+    gender: row.gender,
+    birthDate: row.birthDate ? row.birthDate.toISOString().slice(0, 10) : null,
+    remark: row.remark,
     roleIds,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -47,6 +53,14 @@ async function getRoleIdsForUser(userId: string): Promise<string[]> {
     .from(schema.userRole)
     .where(eq(schema.userRole.userId, userId));
   return rows.map((r) => r.roleId);
+}
+
+async function getPostIdsForUser(userId: string): Promise<string[]> {
+  const rows = await getDb()
+    .select({ postId: schema.userPost.postId })
+    .from(schema.userPost)
+    .where(eq(schema.userPost.userId, userId));
+  return rows.map((r) => r.postId);
 }
 
 async function getLastLoginAtMap(userIds: string[]): Promise<Map<string, Date>> {
@@ -75,6 +89,7 @@ export const listUsersService: ListUsersService = async ({
   status,
   systemRole,
   roleId,
+  deptId,
 }) => {
   const where: SQL[] = [];
   const searchClauses: SQL[] = [];
@@ -100,6 +115,7 @@ export const listUsersService: ListUsersService = async ({
       ),
     );
   }
+  if (deptId) where.push(eq(schema.user.deptId, deptId));
   if (systemRole) {
     where.push(eq(schema.user.role, systemRole));
   }
@@ -125,6 +141,7 @@ export const listUsersService: ListUsersService = async ({
   ]);
   const ids = rows.map((r) => r.id);
   const roleMap = new Map<string, string[]>();
+  const postMap = new Map<string, string[]>();
   if (ids.length > 0) {
     const roleRows = await getDb()
       .select()
@@ -135,10 +152,26 @@ export const listUsersService: ListUsersService = async ({
       list.push(r.roleId);
       roleMap.set(r.userId, list);
     }
+    const postRows = await getDb()
+      .select()
+      .from(schema.userPost)
+      .where(inArray(schema.userPost.userId, ids));
+    for (const r of postRows) {
+      const list = postMap.get(r.userId) ?? [];
+      list.push(r.postId);
+      postMap.set(r.userId, list);
+    }
   }
   const lastLoginMap = await getLastLoginAtMap(ids);
   return {
-    items: rows.map((r) => toAdminUser(r, roleMap.get(r.id) ?? [], lastLoginMap.get(r.id) ?? null)),
+    items: rows.map((r) =>
+      toAdminUser(
+        r,
+        roleMap.get(r.id) ?? [],
+        postMap.get(r.id) ?? [],
+        lastLoginMap.get(r.id) ?? null,
+      ),
+    ),
     total: Number(totalRow[0]?.count ?? 0),
   };
 };
@@ -147,9 +180,9 @@ export const getUserService: GetUserService = async (id) => {
   const rows = await getDb().select().from(schema.user).where(eq(schema.user.id, id)).limit(1);
   const row = rows[0];
   if (!row) return null;
-  const roleIds = await getRoleIdsForUser(id);
+  const [roleIds, postIds] = await Promise.all([getRoleIdsForUser(id), getPostIdsForUser(id)]);
   const lastLoginMap = await getLastLoginAtMap([id]);
-  return toAdminUser(row, roleIds, lastLoginMap.get(id) ?? null);
+  return toAdminUser(row, roleIds, postIds, lastLoginMap.get(id) ?? null);
 };
 
 export const updateUserService: UpdateUserService = async (id, input) => {
@@ -166,6 +199,12 @@ export const updateUserService: UpdateUserService = async (id, input) => {
   if (input.displayName !== undefined) patch.displayName = input.displayName;
   if (input.phone !== undefined) patch.phone = input.phone ?? null;
   if (input.email !== undefined) patch.email = input.email;
+  if (input.deptId !== undefined) patch.deptId = input.deptId ?? null;
+  if (input.gender !== undefined) patch.gender = input.gender ?? null;
+  if (input.birthDate !== undefined) {
+    patch.birthDate = input.birthDate ? new Date(`${input.birthDate}T00:00:00Z`) : null;
+  }
+  if (input.remark !== undefined) patch.remark = input.remark ?? null;
   if (input.status !== undefined) {
     if (input.status === "disabled") patch.deletedAt = new Date();
     else patch.deletedAt = null;
@@ -183,14 +222,22 @@ export const updateUserService: UpdateUserService = async (id, input) => {
           .values(input.roleIds.map((roleId) => ({ userId: id, roleId })));
       }
     }
+    if (input.postIds !== undefined) {
+      await tx.delete(schema.userPost).where(eq(schema.userPost.userId, id));
+      if (input.postIds.length) {
+        await tx
+          .insert(schema.userPost)
+          .values(input.postIds.map((postId) => ({ userId: id, postId })));
+      }
+    }
   });
 
   const refreshed = await db.select().from(schema.user).where(eq(schema.user.id, id)).limit(1);
   const row = refreshed[0];
   if (!row) throw Errors.notFound("用户不存在");
-  const roleIds = await getRoleIdsForUser(id);
+  const [roleIds, postIds] = await Promise.all([getRoleIdsForUser(id), getPostIdsForUser(id)]);
   const lastLoginMap = await getLastLoginAtMap([id]);
-  return toAdminUser(row, roleIds, lastLoginMap.get(id) ?? null);
+  return toAdminUser(row, roleIds, postIds, lastLoginMap.get(id) ?? null);
 };
 
 export const deleteUserService: DeleteUserService = async (id) => {
@@ -278,7 +325,7 @@ export const writeLoginLog = async (input: {
     });
 };
 
-function toApiKeyDto(row: typeof schema.apiKey.$inferSelect): ApiKeyDto {
+function toApiKeyDto(row: typeof schema.apikey.$inferSelect): ApiKeyDto {
   return {
     id: row.id,
     name: row.name,
@@ -294,9 +341,9 @@ function toApiKeyDto(row: typeof schema.apiKey.$inferSelect): ApiKeyDto {
 export const listApiKeysService: ListApiKeysService = async ({ userId }) => {
   const rows = await getDb()
     .select()
-    .from(schema.apiKey)
-    .where(eq(schema.apiKey.referenceId, userId))
-    .orderBy(desc(schema.apiKey.createdAt));
+    .from(schema.apikey)
+    .where(eq(schema.apikey.referenceId, userId))
+    .orderBy(desc(schema.apikey.createdAt));
   return rows.map(toApiKeyDto);
 };
 
@@ -305,11 +352,14 @@ export const createApiKeyService: CreateApiKeyService = async ({ userId, name })
   const prefix = "yishantan_";
   const start = rawKey.slice(0, 7);
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365);
+  // better-auth 的 defaultKeyHasher = SHA-256 → base64url(无 padding)
+  // 不哈希的话，verifyApiKey 会从同列读出原文做哈希比对，必然失败。
+  const hashedKey = createHash("sha256").update(rawKey).digest("base64url");
   const rows = await getDb()
-    .insert(schema.apiKey)
+    .insert(schema.apikey)
     .values({
       name: name ?? null,
-      key: rawKey,
+      key: hashedKey,
       prefix,
       start,
       referenceId: userId,
@@ -325,10 +375,10 @@ export const createApiKeyService: CreateApiKeyService = async ({ userId, name })
 export const deleteApiKeyService: DeleteApiKeyService = async ({ userId, id }) => {
   const existing = await getDb()
     .select()
-    .from(schema.apiKey)
-    .where(and(eq(schema.apiKey.id, id), eq(schema.apiKey.referenceId, userId)))
+    .from(schema.apikey)
+    .where(and(eq(schema.apikey.id, id), eq(schema.apikey.referenceId, userId)))
     .limit(1);
   if (!existing[0]) throw Errors.notFound("API Key 不存在");
-  await getDb().delete(schema.apiKey).where(eq(schema.apiKey.id, id));
+  await getDb().delete(schema.apikey).where(eq(schema.apikey.id, id));
   return { ok: true };
 };

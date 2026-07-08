@@ -52,6 +52,7 @@ type ResourceTableProps<Row> = {
   emptyTitle?: React.ReactNode;
   emptyDescription?: React.ReactNode;
   emptyAction?: React.ReactNode;
+  emptyVariant?: "default" | "dashed";
   error?: React.ReactNode;
   onRowClick?: (row: Row) => void;
   rowClassName?: (row: Row, index: number) => string;
@@ -107,7 +108,7 @@ const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 const PAGINATION_ITEM_CLASS =
   "inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-[4px] px-2 text-[13px] font-normal leading-none transition-colors";
 const PAGINATION_NAV_BUTTON_CLASS =
-  "inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-[4px] bg-white px-2 text-[13px] text-text-soft transition-colors hover:bg-[#F5F5F5] hover:text-text-strong disabled:pointer-events-none disabled:text-[#BFBFBF]";
+  "inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-[4px] bg-white px-2 text-[13px] text-text-soft transition-colors hover:bg-line-soft hover:text-text-strong disabled:pointer-events-none disabled:text-text-disabled";
 
 type PageEllipsis = {
   type: "ellipsis";
@@ -314,8 +315,9 @@ export function ResourceTable<Row>({
   loading,
   empty,
   emptyTitle = "暂无数据",
-  emptyDescription = "当前条件下没有匹配的数据，调整筛选条件或新增一条试试。",
+  emptyDescription,
   emptyAction,
+  emptyVariant,
   error,
   onRowClick,
   rowClassName,
@@ -423,15 +425,13 @@ export function ResourceTable<Row>({
   const renderEmpty = () => {
     if (empty) return empty;
     return (
-      <div className="p-4">
-        <EmptyState
-          icon={Inbox}
-          title={emptyTitle}
-          description={emptyDescription}
-          action={emptyAction}
-          variant="dashed"
-        />
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title={emptyTitle}
+        description={emptyDescription}
+        action={emptyAction}
+        variant={emptyVariant ?? "default"}
+      />
     );
   };
 

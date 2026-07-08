@@ -38,7 +38,7 @@ export const SYSTEM_OPTION_GROUPS: readonly SystemOptionGroup[] = [
         label: "站点名称",
         type: "text",
         description: "显示在浏览器标题与登录页。",
-        placeholder: "请输入站点名称",
+        placeholder: "如:AI 数据分析平台",
       },
       {
         key: "site.logo",

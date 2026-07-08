@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 规则：
+ * 规则（宪章 §12.1 / DESIGN_CHARTER.md）：
  *  - Zod schema 文件名以 XxxSchema 后缀（匹配 .schema.(ts|tsx)）
  *  - service 命名 xxxService 导出
  *  - 文件命名要求：features/<domain>/<domain>.<kind>.ts

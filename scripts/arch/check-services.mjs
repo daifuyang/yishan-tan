@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 规则：
+ * 规则（宪章 §12.1 / DESIGN_CHARTER.md）：
  *  - features/<domain>/*.service.ts 不允许 import React, '~/routes', '~/components'
  *  - service 中允许 import 错误工厂与 context 类型
  */

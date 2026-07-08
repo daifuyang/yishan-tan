@@ -82,5 +82,56 @@ describe("auth.schema", () => {
         }),
       ).toThrow();
     });
+
+    it("accepts roleIds as array of uuids", () => {
+      const parsed = createUserSchema.parse({
+        email: "user@example.com",
+        username: "user_01",
+        password: "validpass1",
+        roleIds: ["11111111-1111-4111-8111-111111111111"],
+      });
+      expect(parsed.roleIds).toEqual(["11111111-1111-4111-8111-111111111111"]);
+    });
+
+    it("accepts empty roleIds array (语义:清空)", () => {
+      const parsed = createUserSchema.parse({
+        email: "user@example.com",
+        username: "user_01",
+        password: "validpass1",
+        roleIds: [],
+      });
+      expect(parsed.roleIds).toEqual([]);
+    });
+
+    it("accepts omitted roleIds (向后兼容旧客户端)", () => {
+      const parsed = createUserSchema.parse({
+        email: "user@example.com",
+        username: "user_01",
+        password: "validpass1",
+      });
+      expect(parsed.roleIds).toBeUndefined();
+    });
+
+    it("rejects roleIds that are not an array", () => {
+      expect(() =>
+        createUserSchema.parse({
+          email: "user@example.com",
+          username: "user_01",
+          password: "validpass1",
+          roleIds: "not-an-array",
+        }),
+      ).toThrow();
+    });
+
+    it("rejects roleIds entries that are not uuid", () => {
+      expect(() =>
+        createUserSchema.parse({
+          email: "user@example.com",
+          username: "user_01",
+          password: "validpass1",
+          roleIds: ["not-a-uuid"],
+        }),
+      ).toThrow();
+    });
   });
 });

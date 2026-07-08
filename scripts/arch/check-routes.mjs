@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 规则：
+ * 规则（宪章 §12.1 / DESIGN_CHARTER.md）：
  *  - routes/** 不能直接 import ~/lib/db.server、~/lib/redis.server、~/lib/auth.server
  *  - routes/** 不能使用 drizzle-orm / better-auth / ioredis / postgres
  */

@@ -88,9 +88,9 @@ export function FormDialog({
         showClose={dismissible}
         onInteractOutside={handleInteractOutside}
         onEscapeKeyDown={handleEscapeKeyDown}
-        className={cn("gap-0 p-0 sm:max-w-lg", contentClassName)}
+        className={cn(contentClassName)}
       >
-        <DialogHeader className="border-b border-line px-6 py-4">
+        <DialogHeader className="shrink-0 border-b border-line px-6 py-4">
           <DialogTitle className="text-[15px] font-semibold">{title}</DialogTitle>
           {description ? (
             <DialogDescription className="mt-1 text-[12.5px] text-text-soft">
@@ -101,18 +101,20 @@ export function FormDialog({
         <form
           noValidate
           onSubmit={handleSubmit}
-          className="flex min-h-0 flex-1 flex-col gap-0 overflow-x-hidden overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden [&_label[data-slot=label]]:mb-2 [&_label[data-slot=label]]:block [&_label[data-slot=label]]:text-ex-14 [&_label[data-slot=label]]:font-medium [&_label[data-slot=label]]:leading-5 [&_label[data-slot=label]]:text-text-strong [&_label[data-slot=label]+*]:!mt-0"
         >
           {errorMessage ? (
             <div className="mx-6 mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] text-destructive">
               {errorMessage}
             </div>
           ) : null}
-          <div className="min-w-0 flex-1 space-y-4 px-6 py-5">{children}</div>
+          <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-5">
+            {children}
+          </div>
           {footer !== undefined ? (
             footer
           ) : (
-            <DialogFooter className="border-t border-line bg-line-soft/40 px-6 py-3">
+            <DialogFooter className="shrink-0 border-t border-line bg-line-soft/40 px-6 py-3">
               <Button
                 type="button"
                 variant="outline"

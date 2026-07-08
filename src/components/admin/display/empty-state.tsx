@@ -55,25 +55,18 @@ export function EmptyState({
       data-slot="empty-state"
       data-variant="default"
       className={cn(
-        "yt-card flex flex-col items-center justify-center gap-3 px-6 py-12 text-center",
+        "flex flex-col items-center justify-center gap-3 px-6 py-16 text-center",
         className,
       )}
     >
-      {Icon ? (
-        <span
-          aria-hidden
-          className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 shadow-sm"
-        >
-          <Icon className="size-6" aria-hidden />
-        </span>
-      ) : null}
+      {Icon ? <Icon className="size-12 text-text-mute" aria-hidden /> : null}
       <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-text-strong">{title}</h3>
+        <h3 className="text-[14px] font-medium text-text-strong">{title}</h3>
         {description ? (
-          <p className="mx-auto max-w-md text-xs text-text-soft">{description}</p>
+          <p className="mx-auto max-w-xs text-[13px] text-text-soft">{description}</p>
         ) : null}
       </div>
-      {action ? <div className="pt-1">{action}</div> : null}
+      {action ? <div>{action}</div> : null}
     </div>
   );
 }

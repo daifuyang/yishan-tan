@@ -22,15 +22,15 @@ async function adminCtx() {
 export const listRoles = createServerFn({ method: "GET" })
   .validator(roleListQuerySchema)
   .handler(async ({ data }) => {
-    await adminCtx();
-    return listRolesService(data);
+    const ctx = await adminCtx();
+    return listRolesService({ ctx, ...data });
   });
 
 export const getRole = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
     await adminCtx();
-    const role = await getRoleService(data.id);
+    const role = await getRoleService({ id: data.id });
     if (!role) throw new Error("NOT_FOUND");
     return role;
   });
@@ -38,21 +38,21 @@ export const getRole = createServerFn({ method: "GET" })
 export const createRole = createServerFn({ method: "POST" })
   .validator(createRoleSchema)
   .handler(async ({ data }) => {
-    await adminCtx();
-    return createRoleService(data);
+    const ctx = await adminCtx();
+    return createRoleService({ ctx, data });
   });
 
 export const updateRole = createServerFn({ method: "POST" })
   .validator(updateRoleSchema.extend({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    await adminCtx();
+    const ctx = await adminCtx();
     const { id, ...rest } = data;
-    return updateRoleService(id, rest);
+    return updateRoleService({ ctx, id, data: rest });
   });
 
 export const deleteRole = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
     await adminCtx();
-    return deleteRoleService(data.id);
+    return deleteRoleService({ id: data.id });
   });

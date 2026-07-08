@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, ShieldOff, UserPlus } from "lucide-react";
+import { ChevronDown, Plus, ShieldOff } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
-import { StatusBadge, UserAvatar } from "@/components/admin/display";
-import { MultiSelect, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { StatusBadge } from "@/components/admin/display";
+import {
+  DatePicker,
+  Popconfirm,
+  ResponsiveFormLayer,
+  SearchMultiSelect,
+  SearchSelect,
+  type TreeNode,
+  TreeSelect,
+} from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +33,9 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser } from "~/features/auth/auth.queries";
+import { useDepartmentTree } from "~/features/departments/departments.queries";
+import type { DepartmentNode } from "~/features/departments/departments.types";
+import { usePostsList } from "~/features/posts/posts.queries";
 import { useAssignableRoles, useUsersList } from "~/features/users/users.queries";
 import type { UserListQuery } from "~/features/users/users.schema";
 import type { AdminUserDto } from "~/features/users/users.types";
@@ -56,6 +67,13 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 const FILTER_CONTROL_CLASS = "h-8 w-full text-[13px]";
+const USER_FILTER_PLACEHOLDERS = {
+  username: "请输入",
+  name: "请输入",
+  displayName: "请输入",
+  email: "请输入",
+  phone: "请输入",
+} as const;
 const TABLE_ACTION_CLASS =
   "h-auto rounded-none px-0 py-0 text-[13px] font-normal text-brand-600 hover:bg-transparent hover:text-brand-700 hover:no-underline disabled:text-text-mute";
 const TABLE_DANGER_ACTION_CLASS =
@@ -81,27 +99,23 @@ function toQuery(state: FilterState, page: number, pageSize: number): UserListQu
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function AdminUsersPage() {
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [editing, setEditing] = React.useState<AdminUserDto | null>(null);
-  const [editForm, setEditForm] = React.useState<{
-    name: string;
-    displayName: string;
-    phone: string;
-    status: "enabled" | "disabled";
-    roleIds: string[];
-  }>({ name: "", displayName: "", phone: "", status: "enabled", roleIds: [] });
+  const [editForm, setEditForm] = React.useState<EditUserFormValue>(EMPTY_EDIT_FORM);
   const [creating, setCreating] = React.useState(false);
   const [createForm, setCreateForm] = React.useState<CreateUserFormValue>(EMPTY_CREATE_FORM);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
 
   const query = toQuery(filters, page, pageSize);
   const { data: currentUser } = useCurrentUser();
@@ -112,6 +126,14 @@ function AdminUsersPage() {
   const createMut = useCreateUser();
   const assignableRolesQuery = useAssignableRoles();
   const assignableRoles = assignableRolesQuery.data?.items ?? [];
+  const departmentTreeQuery = useDepartmentTree();
+  const departmentTree = departmentTreeQuery.data ?? [];
+  const postsQuery = usePostsList({
+    page: 1,
+    pageSize: 100,
+    status: "enabled",
+  });
+  const posts = postsQuery.data?.items ?? [];
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
@@ -125,6 +147,7 @@ function AdminUsersPage() {
     // 翻页/筛选/数据刷新时清空选中，避免跨页错选
     setSelectedKeys([]);
     setPopconfirmRowId(null);
+    setDisablePopconfirmRowId(null);
   }, []);
 
   React.useEffect(() => {
@@ -159,11 +182,16 @@ function AdminUsersPage() {
     clearSelectionOnViewChange,
   ]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = () => {
+    setFilters(draft);
+  };
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -175,6 +203,11 @@ function AdminUsersPage() {
       displayName: row.displayName ?? "",
       phone: row.phone ?? "",
       status: row.status,
+      deptId: row.deptId ?? null,
+      postIds: row.postIds ?? [],
+      gender: row.gender ?? null,
+      birthDate: row.birthDate ?? "",
+      remark: row.remark ?? "",
       roleIds: row.roleIds ?? [],
     });
   };
@@ -225,16 +258,9 @@ function AdminUsersPage() {
       header: "用户名",
       width: "140px",
       cell: (row) => (
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <UserAvatar
-            user={{ displayName: row.displayName, username: row.username, email: row.email }}
-            size="sm"
-            variant="muted"
-          />
-          <span className="truncate text-[13px] text-text-strong" title={row.username}>
-            @{row.username}
-          </span>
-        </div>
+        <span className="truncate text-[13px] text-text-strong" title={row.username}>
+          {row.username}
+        </span>
       ),
     },
     {
@@ -243,7 +269,7 @@ function AdminUsersPage() {
       width: "120px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-strong" title={row.name}>
-          {row.name || <span className="text-text-mute">—</span>}
+          {row.name || <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -253,7 +279,7 @@ function AdminUsersPage() {
       width: "120px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-strong" title={row.displayName ?? ""}>
-          {row.displayName ?? <span className="text-text-mute">—</span>}
+          {row.displayName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -273,7 +299,7 @@ function AdminUsersPage() {
       width: "140px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-soft" title={row.phone ?? ""}>
-          {row.phone ?? <span className="text-text-mute">—</span>}
+          {row.phone ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -350,7 +376,11 @@ function AdminUsersPage() {
               className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
               onClick={(e) => {
                 e.stopPropagation();
-                void handleToggleStatus(row);
+                if (isDisabled) {
+                  void handleToggleStatus(row);
+                } else {
+                  setDisablePopconfirmRowId(row.id);
+                }
               }}
               disabled={updateMut.isPending}
             >
@@ -415,6 +445,23 @@ function AdminUsersPage() {
             >
               <span aria-hidden className="size-0" />
             </Popconfirm>
+            <Popconfirm
+              open={disablePopconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+              title="禁用账号"
+              description="你确认禁用此账号吗？"
+              confirmLabel="禁用"
+              tone="danger"
+              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+              onConfirm={() => handleToggleStatus(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
           </div>
         );
       },
@@ -430,6 +477,11 @@ function AdminUsersPage() {
         displayName: editForm.displayName,
         phone: editForm.phone || undefined,
         status: editForm.status,
+        deptId: editForm.deptId,
+        postIds: editForm.postIds,
+        gender: editForm.gender,
+        birthDate: editForm.birthDate || null,
+        remark: editForm.remark || null,
         roleIds: editForm.roleIds,
       },
     });
@@ -454,6 +506,13 @@ function AdminUsersPage() {
       name: createForm.name || undefined,
       displayName: createForm.displayName || undefined,
       phone: createForm.phone || undefined,
+      status: createForm.status,
+      deptId: createForm.deptId,
+      postIds: createForm.postIds,
+      gender: createForm.gender,
+      birthDate: createForm.birthDate || null,
+      remark: createForm.remark || null,
+      roleIds: createForm.roleIds,
     });
     setCreating(false);
     setCreateForm(EMPTY_CREATE_FORM);
@@ -466,15 +525,17 @@ function AdminUsersPage() {
         description="维护后台账号、角色与启停状态。"
         filterColumns={3}
         filterCollapsible
+        filterDefaultCollapsed
         filter={
           <>
             <QueryFormItem label="用户名" htmlFor="filter-username">
               <Input
                 id="filter-username"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
-                value={filters.username}
-                onChange={(e) => applyFilterPatch({ username: e.target.value })}
+                allowClear
+                placeholder={USER_FILTER_PLACEHOLDERS.username}
+                value={draft.username}
+                onChange={(e) => applyDraftPatch({ username: e.target.value })}
               />
             </QueryFormItem>
 
@@ -482,9 +543,10 @@ function AdminUsersPage() {
               <Input
                 id="filter-name"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
-                value={filters.name}
-                onChange={(e) => applyFilterPatch({ name: e.target.value })}
+                allowClear
+                placeholder={USER_FILTER_PLACEHOLDERS.name}
+                value={draft.name}
+                onChange={(e) => applyDraftPatch({ name: e.target.value })}
               />
             </QueryFormItem>
 
@@ -492,9 +554,10 @@ function AdminUsersPage() {
               <Input
                 id="filter-displayName"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
-                value={filters.displayName}
-                onChange={(e) => applyFilterPatch({ displayName: e.target.value })}
+                allowClear
+                placeholder={USER_FILTER_PLACEHOLDERS.displayName}
+                value={draft.displayName}
+                onChange={(e) => applyDraftPatch({ displayName: e.target.value })}
               />
             </QueryFormItem>
 
@@ -502,9 +565,10 @@ function AdminUsersPage() {
               <Input
                 id="filter-email"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
-                value={filters.email}
-                onChange={(e) => applyFilterPatch({ email: e.target.value })}
+                allowClear
+                placeholder={USER_FILTER_PLACEHOLDERS.email}
+                value={draft.email}
+                onChange={(e) => applyDraftPatch({ email: e.target.value })}
               />
             </QueryFormItem>
 
@@ -512,16 +576,17 @@ function AdminUsersPage() {
               <Input
                 id="filter-phone"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
-                value={filters.phone}
-                onChange={(e) => applyFilterPatch({ phone: e.target.value })}
+                allowClear
+                placeholder={USER_FILTER_PLACEHOLDERS.phone}
+                value={draft.phone}
+                onChange={(e) => applyDraftPatch({ phone: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -535,17 +600,8 @@ function AdminUsersPage() {
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            username: String(next.username ?? ""),
-            name: String(next.name ?? ""),
-            displayName: String(next.displayName ?? ""),
-            email: String(next.email ?? ""),
-            phone: String(next.phone ?? ""),
-            status: (next.status as StatusFilter) ?? "all",
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="用户列表"
@@ -567,7 +623,7 @@ function AdminUsersPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button type="button" size="sm" onClick={handleOpenCreate}>
-                    <UserPlus className="size-3.5" aria-hidden />
+                    <Plus className="size-3.5" aria-hidden />
                     新增
                   </Button>
                 </TooltipTrigger>
@@ -591,19 +647,7 @@ function AdminUsersPage() {
             setPage(1);
           },
           loading: list.isFetching,
-          emptyTitle: "暂无用户",
-          emptyDescription: list.isError
-            ? "加载用户列表失败，请稍后重试或检查后端日志。"
-            : "当前筛选条件下没有匹配的用户，试着调整关键词或状态。",
-          emptyAction: list.isError ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => void list.refetch()}>
-              重试
-            </Button>
-          ) : (
-            <Button type="button" size="sm" variant="outline" onClick={handleResetFilters}>
-              清空筛选
-            </Button>
-          ),
+          emptyTitle: "暂无数据",
           error: list.isError
             ? list.error instanceof Error
               ? list.error.message
@@ -623,8 +667,7 @@ function AdminUsersPage() {
           if (!next) handleCloseEdit();
         }}
         title="编辑用户"
-        description={editing?.email ?? undefined}
-        dialogSize="md"
+        dialogSize="full"
         sheetSize="md"
         submitLabel="保存"
         loading={updateMut.isPending}
@@ -643,6 +686,8 @@ function AdminUsersPage() {
             user={editing}
             value={editForm}
             assignableRoles={assignableRoles}
+            departmentTree={departmentTree}
+            posts={posts}
             onChange={(patch) => setEditForm((s) => ({ ...s, ...patch }))}
           />
         ) : null}
@@ -654,8 +699,7 @@ function AdminUsersPage() {
           if (!next) handleCloseCreate();
         }}
         title="新增用户"
-        description="admin 视角下创建账号；账号初始为启用状态，初始密码由 admin 告知用户"
-        dialogSize="md"
+        dialogSize="full"
         sheetSize="md"
         submitLabel="创建"
         loading={createMut.isPending}
@@ -672,6 +716,8 @@ function AdminUsersPage() {
           key="create-form"
           value={createForm}
           assignableRoles={assignableRoles}
+          departmentTree={departmentTree}
+          posts={posts}
           onChange={(patch) => setCreateForm((s) => ({ ...s, ...patch }))}
         />
       </ResponsiveFormLayer>
@@ -684,6 +730,11 @@ type EditUserFormValue = {
   displayName: string;
   phone: string;
   status: "enabled" | "disabled";
+  deptId: string | null;
+  postIds: string[];
+  gender: "male" | "female" | "other" | null;
+  birthDate: string;
+  remark: string;
   roleIds: string[];
 };
 
@@ -694,6 +745,13 @@ type CreateUserFormValue = {
   name: string;
   displayName: string;
   phone: string;
+  status: "enabled" | "disabled";
+  deptId: string | null;
+  postIds: string[];
+  gender: "male" | "female" | "other" | null;
+  birthDate: string;
+  remark: string;
+  roleIds: string[];
 };
 
 const EMPTY_CREATE_FORM: CreateUserFormValue = {
@@ -703,6 +761,26 @@ const EMPTY_CREATE_FORM: CreateUserFormValue = {
   name: "",
   displayName: "",
   phone: "",
+  status: "enabled",
+  deptId: null,
+  postIds: [],
+  gender: null,
+  birthDate: "",
+  remark: "",
+  roleIds: [],
+};
+
+const EMPTY_EDIT_FORM: EditUserFormValue = {
+  name: "",
+  displayName: "",
+  phone: "",
+  status: "enabled",
+  deptId: null,
+  postIds: [],
+  gender: null,
+  birthDate: "",
+  remark: "",
+  roleIds: [],
 };
 
 type AssignableRoleOption = {
@@ -710,133 +788,363 @@ type AssignableRoleOption = {
   name: string;
 };
 
+function toDeptTreeNode(d: DepartmentNode): TreeNode {
+  return {
+    value: d.id,
+    label: d.name,
+    children: d.children?.map(toDeptTreeNode),
+  };
+}
+
+function toPostOption(p: {
+  id: string;
+  name: string;
+  departmentName: string;
+  status: "enabled" | "disabled";
+}): { value: string; label: string; disabled?: boolean } {
+  return {
+    value: p.id,
+    label: `${p.departmentName} / ${p.name}`,
+    disabled: p.status !== "enabled",
+  };
+}
+
+function DepartmentField({
+  id,
+  value,
+  departmentTree,
+  onChange,
+}: {
+  id: string;
+  value: string | null;
+  departmentTree: DepartmentNode[];
+  onChange: (next: string | null) => void;
+}) {
+  const deptTreeOptions = React.useMemo(() => departmentTree.map(toDeptTreeNode), [departmentTree]);
+
+  return (
+    <div className="min-w-0 space-y-2.5">
+      <Label htmlFor={id}>归属部门</Label>
+      <TreeSelect
+        id={id}
+        mode="single"
+        value={value}
+        onChange={(next) => onChange((next as string | null) ?? null)}
+        options={deptTreeOptions}
+        placeholder="请选择归属部门"
+        searchPlaceholder="搜索部门"
+        emptyText="暂无可选部门"
+        noMatchText="未找到匹配部门"
+        maxHeight={320}
+      />
+    </div>
+  );
+}
+
+function PostField({
+  id,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  value: string[];
+  options: Array<{ value: string; label: string; disabled?: boolean }>;
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <div className="min-w-0 space-y-2.5">
+      <Label htmlFor={id}>岗位</Label>
+      <SearchSelect
+        id={id}
+        aria-label="岗位"
+        value={value[0] ?? null}
+        onChange={(next) => onChange(next ? [next] : [])}
+        options={options}
+        placeholder="请选择岗位"
+        searchPlaceholder="搜索岗位"
+        emptyText="暂无可分配的岗位"
+        noMatchText="未找到匹配岗位"
+        maxHeight={320}
+      />
+    </div>
+  );
+}
+
+function RoleField({
+  id,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  value: string[];
+  options: Array<{ value: string; label: string; disabled?: boolean }>;
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <div className="min-w-0 space-y-2.5">
+      <Label htmlFor={id}>业务角色</Label>
+      <SearchMultiSelect
+        id={id}
+        aria-label="业务角色"
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder="选择该用户可承担的业务角色"
+        searchPlaceholder="搜索角色"
+        emptyText="暂无可分配的角色"
+        noMatchText="未找到匹配角色"
+        maxHeight={320}
+      />
+    </div>
+  );
+}
+
 function EditUserFields({
   user,
   value,
   assignableRoles,
+  departmentTree,
+  posts,
   onChange,
 }: {
   user: AdminUserDto;
   value: EditUserFormValue;
   assignableRoles: AssignableRoleOption[];
+  departmentTree: DepartmentNode[];
+  posts: Array<{
+    id: string;
+    name: string;
+    departmentId: string;
+    departmentName: string;
+    status: "enabled" | "disabled";
+  }>;
   onChange: (patch: Partial<EditUserFormValue>) => void;
 }) {
+  const postOptions = React.useMemo(() => posts.map(toPostOption), [posts]);
   return (
-    <>
-      <div className="flex items-center gap-3 rounded-[4px] border border-line bg-muted px-3 py-2.5">
-        <UserAvatar
-          user={{ displayName: user.displayName, username: user.username, email: user.email }}
-          size="sm"
-          variant="brand"
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+        <div className="space-y-2.5">
+          <Label htmlFor="edit-username">登录名称</Label>
+          <Input id="edit-username" value={user.username} disabled />
+        </div>
+        <DepartmentField
+          id="edit-deptId"
+          value={value.deptId}
+          departmentTree={departmentTree}
+          onChange={(next) => onChange({ deptId: next })}
         />
-        <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium text-text-strong">{user.username}</p>
-          <p className="truncate text-[11px] text-text-mute">{user.email}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="edit-name">姓名</Label>
-          <Input
-            id="edit-name"
-            value={value.name}
-            onChange={(e) => onChange({ name: e.target.value })}
-            placeholder="用户真实姓名"
-            maxLength={50}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="edit-displayName">昵称</Label>
-          <Input
-            id="edit-displayName"
-            value={value.displayName}
-            onChange={(e) => onChange({ displayName: e.target.value })}
-            placeholder="在系统内显示的友好名"
-            maxLength={50}
-          />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="edit-phone">手机号</Label>
+        <div className="space-y-2.5">
+          <Label htmlFor="edit-phone">手机号码</Label>
           <Input
             id="edit-phone"
             type="tel"
             inputMode="tel"
             value={value.phone}
             onChange={(e) => onChange({ phone: e.target.value })}
-            placeholder="可选，例：+8613800138000"
+            placeholder="请输入手机号"
             maxLength={20}
           />
         </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="edit-status">账号状态</Label>
-        <Select
-          value={value.status}
-          onValueChange={(v) => onChange({ status: v as "enabled" | "disabled" })}
-        >
-          <SelectTrigger id="edit-status">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="enabled">启用</SelectItem>
-            <SelectItem value="disabled">禁用</SelectItem>
-          </SelectContent>
-        </Select>
-        {value.status === "disabled" ? (
-          <p className="text-[11px] text-text-mute">禁用后该账号将无法登录，相关历史数据保留。</p>
-        ) : null}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="edit-roles">业务角色</Label>
-        <MultiSelect
-          ariaLabel="业务角色"
+        <div className="space-y-2.5">
+          <Label htmlFor="edit-email">邮箱</Label>
+          <Input id="edit-email" type="email" value={user.email} disabled />
+        </div>
+        <div className="space-y-2.5">
+          <Label htmlFor="edit-name">真实姓名</Label>
+          <Input
+            id="edit-name"
+            value={value.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder="请输入真实姓名"
+            maxLength={50}
+          />
+        </div>
+        <div className="space-y-2.5">
+          <Label htmlFor="edit-displayName">用户昵称</Label>
+          <Input
+            id="edit-displayName"
+            value={value.displayName}
+            onChange={(e) => onChange({ displayName: e.target.value })}
+            placeholder="请输入用户昵称"
+            maxLength={50}
+          />
+        </div>
+        <div className="space-y-2.5">
+          <Label htmlFor="edit-password">用户密码</Label>
+          <Input
+            id="edit-password"
+            type="password"
+            value="********"
+            disabled
+            title="密码通过重置密码操作修改"
+          />
+        </div>
+        <div className="space-y-2.5">
+          <Label>用户性别</Label>
+          <div className="flex h-8 items-center gap-5 rounded-[4px] border border-transparent px-0.5 text-[13px]">
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="edit-gender"
+                checked={value.gender === null}
+                onChange={() => onChange({ gender: null })}
+                className="size-4"
+              />
+              <span>保密</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="edit-gender"
+                checked={value.gender === "male"}
+                onChange={() => onChange({ gender: "male" })}
+                className="size-4"
+              />
+              <span>男</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="edit-gender"
+                checked={value.gender === "female"}
+                onChange={() => onChange({ gender: "female" })}
+                className="size-4"
+              />
+              <span>女</span>
+            </label>
+          </div>
+        </div>
+        <div className="space-y-2.5">
+          <Label>状态</Label>
+          <div className="flex h-8 items-center gap-5 rounded-[4px] border border-transparent px-0.5 text-[13px]">
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="edit-status"
+                checked={value.status === "disabled"}
+                onChange={() => onChange({ status: "disabled" })}
+                className="size-4"
+              />
+              <span>禁用</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="edit-status"
+                checked={value.status === "enabled"}
+                onChange={() => onChange({ status: "enabled" })}
+                className="size-4"
+              />
+              <span>启用</span>
+            </label>
+          </div>
+        </div>
+        <PostField
+          id="edit-posts"
+          value={value.postIds}
+          options={postOptions}
+          onChange={(next) => onChange({ postIds: next })}
+        />
+        <RoleField
+          id="edit-roles"
           value={value.roleIds}
-          onChange={(next) => onChange({ roleIds: next })}
           options={assignableRoles.map((r) => ({
             value: r.id,
             label: r.name,
           }))}
-          placeholder="选择该用户可承担的业务角色"
-          emptyText="暂无可分配的角色"
+          onChange={(next) => onChange({ roleIds: next })}
         />
-        <p className="text-[11px] text-text-mute">
-          未选择将清空该用户全部业务角色；仅展示启用中的角色。
-        </p>
+        <div className="space-y-2.5">
+          <Label htmlFor="edit-birthDate">出生日期</Label>
+          <DatePicker
+            id="edit-birthDate"
+            value={value.birthDate || null}
+            onChange={(next) => onChange({ birthDate: next ?? "" })}
+          />
+        </div>
+        <div className="space-y-2.5 sm:col-span-2">
+          <Label htmlFor="edit-remark">备注</Label>
+          <Input
+            id="edit-remark"
+            value={value.remark}
+            onChange={(e) => onChange({ remark: e.target.value })}
+            placeholder="请输入"
+            maxLength={500}
+          />
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
 function CreateUserFields({
   value,
-  // v1.0 admin 创建不接 roleIds；_assignableRoles 参数保留便于 v2 加业务角色多选。
-  assignableRoles: _assignableRoles,
+  assignableRoles,
+  departmentTree,
+  posts,
   onChange,
 }: {
   value: CreateUserFormValue;
   assignableRoles: AssignableRoleOption[];
+  departmentTree: DepartmentNode[];
+  posts: Array<{
+    id: string;
+    name: string;
+    departmentId: string;
+    departmentName: string;
+    status: "enabled" | "disabled";
+  }>;
   onChange: (patch: Partial<CreateUserFormValue>) => void;
 }) {
+  const postOptions = React.useMemo(() => posts.map(toPostOption), [posts]);
+  const roleOptions = React.useMemo(
+    () =>
+      assignableRoles.map((r) => ({
+        value: r.id,
+        label: r.name,
+      })),
+    [assignableRoles],
+  );
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+        <div className="space-y-2.5">
           <Label htmlFor="create-username">
-            用户名 <span className="text-destructive">*</span>
+            登录名称 <span className="text-destructive">*</span>
           </Label>
           <Input
             id="create-username"
             value={value.username}
             onChange={(e) => onChange({ username: e.target.value })}
-            placeholder="3-30 位字母 / 数字 / 下划线 / 短横线"
+            placeholder="请输入登录名称"
             maxLength={30}
             autoFocus
           />
         </div>
-        <div className="space-y-1.5">
+        <DepartmentField
+          id="create-deptId"
+          value={value.deptId}
+          departmentTree={departmentTree}
+          onChange={(next) => onChange({ deptId: next })}
+        />
+        <div className="space-y-2.5">
+          <Label htmlFor="create-phone">
+            手机号码 <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="create-phone"
+            type="tel"
+            inputMode="tel"
+            value={value.phone}
+            onChange={(e) => onChange({ phone: e.target.value })}
+            placeholder="请输入手机号"
+            maxLength={20}
+          />
+        </div>
+        <div className="space-y-2.5">
           <Label htmlFor="create-email">
             邮箱 <span className="text-destructive">*</span>
           </Label>
@@ -845,60 +1153,136 @@ function CreateUserFields({
             type="email"
             value={value.email}
             onChange={(e) => onChange({ email: e.target.value })}
-            placeholder="user@yishan.com"
+            placeholder="example@email.com"
             maxLength={128}
           />
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-2.5">
+          <Label htmlFor="create-name">真实姓名</Label>
+          <Input
+            id="create-name"
+            value={value.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder="请输入真实姓名"
+            maxLength={50}
+          />
+        </div>
+        <div className="space-y-2.5">
+          <Label htmlFor="create-displayName">用户昵称</Label>
+          <Input
+            id="create-displayName"
+            value={value.displayName}
+            onChange={(e) => onChange({ displayName: e.target.value })}
+            placeholder="请输入用户昵称"
+            maxLength={50}
+          />
+        </div>
+        <div className="space-y-2.5">
           <Label htmlFor="create-password">
-            初始密码 <span className="text-destructive">*</span>
+            用户密码 <span className="text-destructive">*</span>
           </Label>
           <Input
             id="create-password"
             type="password"
             value={value.password}
             onChange={(e) => onChange({ password: e.target.value })}
-            placeholder="8-128 位（admin 告知用户首次登录后建议改密）"
+            placeholder="请输入密码"
             maxLength={128}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="create-name">姓名</Label>
-          <Input
-            id="create-name"
-            value={value.name}
-            onChange={(e) => onChange({ name: e.target.value })}
-            placeholder="可选"
-            maxLength={50}
+        <div className="space-y-2.5">
+          <Label>用户性别</Label>
+          <div className="flex h-8 items-center gap-5 rounded-[4px] border border-transparent px-0.5 text-[13px]">
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="create-gender"
+                checked={value.gender === null}
+                onChange={() => onChange({ gender: null })}
+                className="size-4"
+              />
+              <span>保密</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="create-gender"
+                checked={value.gender === "male"}
+                onChange={() => onChange({ gender: "male" })}
+                className="size-4"
+              />
+              <span>男</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="create-gender"
+                checked={value.gender === "female"}
+                onChange={() => onChange({ gender: "female" })}
+                className="size-4"
+              />
+              <span>女</span>
+            </label>
+          </div>
+        </div>
+        <div className="space-y-2.5">
+          <Label>状态</Label>
+          <div className="flex h-8 items-center gap-5 rounded-[4px] border border-transparent px-0.5 text-[13px]">
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="create-status"
+                checked={value.status === "disabled"}
+                onChange={() => onChange({ status: "disabled" })}
+                className="size-4"
+              />
+              <span>禁用</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-text-strong">
+              <input
+                type="radio"
+                name="create-status"
+                checked={value.status === "enabled"}
+                onChange={() => onChange({ status: "enabled" })}
+                className="size-4"
+              />
+              <span>启用</span>
+            </label>
+          </div>
+        </div>
+        <PostField
+          id="create-posts"
+          value={value.postIds}
+          options={postOptions}
+          onChange={(next) => onChange({ postIds: next })}
+        />
+        <RoleField
+          id="create-roles"
+          value={value.roleIds}
+          options={roleOptions}
+          onChange={(next) => onChange({ roleIds: next })}
+        />
+        <div className="space-y-2.5">
+          <Label htmlFor="create-birthDate">出生日期</Label>
+          <DatePicker
+            id="create-birthDate"
+            value={value.birthDate || null}
+            onChange={(next) => onChange({ birthDate: next ?? "" })}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="create-displayName">昵称</Label>
-          <Input
-            id="create-displayName"
-            value={value.displayName}
-            onChange={(e) => onChange({ displayName: e.target.value })}
-            placeholder="可选"
-            maxLength={50}
-          />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="create-phone">手机号</Label>
-          <Input
-            id="create-phone"
-            type="tel"
-            inputMode="tel"
-            value={value.phone}
-            onChange={(e) => onChange({ phone: e.target.value })}
-            placeholder="可选，例：+8613800138000"
-            maxLength={20}
+        <div className="space-y-2.5 sm:col-span-2">
+          <Label htmlFor="create-remark">备注</Label>
+          <textarea
+            id="create-remark"
+            value={value.remark}
+            onChange={(e) => onChange({ remark: e.target.value })}
+            placeholder="请输入内容"
+            maxLength={500}
+            rows={4}
+            className="border-line placeholder:text-text-mute focus-visible:border-brand-500 focus-visible:ring-brand-500 focus-visible:ring-[1px] flex min-h-[92px] w-full resize-none rounded-[4px] border bg-white px-3 py-2 text-[13px] leading-[1.6] text-text-strong outline-none"
           />
         </div>
       </div>
-
-      <p className="text-[11px] text-text-mute">
-        新用户默认从空业务角色起步（auth 注册流程不接 roleIds），保存后可在「编辑」中分配。
-      </p>
     </div>
   );
 }

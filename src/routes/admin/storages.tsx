@@ -80,7 +80,7 @@ export const Route = createFileRoute("/admin/storages")({
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -266,7 +266,7 @@ function AdminStoragesPage() {
       width: "240px",
       cell: (row) => (
         <span className="truncate text-[13px] text-text-soft" title={row.description ?? ""}>
-          {row.description ?? <span className="text-text-mute">—</span>}
+          {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
@@ -430,7 +430,8 @@ function AdminStoragesPage() {
               <Input
                 id="filter-keyword"
                 className={FILTER_CONTROL_CLASS}
-                placeholder="请输入"
+                allowClear
+                placeholder="搜索存储名"
                 value={filters.keyword}
                 onChange={(e) => applyFilterPatch({ keyword: e.target.value })}
               />
@@ -492,6 +493,7 @@ function AdminStoragesPage() {
                 id="filter-created-from"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdFrom}
                 onChange={(e) => applyFilterPatch({ createdFrom: e.target.value })}
               />
@@ -502,6 +504,7 @@ function AdminStoragesPage() {
                 id="filter-created-to"
                 type="datetime-local"
                 className={FILTER_CONTROL_CLASS}
+                allowClear
                 value={filters.createdTo}
                 onChange={(e) => applyFilterPatch({ createdTo: e.target.value })}
               />
@@ -1078,7 +1081,7 @@ function ConfigSecretField({
         autoComplete="off"
         value={typeof value === "string" ? value : ""}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={currentRedacted ? "已隐藏，重新输入以覆盖" : "请输入"}
+        placeholder={currentRedacted ? "已隐藏，重新输入以覆盖" : "如:sk-xxxxxx"}
       />
       <p className="text-[11px] text-text-mute">
         当前以 <span className="font-mono">******</span> 形式回显；保存后会再次隐藏。
