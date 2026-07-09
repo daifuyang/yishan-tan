@@ -49,7 +49,7 @@ export function AdminShell({ children, collapsed = false, onToggleCollapsed }: A
           </aside>
 
           <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mx-auto w-full max-w-[1280px]">{children}</div>
+            <div className="w-full">{children}</div>
           </main>
         </div>
       </div>
