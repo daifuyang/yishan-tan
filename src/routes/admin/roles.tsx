@@ -330,6 +330,8 @@ function AdminRolesPage() {
               className={TABLE_ACTION_CLASS}
               onClick={(e) => {
                 e.stopPropagation();
+                closeRowConfirms();
+                setMoreMenuRowId(null);
                 handleStartEdit(row);
               }}
             >
