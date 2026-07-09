@@ -93,19 +93,6 @@ export function AdminSidebarContent({ collapsed = false, onNavigate }: AdminSide
           </>
         )}
       </nav>
-
-      <SidebarFooterCard collapsed={collapsed} />
-    </div>
-  );
-}
-
-function SidebarFooterCard({ collapsed = false }: { collapsed?: boolean }) {
-  if (collapsed) {
-    return <div className="mt-auto border-t border-line py-2" />;
-  }
-  return (
-    <div className="mt-auto border-t border-line bg-line-soft/30 px-4 py-3">
-      <p className="text-[11px] text-text-mute">v1.0 · 移山后台</p>
     </div>
   );
 }
