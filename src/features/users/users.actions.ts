@@ -3,9 +3,11 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireAdmin } from "~/lib/authorization.server";
 import { contextFromRequest, requireRequestContext } from "~/server/request-context";
+import { assertCanResetPassword } from "./users.policy";
 import {
   changePasswordSchema,
   loginLogListQuerySchema,
+  resetPasswordSchema,
   updateUserSchema,
   userListQuerySchema,
 } from "./users.schema";
@@ -19,6 +21,7 @@ import {
   listApiKeysService,
   listMyLoginLogsService,
   listUsersService,
+  resetUserPasswordService,
   updateUserService,
 } from "./users.service";
 
@@ -68,6 +71,14 @@ export const deleteUser = createServerFn({ method: "POST" })
       throw new Error("CANNOT_DELETE_SELF");
     }
     return deleteUserService(data.id);
+  });
+
+export const resetUserPassword = createServerFn({ method: "POST" })
+  .validator(resetPasswordSchema)
+  .handler(async ({ data }) => {
+    const ctx = await adminCtx();
+    assertCanResetPassword(ctx, data.userId);
+    return resetUserPasswordService({ userId: data.userId });
   });
 
 export const exportUsers = createServerFn({ method: "GET" })

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { hashPassword } from "better-auth/crypto";
 import { type SQL, and, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { auth } from "~/lib/auth.server";
@@ -17,6 +18,7 @@ import type {
   ListMyLoginLogsService,
   ListUsersService,
   LoginLogDto,
+  ResetUserPasswordService,
   UpdateUserService,
 } from "./users.types";
 
@@ -323,6 +325,83 @@ export const changeMyPasswordService: ChangeMyPasswordService = async ({
   }
   void userId;
   return { ok: true };
+};
+
+/**
+ * 生成 16 位临时密码：大小写字母 + 数字各至少 1 位，避免易混淆字符 0/O/1/l/I。
+ * 返回明文，调用方负责一次性展示给管理员。
+ */
+function generateTemporaryPassword(): string {
+  const upper = "ABCDEFGHJKMNPQRSTUVWXYZ";
+  const lower = "abcdefghjkmnpqrstuvwxyz";
+  const digit = "23456789";
+  const all = `${upper}${lower}${digit}`;
+  const bytes = randomBytes(16);
+  const pick = (charset: string, idx: number): string => {
+    const b = bytes.at(idx) ?? 0;
+    return charset.charAt(b % charset.length);
+  };
+  let pwd = "";
+  // 先确保三类字符各出现 1 次
+  pwd += pick(upper, 0);
+  pwd += pick(lower, 1);
+  pwd += pick(digit, 2);
+  for (let i = 3; i < 16; i += 1) {
+    pwd += pick(all, i);
+  }
+  // 打散顺序（Fisher–Yates with crypto bytes），避免前 3 位规律
+  const arr = pwd.split("");
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = (bytes.at(i) ?? 0) % (i + 1);
+    const tmp = arr[i];
+    const swap = arr[j];
+    if (tmp !== undefined && swap !== undefined) {
+      arr[i] = swap;
+      arr[j] = tmp;
+    }
+  }
+  return arr.join("");
+}
+
+export const resetUserPasswordService: ResetUserPasswordService = async ({ userId }) => {
+  const db = getDb();
+  const existing = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(and(eq(schema.user.id, userId), isNull(schema.user.deletedAt)))
+    .limit(1);
+  if (!existing[0]) throw Errors.notFound("用户不存在");
+
+  const temporaryPassword = generateTemporaryPassword();
+  const hashed = await hashPassword(temporaryPassword);
+
+  // better-auth 邮箱密码登录把哈希存在 account.password（providerId = "credential"）
+  await db.transaction(async (tx) => {
+    const accountRows = await tx
+      .select({ id: schema.account.id })
+      .from(schema.account)
+      .where(and(eq(schema.account.userId, userId), eq(schema.account.providerId, "credential")))
+      .limit(1);
+
+    if (accountRows[0]) {
+      await tx
+        .update(schema.account)
+        .set({ password: hashed, updatedAt: new Date() })
+        .where(eq(schema.account.id, accountRows[0].id));
+    } else {
+      await tx.insert(schema.account).values({
+        userId,
+        providerId: "credential",
+        accountId: userId,
+        password: hashed,
+      });
+    }
+
+    // 失效该用户所有 session，强制下次登录使用新密码
+    await tx.delete(schema.session).where(eq(schema.session.userId, userId));
+  });
+
+  return { temporaryPassword };
 };
 
 export const listMyLoginLogsService: ListMyLoginLogsService = async ({

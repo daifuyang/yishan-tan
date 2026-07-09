@@ -83,6 +83,10 @@ export type ChangeMyPasswordService = (input: {
   newPassword: string;
 }) => Promise<{ ok: true }>;
 
+export type ResetUserPasswordService = (input: {
+  userId: string;
+}) => Promise<{ temporaryPassword: string }>;
+
 export type ListMyLoginLogsService = (input: {
   userId: string;
   page: number;

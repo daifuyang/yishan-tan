@@ -1,7 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { createUser } from "~/features/auth/auth.actions";
-import { deleteUser, exportUsers, updateUser } from "~/features/users/users.actions";
+import {
+  deleteUser,
+  exportUsers,
+  resetUserPassword,
+  updateUser,
+} from "~/features/users/users.actions";
 import { usersQueryKey } from "~/features/users/users.queries";
 
 /**
@@ -71,6 +76,22 @@ export function useDeleteUser() {
   return useMutation({
     mutationFn: async (id: string) => {
       return deleteUser({ data: { id } });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey.all });
+    },
+  });
+}
+
+/**
+ * 管理员重置用户密码。返回新生成的临时密码（明文，仅展示一次），
+ * 缓存层无需 invalidate（用户列表字段不包含密码）。
+ */
+export function useResetUserPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      return resetUserPassword({ data: { userId } });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: usersQueryKey.all });

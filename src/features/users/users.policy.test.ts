@@ -10,7 +10,13 @@ vi.mock("~/lib/authorization.server", () => ({
   requireSelfOrAdmin: vi.fn(),
 }));
 
-const { isSystemAdmin, assertNotSelfOrSystemAdmin } = await import("~/features/users/users.policy");
+const { isSystemAdmin, assertNotSelfOrSystemAdmin, assertCanResetPassword } = await import(
+  "~/features/users/users.policy"
+);
+
+function ctxOf(userId: string) {
+  return { userId, headers: new Headers(), authKind: "session" as const };
+}
 
 describe("users.policy", () => {
   describe("isSystemAdmin", () => {
@@ -34,6 +40,24 @@ describe("users.policy", () => {
 
     it("rejects when target is system admin", () => {
       expect(() => assertNotSelfOrSystemAdmin(ADMIN_ID, OPERATOR_ID)).toThrow();
+    });
+  });
+
+  describe("assertCanResetPassword", () => {
+    it("allows system admin resetting a regular user", () => {
+      expect(() => assertCanResetPassword(ctxOf(ADMIN_ID), TARGET_ID)).not.toThrow();
+    });
+
+    it("allows regular admin resetting another regular user", () => {
+      expect(() => assertCanResetPassword(ctxOf(OPERATOR_ID), TARGET_ID)).not.toThrow();
+    });
+
+    it("rejects resetting yourself", () => {
+      expect(() => assertCanResetPassword(ctxOf(OPERATOR_ID), OPERATOR_ID)).toThrow();
+    });
+
+    it("rejects regular admin resetting system admin", () => {
+      expect(() => assertCanResetPassword(ctxOf(OPERATOR_ID), ADMIN_ID)).toThrow();
     });
   });
 });

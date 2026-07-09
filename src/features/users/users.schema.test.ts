@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   changePasswordSchema,
   loginLogListQuerySchema,
+  resetPasswordSchema,
   updateUserSchema,
   userListQuerySchema,
 } from "~/features/users/users.schema";
@@ -54,6 +55,23 @@ describe("users.schema", () => {
       expect(() =>
         changePasswordSchema.parse({ oldPassword: "short", newPassword: "newpass1" }),
       ).toThrow();
+    });
+  });
+
+  describe("resetPasswordSchema", () => {
+    it("accepts valid uuid", () => {
+      const parsed = resetPasswordSchema.parse({
+        userId: "123e4567-e89b-12d3-a456-426614174000",
+      });
+      expect(parsed.userId).toBe("123e4567-e89b-12d3-a456-426614174000");
+    });
+
+    it("rejects non-uuid userId", () => {
+      expect(() => resetPasswordSchema.parse({ userId: "not-uuid" })).toThrow();
+    });
+
+    it("rejects missing userId", () => {
+      expect(() => resetPasswordSchema.parse({})).toThrow();
     });
   });
 

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, Download, Plus, ShieldOff, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, Download, Plus, ShieldOff, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -20,6 +20,14 @@ import {
 } from "@/components/admin/form";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +58,7 @@ import {
   useCreateUser,
   useDeleteUser,
   useExportUsers,
+  useResetUserPassword,
   useUpdateUser,
 } from "~/features/users/users.use-mutations";
 import { downloadCsv } from "~/lib/download-csv";
@@ -119,6 +128,13 @@ function AdminUsersPage() {
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [resetPopconfirmRowId, setResetPopconfirmRowId] = React.useState<string | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = React.useState<{
+    userId: string;
+    displayName: string;
+    temporaryPassword: string;
+  } | null>(null);
+  const [resetPasswordCopied, setResetPasswordCopied] = React.useState(false);
 
   const query = toQuery(filters, page, pageSize);
   const { data: currentUser } = useCurrentUser();
@@ -129,6 +145,7 @@ function AdminUsersPage() {
   const bulkDeleteMut = useBulkDeleteUsers();
   const exportMut = useExportUsers();
   const createMut = useCreateUser();
+  const resetPasswordMut = useResetUserPassword();
   const assignableRolesQuery = useAssignableRoles();
   const assignableRoles = assignableRolesQuery.data?.items ?? [];
   const departmentTreeQuery = useDepartmentTree();
@@ -153,6 +170,7 @@ function AdminUsersPage() {
     setSelectedKeys([]);
     setPopconfirmRowId(null);
     setDisablePopconfirmRowId(null);
+    setResetPopconfirmRowId(null);
   }, []);
 
   React.useEffect(() => {
@@ -279,6 +297,54 @@ function AdminUsersPage() {
     },
     [deleteMut],
   );
+
+  const handleResetPasswordConfirm = React.useCallback(
+    async (row: AdminUserDto) => {
+      try {
+        const result = await resetPasswordMut.mutateAsync(row.id);
+        setResetPopconfirmRowId(null);
+        setResetPasswordResult({
+          userId: row.id,
+          displayName: row.displayName ?? row.username,
+          temporaryPassword: result.temporaryPassword,
+        });
+        setResetPasswordCopied(false);
+      } catch {
+        // 保留弹层让用户看到错误
+      }
+    },
+    [resetPasswordMut],
+  );
+
+  const handleCloseResetPasswordDialog = React.useCallback(() => {
+    setResetPasswordResult(null);
+    setResetPasswordCopied(false);
+    resetPasswordMut.reset();
+  }, [resetPasswordMut]);
+
+  const handleCopyResetPassword = React.useCallback(async () => {
+    if (!resetPasswordResult) return;
+    const { temporaryPassword } = resetPasswordResult;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(temporaryPassword);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = temporaryPassword;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setResetPasswordCopied(true);
+      window.setTimeout(() => setResetPasswordCopied(false), 1500);
+    } catch {
+      // 静默失败：临时密码本身已在 Dialog 里可见
+    }
+  }, [resetPasswordResult]);
 
   const columns: ResourceColumn<AdminUserDto>[] = [
     {
@@ -459,21 +525,15 @@ function AdminUsersPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="w-32 rounded-[4px]">
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        className="cursor-not-allowed opacity-50"
-                      >
-                        重置密码
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      <p>暂未上线（需后端 resetPassword action）</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <DropdownMenuItem
+                  disabled={isSelf || resetPasswordMut.isPending}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setResetPopconfirmRowId(row.id);
+                  }}
+                >
+                  重置密码
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -488,6 +548,26 @@ function AdminUsersPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             <Popconfirm
+              open={resetPopconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && resetPopconfirmRowId === row.id) {
+                  setResetPopconfirmRowId(null);
+                  resetPasswordMut.reset();
+                }
+              }}
+              title={`重置「${row.displayName ?? row.username}」的密码？`}
+              description="将生成新的随机密码并强制该用户下线，请把新密码告知对方。"
+              confirmLabel="确认重置"
+              tone="danger"
+              loading={resetPasswordMut.isPending && resetPopconfirmRowId === row.id}
+              onConfirm={() => handleResetPasswordConfirm(row)}
+              side="top"
+              align="end"
+              sideOffset={6}
+            >
+              <span aria-hidden className="size-0" />
+            </Popconfirm>
+            <Popconfirm
               open={popconfirmRowId === row.id}
               onOpenChange={(next) => {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
@@ -498,23 +578,6 @@ function AdminUsersPage() {
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
               onConfirm={() => handleDeleteConfirm(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
-            >
-              <span aria-hidden className="size-0" />
-            </Popconfirm>
-            <Popconfirm
-              open={disablePopconfirmRowId === row.id}
-              onOpenChange={(next) => {
-                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
-              }}
-              title="禁用账号"
-              description="你确认禁用吗？"
-              confirmLabel="禁用"
-              tone="danger"
-              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
-              onConfirm={() => handleToggleStatus(row)}
               side="top"
               align="end"
               sideOffset={6}
@@ -820,6 +883,55 @@ function AdminUsersPage() {
           onChange={(patch) => setCreateForm((s) => ({ ...s, ...patch }))}
         />
       </ResponsiveFormLayer>
+
+      <Dialog
+        open={resetPasswordResult !== null}
+        onOpenChange={(next) => {
+          if (!next) handleCloseResetPasswordDialog();
+        }}
+      >
+        <DialogContent size="sm" showClose={false}>
+          <DialogHeader>
+            <DialogTitle>密码已重置</DialogTitle>
+            <DialogDescription>
+              「{resetPasswordResult?.displayName ?? ""}」的新临时密码如下，
+              请复制并通过安全渠道告知对方。该密码仅展示一次，关闭后无法再次查看。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 px-6 pt-2">
+            <Input
+              readOnly
+              value={resetPasswordResult?.temporaryPassword ?? ""}
+              className="font-mono tracking-wider"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleCopyResetPassword()}
+              className="min-w-[72px]"
+            >
+              {resetPasswordCopied ? (
+                <>
+                  <Check className="size-3.5" aria-hidden />
+                  已复制
+                </>
+              ) : (
+                <>
+                  <Copy className="size-3.5" aria-hidden />
+                  复制
+                </>
+              )}
+            </Button>
+          </div>
+          <DialogFooter className="px-6 pt-4 pb-6">
+            <Button type="button" onClick={handleCloseResetPasswordDialog}>
+              我已记录，关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

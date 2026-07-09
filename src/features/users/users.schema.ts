@@ -52,6 +52,10 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(8).max(128),
 });
 
+export const resetPasswordSchema = z.object({
+  userId: z.string().uuid(),
+});
+
 export const loginLogListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -60,4 +64,5 @@ export const loginLogListQuerySchema = z.object({
 export type UserListQuery = z.infer<typeof userListQuerySchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type LoginLogListQuery = z.infer<typeof loginLogListQuerySchema>;
