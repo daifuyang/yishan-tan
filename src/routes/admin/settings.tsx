@@ -117,9 +117,9 @@ function SettingsForm() {
         </CardContent>
       </Card>
 
-      <div className="fixed right-0 bottom-0 left-0 z-20 lg:left-[var(--admin-sidebar-width)]">
-        <div className="border-t border-line bg-white px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] sm:px-6 lg:px-8">
-          <div className="flex items-center justify-end gap-3">
+      <div className="fixed right-0 bottom-0 left-0 z-20 transition-all duration-200 lg:left-[var(--admin-sidebar-width)]">
+        <div className="flex h-16 items-center justify-end border-t border-black/[0.06] bg-white/70 px-4 text-text-strong shadow-[0_-2px_8px_rgba(29,33,41,0.04)] backdrop-blur-md sm:px-6 lg:px-8">
+          <div className="flex w-full items-center justify-end gap-3">
             {errorMessage ? (
               <span
                 role="alert"
