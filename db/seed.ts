@@ -729,7 +729,7 @@ async function seedBusinessData() {
   return { deptIdByName, postIdByCode, auxRoleIdByName };
 }
 
-async function seedAuthorization(adminUserId: string) {
+async function seedAuthorization(adminUserId: string): Promise<Map<string, string>> {
   const db = getDb();
   const roleId = await ensureAdminRole();
   const menuIds = await seedMenus();
@@ -737,7 +737,7 @@ async function seedAuthorization(adminUserId: string) {
   await bindUserToAdminRole(adminUserId, roleId);
   const defaultStorageId = await ensureDefaultLocalStorage();
   const defaultPortalId = await ensureDefaultPortal();
-  const { postIdByCode, auxRoleIdByName } = await seedBusinessData();
+  const { deptIdByName, postIdByCode, auxRoleIdByName } = await seedBusinessData();
   // 把 admin 绑定到 CEO 岗位（多角色并行能工作）
   const adminPostId = postIdByCode.get("ceo");
   if (adminPostId) {
@@ -757,6 +757,112 @@ async function seedAuthorization(adminUserId: string) {
   printAuthorizationBanner(roleId, menuIds.length);
   console.log(`✔ default storage id : ${defaultStorageId}`);
   console.log(`✔ default portal id  : ${defaultPortalId}`);
+  return deptIdByName;
+}
+
+const TEST_USER_PASSWORD = "Test1234";
+
+/**
+ * 回归测试账号：覆盖常见子部门，便于 e2e / 手动跑「重置密码 / 编辑 / 删除 / 筛选」等场景。
+ * 全部为普通成员（db role=member）、启用状态；密码统一 Test1234 方便脚本调用。
+ * 写入幂等：用户名冲突时静默跳过（视为已 seed）。
+ */
+const TEST_USERS_SEED: ReadonlyArray<{
+  username: string;
+  email: string;
+  displayName: string;
+  phone: string;
+  departmentName: string;
+}> = [
+  {
+    username: "alice",
+    email: "alice@yishan.dev",
+    displayName: "张爱丽",
+    phone: "13800000001",
+    departmentName: "研发部门（上海）",
+  },
+  {
+    username: "bob",
+    email: "bob@yishan.dev",
+    displayName: "鲍勃",
+    phone: "13800000002",
+    departmentName: "研发部门（上海）",
+  },
+  {
+    username: "carol",
+    email: "carol@yishan.dev",
+    displayName: "王彩玲",
+    phone: "13800000003",
+    departmentName: "市场部门（上海）",
+  },
+  {
+    username: "david",
+    email: "david@yishan.dev",
+    displayName: "戴维",
+    phone: "13800000004",
+    departmentName: "财务部门（上海）",
+  },
+  {
+    username: "eve",
+    email: "eve@yishan.dev",
+    displayName: "伊芙",
+    phone: "13800000005",
+    departmentName: "运维部门（上海）",
+  },
+];
+
+type SeededTestUser = { username: string; email: string; displayName: string };
+
+async function seedTestUsers(deptIdByName: Map<string, string>): Promise<SeededTestUser[]> {
+  const seeded: SeededTestUser[] = [];
+  const headers = new Headers();
+  for (const item of TEST_USERS_SEED) {
+    const deptId = deptIdByName.get(item.departmentName);
+    if (!deptId) {
+      console.error(`✘ 测试账号「${item.username}」找不到部门「${item.departmentName}」，跳过`);
+      continue;
+    }
+    try {
+      const created = await createUserService(
+        {
+          email: item.email,
+          password: TEST_USER_PASSWORD,
+          username: item.username,
+          displayName: item.displayName,
+          phone: item.phone,
+          deptId,
+          status: "enabled",
+        },
+        headers,
+      );
+      seeded.push({
+        username: item.username,
+        email: item.email,
+        displayName: created.displayName ?? item.displayName,
+      });
+    } catch (err) {
+      if (isServerError(err) && err.code === "CONFLICT") {
+        // 用户名/邮箱已存在视为已 seed，不阻塞后续
+        seeded.push({ username: item.username, email: item.email, displayName: item.displayName });
+        continue;
+      }
+      throw err;
+    }
+  }
+  return seeded;
+}
+
+function printTestUsersBanner(users: readonly SeededTestUser[]): void {
+  if (users.length === 0) return;
+  console.log("");
+  console.log("✔ 测试账号已就绪（仅本地/回归用，请勿上线）");
+  console.log("─────────────────────────────────────");
+  for (const u of users) {
+    console.log(`  ${u.username.padEnd(8)} ${u.email.padEnd(20)} ${u.displayName}`);
+  }
+  console.log("─────────────────────────────────────");
+  console.log(`  密码    : ${TEST_USER_PASSWORD}`);
+  console.log("");
 }
 
 async function main(): Promise<void> {
@@ -778,7 +884,9 @@ async function main(): Promise<void> {
     const finalRole = existing.role === "admin" ? existing.role : await promoteToAdmin(existing.id);
     console.log(`⚠ 用户名「${input.username}」已存在，复用现有账号（id=${existing.id}）`);
     printSuccessBanner(input, finalRole, existing.id);
-    await seedAuthorization(existing.id);
+    const deptIdByName = await seedAuthorization(existing.id);
+    const seededTestUsers = await seedTestUsers(deptIdByName);
+    printTestUsersBanner(seededTestUsers);
     return;
   }
 
@@ -795,7 +903,9 @@ async function main(): Promise<void> {
     );
     const role = await promoteToAdmin(created.id);
     printSuccessBanner(input, role, created.id);
-    await seedAuthorization(created.id);
+    const deptIdByName = await seedAuthorization(created.id);
+    const seededTestUsers = await seedTestUsers(deptIdByName);
+    printTestUsersBanner(seededTestUsers);
   } catch (err) {
     if (isServerError(err) && err.code === "CONFLICT") {
       console.error(`✘ 用户名或邮箱已被占用：${err.message}`);
