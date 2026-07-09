@@ -20,7 +20,7 @@ export const Route = createFileRoute("/admin/settings")({
 
 function AdminSettingsPage() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-20">
       <SettingsForm />
     </div>
   );
@@ -117,7 +117,7 @@ function SettingsForm() {
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-0 z-20 -mx-4 mt-2 sm:-mx-6 lg:-mx-8">
+      <div className="fixed right-0 bottom-0 left-0 z-20 lg:left-[var(--admin-sidebar-width)]">
         <div className="border-t border-line bg-white px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] sm:px-6 lg:px-8">
           <div className="flex items-center justify-end gap-3">
             {errorMessage ? (

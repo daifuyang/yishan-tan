@@ -14,13 +14,16 @@ type AdminShellProps = {
 
 export function AdminShell({ children, collapsed = false, onToggleCollapsed }: AdminShellProps) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const shellStyle = {
+    "--admin-sidebar-width": collapsed ? "4rem" : "16rem",
+  } as React.CSSProperties;
 
   const closeMobile = React.useCallback(() => setMobileOpen(false), []);
   const openMobile = React.useCallback(() => setMobileOpen(true), []);
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-svh flex-col bg-page text-foreground">
+      <div className="flex min-h-svh flex-col bg-page text-foreground" style={shellStyle}>
         <AdminHeader
           onOpenMobileSidebar={openMobile}
           collapsed={collapsed}
