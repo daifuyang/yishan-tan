@@ -117,9 +117,8 @@ function SettingsForm() {
         </CardContent>
       </Card>
 
-      {/* Sticky bottom action bar — 高度对齐 SidebarFooterCard (py-3 + border-t) */}
-      <div className="sticky bottom-0 z-20 mt-2">
-        <div className="border-t border-line bg-white px-6 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
+      <div className="sticky bottom-0 z-20 -mx-4 mt-2 sm:-mx-6 lg:-mx-8">
+        <div className="border-t border-line bg-white px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] sm:px-6 lg:px-8">
           <div className="flex items-center justify-end gap-3">
             {errorMessage ? (
               <span
