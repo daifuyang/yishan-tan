@@ -400,23 +400,51 @@ function AdminUsersPage() {
             >
               编辑
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isDisabled) {
+            {isDisabled ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
                   void handleToggleStatus(row);
-                } else {
-                  setDisablePopconfirmRowId(row.id);
-                }
-              }}
-              disabled={updateMut.isPending}
-            >
-              {isDisabled ? "启用" : "禁用"}
-            </Button>
+                }}
+                disabled={updateMut.isPending}
+              >
+                启用
+              </Button>
+            ) : (
+              <Popconfirm
+                open={disablePopconfirmRowId === row.id}
+                onOpenChange={(next) => {
+                  if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+                }}
+                title="禁用账号"
+                description="你确认禁用吗？"
+                confirmLabel="禁用"
+                tone="danger"
+                loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+                onConfirm={() => handleToggleStatus(row)}
+                placement="top"
+                sideOffset={8}
+                arrow
+              >
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className={TABLE_DANGER_ACTION_CLASS}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDisablePopconfirmRowId(row.id);
+                  }}
+                  disabled={updateMut.isPending}
+                >
+                  禁用
+                </Button>
+              </Popconfirm>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

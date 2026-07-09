@@ -102,6 +102,7 @@ function AdminRolesPage() {
   const [createForm, setCreateForm] = React.useState<CreateRoleFormValue>(EMPTY_CREATE_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [moreMenuRowId, setMoreMenuRowId] = React.useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
@@ -187,11 +188,25 @@ function AdminRolesPage() {
       const next = row.status === "enabled" ? "disabled" : "enabled";
       try {
         await updateMut.mutateAsync({ id: row.id, status: next });
+        return true;
       } catch {
         // 错误已通过 useMutation errorMessage 暴露
+        return false;
       }
     },
     [updateMut],
+  );
+
+  const handleDisableConfirm = React.useCallback(
+    async (row: RoleListItemDto) => {
+      const ok = await handleToggleStatus(row);
+      if (ok) {
+        setDisablePopconfirmRowId(null);
+        setMoreMenuRowId(null);
+      }
+      // 失败时保留弹层和菜单让用户看到错误
+    },
+    [handleToggleStatus],
   );
 
   const handleDeleteConfirm = React.useCallback(
@@ -315,20 +330,42 @@ function AdminRolesPage() {
             >
               编辑
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                setPopconfirmRowId(row.id);
+            <Popconfirm
+              open={popconfirmRowId === row.id}
+              onOpenChange={(next) => {
+                if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
-              disabled={deleteMut.isPending}
+              title={`删除「${row.name}」？`}
+              description="你确认删除吗？"
+              confirmLabel="删除"
+              tone="danger"
+              loading={deleteMut.isPending && popconfirmRowId === row.id}
+              onConfirm={() => handleDeleteConfirm(row)}
+              placement="top"
+              sideOffset={8}
+              arrow
             >
-              删除
-            </Button>
-            <DropdownMenu>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPopconfirmRowId(row.id);
+                }}
+                disabled={deleteMut.isPending}
+              >
+                删除
+              </Button>
+            </Popconfirm>
+            <DropdownMenu
+              open={moreMenuRowId === row.id}
+              onOpenChange={(next) => {
+                setMoreMenuRowId(next ? row.id : null);
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
@@ -343,55 +380,49 @@ function AdminRolesPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="w-32 rounded-[4px]">
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    if (isDisabled) {
-                      void handleToggleStatus(row);
-                    } else {
-                      setDisablePopconfirmRowId(row.id);
-                    }
-                  }}
-                  disabled={isSystem}
-                >
-                  {isDisabled ? "启用" : "禁用"}
-                </DropdownMenuItem>
+                {isDisabled ? (
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      void handleToggleStatus(row).then((ok) => {
+                        if (ok) setMoreMenuRowId(null);
+                      });
+                    }}
+                    disabled={isSystem}
+                  >
+                    启用
+                  </DropdownMenuItem>
+                ) : (
+                  <Popconfirm
+                    open={disablePopconfirmRowId === row.id}
+                    onOpenChange={(next) => {
+                      if (!next && disablePopconfirmRowId === row.id) {
+                        setDisablePopconfirmRowId(null);
+                      }
+                    }}
+                    title="禁用角色"
+                    description="你确认禁用吗？"
+                    confirmLabel="禁用"
+                    tone="danger"
+                    loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+                    onConfirm={() => handleDisableConfirm(row)}
+                    placement="top"
+                    sideOffset={8}
+                    arrow
+                  >
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setDisablePopconfirmRowId(row.id);
+                      }}
+                      disabled={isSystem}
+                    >
+                      禁用
+                    </DropdownMenuItem>
+                  </Popconfirm>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Popconfirm
-              open={popconfirmRowId === row.id}
-              onOpenChange={(next) => {
-                if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
-              }}
-              title={`删除「${row.name}」？`}
-              description="你确认删除吗？"
-              confirmLabel="删除"
-              tone="danger"
-              loading={deleteMut.isPending && popconfirmRowId === row.id}
-              onConfirm={() => handleDeleteConfirm(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
-            >
-              <span aria-hidden className="size-0" />
-            </Popconfirm>
-            <Popconfirm
-              open={disablePopconfirmRowId === row.id}
-              onOpenChange={(next) => {
-                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
-              }}
-              title="禁用角色"
-              description="你确认禁用吗？"
-              confirmLabel="禁用"
-              tone="danger"
-              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
-              onConfirm={() => handleToggleStatus(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
-            >
-              <span aria-hidden className="size-0" />
-            </Popconfirm>
           </div>
         );
       },

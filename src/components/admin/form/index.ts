@@ -15,6 +15,7 @@ export {
   type PopconfirmProps,
   type PopconfirmSide,
   type PopconfirmAlign,
+  type PopconfirmPlacement,
   type PopconfirmTone,
 } from "./popconfirm";
 export { DatePicker, type DatePickerProps } from "./date-picker";
