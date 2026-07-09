@@ -28,7 +28,7 @@
 | users | ✗ | n/a | n/a | **draft+commit** | ✓+✓ | ✓ | ✗ (3 本地) | ✗ | **本地仍有 3 个 CLASS 常量**(待清) |
 | **roles**(基准) | ✗ | n/a | ✓ `DateRangePicker` | **draft+commit** | ✓+✓ | ✓ | ✗ (4 本地) | ✗ | **本地仍有 4 个 CLASS 常量**(待清) |
 | attachments | ✗ | 11px 本地字符串 | ✗ 2× `datetime-local` | **单态** | ✗+✓ | n/a | ✗ (3 本地) | ✗ | **filter 单态** + `filterCollapsible` 缺 + 用 2× datetime-local + mime chip 仍写 `font-mono text-[11px]` 而非 `MONO_CHIP` |
-| departments | ✗ | n/a | n/a | **单态** | ✗+✓ | n/a | ✗ (3 本地) | ✗ | **filter 单态** + `filterCollapsible` 缺 + `Popconfirm` 包 Button 子元素(非零尺寸 span 模式) + 页面级 destructive banner |
+| departments | ✗ | n/a | n/a | **单态** | ✗+✓ | n/a | ✗ (3 本地) | ✗ | **filter 单态** + `filterCollapsible` 缺 + `Popconfirm` 真实触发元素锚定未统一 + 页面级 destructive banner |
 | dicts | ✗ | `MONO_CELL` | ✓ `DateRangePicker` | draft+commit | ✓+✓ | ✓ | ✓ | ✓ | ✅ 已对齐 |
 | dicts/$typeCode | ✗ | — | ✗ 2× `datetime-local` | 单态 | — | n/a | — | — | **仍用 datetime-local**(子页面未跟进) |
 | login-logs | ✗ | 12px 本地 | ✗ 2× `<Input type="date">` | **单态** | ✓+✗ | n/a(只读) | ✗ (2 本地) | ✗ | **自造 `Sheet` + `DetailRow`** + 用 `<Input type=date>` 丢精度 + filter 单态 + 无 `filterDefaultCollapsed` |
@@ -50,7 +50,7 @@
 | `ResourcePage` / `ResourceTable` / `FilterBar` / `QueryFormItem` | `src/components/admin/{layout,data-table}/*` | ✅ |
 | `StatusBadge` / `StatusTone` | `src/components/admin/display/status-badge.tsx` | ✅ |
 | `ResponsiveFormLayer` / `FormDialog` / `FormSheet` | `src/components/admin/form/*` | ✅ |
-| `Popconfirm`(零尺寸 span 锚定模式) | `src/components/admin/form/popconfirm.tsx` | ✅ |
+| `Popconfirm`(真实触发元素锚定 + `placement` / 可选 `arrow`) | `src/components/admin/form/popconfirm.tsx` | ✅ |
 | `DateRangePicker` / `DatePicker` | `src/components/admin/form/date-range-picker.tsx` | ✅ |
 | `SearchSelect` / `SearchMultiSelect` / `TreeSelect` / `MenuTree` | `src/components/admin/form/*.tsx` | ✅ |
 | `EmptyState` / `UserAvatar` | `src/components/admin/display/*.tsx` | ✅ |
@@ -80,7 +80,7 @@
 | 3 | `filterCollapsible` 缺 | `attachments.tsx` + `departments.tsx` | 真实存在 |
 | 4 | 2× `datetime-local` 自造日期范围 | `attachments.tsx` + `dicts/$typeCode.tsx` | 真实存在 |
 | 5 | 2× `<Input type="date">`(丢精度) | `login-logs.tsx` | 真实存在 |
-| 6 | `Popconfirm` 包 Button 子元素(非零尺寸 span 模式) | `departments.tsx` | 真实存在(其他 8 页已统一) |
+| 6 | `Popconfirm` 仍未按真实触发元素锚定规则统一 | `departments.tsx` | 真实存在(需对齐 users/roles) |
 | 7 | 页面级 destructive banner(`destructive/5`) | `departments.tsx` | 真实存在(其他页走 Popconfirm 内部) |
 | 8 | 自造 `Sheet` + `DetailRow` 缺 `DetailSheet` 抽象 | `login-logs.tsx` | 真实存在 |
 | 9 | `font-mono text-[11px]` 仍写本地字符串而非 `MONO_CHIP` | `attachments.tsx` | 真实存在 |
@@ -285,13 +285,13 @@
   1. 本地 3 个 CLASS 常量;
   2. filter 单态;
   3. 缺 `filterCollapsible`;
-  4. `Popconfirm` 包 Button 作为 child(非零尺寸 span 模式)— 与其他 8 页不一致;
+  4. `Popconfirm` 触发锚点未按真实触发元素规则统一;
   5. 页面级 destructive banner(`destructive/5` 背景)— 其他页走 Popconfirm 内部。
 - **改动**:
   1. 改 import `tokens.ts`;
   2. 改 draft+commit 模式(树表 client 过滤对响应性敏感,见 §8 决策 4);
   3. 补 `filterCollapsible`;
-  4. `Popconfirm` 改零尺寸 span 模式(参照 users.tsx);
+  4. `Popconfirm` 改真实触发元素锚定模式(常显动作包 Button,下拉动作包 DropdownMenuItem);
   5. 删除页面级 banner,Popconfirm 内置错误展示即可。
 - **估算**:~60 行 diff。
 

@@ -308,6 +308,9 @@ INVALID (一律禁止):
   - 三件套分别来自 `src/components/admin/data-table/`(`ResourceTable`、`FilterBar`)与 `src/components/admin/layout/`(`PageHeader`);跨目录组合由 admin 路由页组装
 - FilterBar 列数默认 3,可调 4-6
 - 工具栏右对齐"新增 / 上传"
+- **基准页**:用户管理 `src/routes/admin/users.tsx`
+  - 作为当前 admin 列表页的默认参考实现
+  - 新列表页若偏离用户管理的结构 / 交互 / 按钮层级 / 弹层策略,PR 必须引用本宪章章节说明理由
 
 ### 4.5 详情 / 表单 4 梯度
 
@@ -412,6 +415,34 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 
 - 优先 Popconfirm(行级)或 `useConfirm()`(全屏)
 - **不用 Modal 做轻量确认**(参考 antd "狼来了"反例)
+- **基准实现**:用户管理 `src/routes/admin/users.tsx`
+- Popconfirm 文案必须走**简约两段式**:
+  - `title`:动作 + 对象,直接点题
+  - `description`:结果说明或简短确认,只补最必要的信息
+- 禁止把 Popconfirm 写成帮助文档,禁止出现背景解释、流程说明、实现细节
+- 字数约束:
+  - `title` ≤ 12 个汉字,或 1 个短问句
+  - `description` ≤ 22 个汉字,1 句内结束
+- 推荐模板:
+  - 删除:`删除「{name}」？`
+  - 禁用:`禁用账号` / `禁用角色` / `禁用菜单`
+  - 启用通常**不需要**二次确认,直接执行
+- 推荐 `description` 写法:
+  - 优先写结果:`删除后该账号将被停用，无法再登录。`
+  - 若结果已足够明显,可退化成确认句:`你确认禁用此账号吗？`
+  - 同一资源内只选一种语气,不要混用
+- 禁止写法:
+  - ❌ 冗长链式说明:`删除后将同时清理默认存储对象，清理失败时仅删除数据库记录...`
+  - ❌ 背景交代:`由于系统策略要求...`
+  - ❌ 实现细节:`需后端同步后生效`
+  - ❌ 多段并列风险提示
+- 操作按钮文案必须与动作一致:`删除 / 禁用 / 停用`,不要泛化成 `确定`
+- 默认使用 `placement` API:`placement="top"`;靠右动作可用 `placement="topRight"`;危险动作焦点先落取消按钮
+- `Popconfirm` 必须锚定**真实触发元素**:
+  - 常显按钮:直接包裹 `<Button>`(如用户管理"禁用"、角色管理"删除")
+  - 下拉菜单项:直接包裹 `<DropdownMenuItem>`(如角色管理"更多 → 禁用")
+  - 禁止用 `size-0` / 隐藏 `span` 作为定位锚点,否则 placement、arrow 与焦点行为都会漂移
+- 需要箭头指示时显式传 `arrow`;箭头由底层 Popover 计算位置,不要手写绝对定位箭头
 
 ---
 
@@ -442,6 +473,13 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 - 模板:**"编辑 / 启停(切换文字)/ 更多下拉(放危险动作+popconfirm)"**
 - 按钮:`variant="link" text-[13px]` + `text-brand-600` 或 `text-destructive`
 - 间距 `gap-3`
+- 基准实现:用户管理 `src/routes/admin/users.tsx`
+  - 第一层常显操作 = `编辑` + `启用/禁用`
+  - 第二层折叠操作 = `更多`
+  - 危险动作(`删除`)必须放入下拉,并与普通项用 `DropdownMenuSeparator` 分隔
+  - `禁用` 为危险状态切换时必须二次确认;`启用` 可直接执行
+  - 不允许把 `删除` 作为常显第三按钮长期占位,除非该资源无下拉操作组
+  - 下拉内危险项需要确认时,`Popconfirm` 包裹对应 `<DropdownMenuItem>`,让确认框落在实际菜单项上;不要包裹 `更多` trigger
 
 ### 7.5 行选中
 
@@ -477,6 +515,7 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 > 3. 刷新(icon-only `size-8` 方按钮,带 Tooltip);
 > 4. 主操作(新增 / 上传 / 同步),`variant="default"`,**每个 area 限 1 个**(承接 §9.1)。
 > `IconButton`(icon-only)必须配 `Tooltip`;同一 area 内不允许混合 icon-only 与 text+icon。
+> 基准实现见用户管理:批量停用在左,新增在右,批量操作消失时不保留占位。
 
 ### 7.10 新增「动作列下拉项分隔」
 
@@ -486,6 +525,7 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 > 3. **危险操作**(删除 / 停用)— 用 `text-destructive`,与上面用 `<DropdownMenuSeparator>` 分隔;
 > 4. **禁用项**(`disabled` + `opacity-40`),不下沉到二级菜单。
 > "更多" trigger 一律 `ChevronDown` 图标 + "更多" 文案 + `variant="link"`,与其他动作列按钮同高同色。
+> 若下拉项需要 Popconfirm,确认框必须以该菜单项为 trigger,推荐 `placement="top" arrow`;菜单保持打开以稳定定位。
 
 ### 7.11 加载与错误
 
@@ -501,6 +541,11 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 - `FormDialog`(居中模态)+ `FormSheet`(抽屉)+ `ResponsiveFormLayer`(768px 切 Dialog↔Sheet)
 - 基于 react-hook-form + zod + @hookform/resolvers
 - **API 风格**:FormDialog / FormSheet 内部使用 `FormField` + react-hook-form `Controller`(对齐 shadcn 标准,不用 antd `Form.Item` 风格;命名规则详见 §5.3)
+- 基准实现:用户管理新增 / 编辑弹层
+  - 桌面端允许两列 grid,移动端保持单列
+  - 长文本 / 多选 / 树选择跨两列(`sm:col-span-2`)
+  - 表单标题只保留动作 + 资源名,不在页头重复解释性描述
+  - 资源编辑默认用 `ResponsiveFormLayer`;只有只读详情才进入 `DetailSheet`
 
 ### 8.2 Label 摆放
 
@@ -571,7 +616,9 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 ### 9.5 危险按钮
 
 - `variant="destructive"`,搭配 Popconfirm
-- Popconfirm 默认 `side="top" align="end" sideOffset={6}`,**打开时焦点落在取消按钮**(防误触)
+- Popconfirm 默认 `placement="top" sideOffset={6}`,**打开时焦点落在取消按钮**(防误触)
+- 靠右动作可用 `placement="topRight"`;居中动作可用 `placement="top"`
+- `arrow` 仅在需要明确指向触发元素时开启,必须由 Popconfirm 内部实现,业务页面不得自画箭头
 - Tab 顺序 = Cancel → Confirm → 关闭(ESC),符合危险操作防御性 UX(参考 antd)
 
 ---
