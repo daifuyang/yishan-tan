@@ -11,6 +11,7 @@ import {
 import {
   createDepartmentService,
   deleteDepartmentService,
+  exportDepartmentsService,
   getDepartmentService,
   getDepartmentTreeService,
   listDepartmentsService,
@@ -65,4 +66,11 @@ export const deleteDepartment = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await adminCtx();
     return deleteDepartmentService(data.id);
+  });
+
+export const exportDepartments = createServerFn({ method: "GET" })
+  .validator(departmentListQuerySchema.omit({ page: true, pageSize: true }))
+  .handler(async ({ data }) => {
+    await adminCtx();
+    return exportDepartmentsService(data);
   });

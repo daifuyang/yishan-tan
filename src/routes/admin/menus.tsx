@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -26,7 +26,12 @@ import {
 import { useMenuTree } from "~/features/menus/menus.queries";
 import type { CreateMenuInput, UpdateMenuInput } from "~/features/menus/menus.schema";
 import type { MenuDto, MenuNode } from "~/features/menus/menus.types";
-import { useCreateMenu, useDeleteMenu, useUpdateMenu } from "~/features/menus/menus.use-mutations";
+import {
+  useBulkDeleteMenus,
+  useCreateMenu,
+  useDeleteMenu,
+  useUpdateMenu,
+} from "~/features/menus/menus.use-mutations";
 import { MONO_CELL } from "~/lib/classes";
 import { placeholders } from "~/lib/copy";
 
@@ -50,6 +55,13 @@ const PROTECTED_TOP_NAMES = new Set(["工作台", "系统管理"]);
 export const Route = createFileRoute("/admin/menus")({
   component: AdminMenusPage,
 });
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "--";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 function flattenTree(nodes: MenuNode[], depth: number, expanded: Set<string>): MenuRow[] {
   const out: MenuRow[] = [];
@@ -80,11 +92,14 @@ function AdminMenusPage() {
   const [editForm, setEditForm] = React.useState<EditMenuFormValue>(EMPTY_EDIT_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const treeQuery = useMenuTree();
   const createMut = useCreateMenu();
   const updateMut = useUpdateMenu();
   const deleteMut = useDeleteMenu();
+  const bulkDeleteMut = useBulkDeleteMenus();
 
   const tree = treeQuery.data ?? [];
 
@@ -181,6 +196,17 @@ function AdminMenusPage() {
     },
     [deleteMut],
   );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误由 useMutation 状态显示
+    }
+  }, [bulkDeleteMut, selectedKeys]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
@@ -328,6 +354,22 @@ function AdminMenusPage() {
       ),
     },
     {
+      key: "createdAt",
+      header: "创建时间",
+      width: "170px",
+      cell: (row) => (
+        <span className="text-[13px] text-text-soft">{formatDateTime(row.node.createdAt)}</span>
+      ),
+    },
+    {
+      key: "updatedAt",
+      header: "更新时间",
+      width: "170px",
+      cell: (row) => (
+        <span className="text-[13px] text-text-soft">{formatDateTime(row.node.updatedAt)}</span>
+      ),
+    },
+    {
       key: "actions",
       header: "操作",
       align: "right",
@@ -424,11 +466,7 @@ function AdminMenusPage() {
                 if (!next && popconfirmRowId === row.node.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.node.name}」？`}
-              description={
-                isProtected
-                  ? "该菜单是系统核心菜单，无法删除。"
-                  : "删除后该菜单将被停用，已绑定的角色权限将丢失该节点。"
-              }
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.node.id}
@@ -446,7 +484,7 @@ function AdminMenusPage() {
                   setDisablePopconfirmRowId(null);
               }}
               title="禁用菜单"
-              description="禁用后该菜单及其子菜单将隐藏，已绑定的角色权限将丢失该节点。"
+              description="你确认禁用吗？"
               confirmLabel="禁用"
               tone="danger"
               loading={updateMut.isPending && disablePopconfirmRowId === row.node.id}
@@ -533,10 +571,43 @@ function AdminMenusPage() {
         filterLoading={treeQuery.isFetching}
         toolbarTitle="菜单列表"
         toolbarActions={
-          <Button type="button" size="sm" onClick={handleStartCreateTop}>
-            <Plus className="size-3.5" aria-hidden />
-            新建顶级菜单
-          </Button>
+          <>
+            {selectedKeys.length > 0 ? (
+              <Popconfirm
+                open={bulkDeletePopconfirmOpen}
+                onOpenChange={(next) => {
+                  if (!next && bulkDeletePopconfirmOpen) {
+                    setBulkDeletePopconfirmOpen(false);
+                    bulkDeleteMut.reset();
+                  }
+                }}
+                title={`批量删除 ${selectedKeys.length} 个菜单？`}
+                description="你确认批量删除吗？"
+                confirmLabel="删除"
+                tone="danger"
+                loading={bulkDeleteMut.isPending}
+                onConfirm={() => void handleBulkDelete()}
+                side="bottom"
+                align="end"
+                sideOffset={6}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkDeleteMut.isPending}
+                  onClick={() => setBulkDeletePopconfirmOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  批量删除 ({selectedKeys.length})
+                </Button>
+              </Popconfirm>
+            ) : null}
+            <Button type="button" size="sm" onClick={handleStartCreateTop}>
+              <Plus className="size-3.5" aria-hidden />
+              新建顶级菜单
+            </Button>
+          </>
         }
         tableProps={{
           columns: columns as ResourceColumn<MenuRow>[],
@@ -554,6 +625,10 @@ function AdminMenusPage() {
               ? treeQuery.error.message
               : "加载失败"
             : undefined,
+          rowSelection: {
+            selectedKeys,
+            onChange: setSelectedKeys,
+          },
         }}
       />
 
@@ -735,7 +810,7 @@ function EditMenuFields({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="menu-parent">父级</Label>
+          <Label htmlFor="menu-parent">上级菜单</Label>
           <ParentSelect
             value={value.parentId}
             options={parentOptions}

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -31,7 +31,12 @@ import { useDepartmentsList } from "~/features/departments/departments.queries";
 import { usePostsList } from "~/features/posts/posts.queries";
 import { postListQuerySchema } from "~/features/posts/posts.schema";
 import type { PostDto } from "~/features/posts/posts.types";
-import { useCreatePost, useDeletePost, useUpdatePost } from "~/features/posts/posts.use-mutations";
+import {
+  useBulkDeletePosts,
+  useCreatePost,
+  useDeletePost,
+  useUpdatePost,
+} from "~/features/posts/posts.use-mutations";
 import { placeholders } from "~/lib/copy";
 import { normalizeDateRange } from "~/lib/date-range";
 
@@ -96,6 +101,8 @@ function AdminPostsPage() {
 
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const list = usePostsListPage(filters, page, pageSize);
   const departments = useDepartmentsList(DEPARTMENT_QUERY);
@@ -104,6 +111,7 @@ function AdminPostsPage() {
   const createMut = useCreatePost();
   const updateMut = useUpdatePost();
   const deleteMut = useDeletePost();
+  const bulkDeleteMut = useBulkDeletePosts();
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
@@ -190,6 +198,17 @@ function AdminPostsPage() {
     },
     [deleteMut],
   );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误由 useMutation 状态显示
+    }
+  }, [bulkDeleteMut, selectedKeys]);
 
   const dismissDeleteError = React.useCallback(() => {
     deleteMut.reset();
@@ -354,7 +373,7 @@ function AdminPostsPage() {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.name}」？`}
-              description="删除后该岗位将被停用，关联用户的岗位绑定会自动解绑。"
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -371,7 +390,7 @@ function AdminPostsPage() {
                 if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
               }}
               title="禁用岗位"
-              description="禁用后该岗位不再可用，关联用户的岗位绑定会自动解绑。"
+              description="你确认禁用吗？"
               confirmLabel="禁用"
               tone="danger"
               loading={updateMut.isPending && disablePopconfirmRowId === row.id}
@@ -515,10 +534,43 @@ function AdminPostsPage() {
         filterLoading={list.isFetching}
         toolbarTitle="岗位列表"
         toolbarActions={
-          <Button type="button" size="sm" onClick={handleOpenCreate}>
-            <Plus className="size-3.5" aria-hidden />
-            新建岗位
-          </Button>
+          <>
+            {selectedKeys.length > 0 ? (
+              <Popconfirm
+                open={bulkDeletePopconfirmOpen}
+                onOpenChange={(next) => {
+                  if (!next && bulkDeletePopconfirmOpen) {
+                    setBulkDeletePopconfirmOpen(false);
+                    bulkDeleteMut.reset();
+                  }
+                }}
+                title={`批量删除 ${selectedKeys.length} 个岗位？`}
+                description="你确认批量删除吗？"
+                confirmLabel="删除"
+                tone="danger"
+                loading={bulkDeleteMut.isPending}
+                onConfirm={() => void handleBulkDelete()}
+                side="bottom"
+                align="end"
+                sideOffset={6}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkDeleteMut.isPending}
+                  onClick={() => setBulkDeletePopconfirmOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  批量删除 ({selectedKeys.length})
+                </Button>
+              </Popconfirm>
+            ) : null}
+            <Button type="button" size="sm" onClick={handleOpenCreate}>
+              <Plus className="size-3.5" aria-hidden />
+              新建岗位
+            </Button>
+          </>
         }
         tableProps={{
           columns: columns as ResourceColumn<PostDto>[],
@@ -539,6 +591,10 @@ function AdminPostsPage() {
               ? list.error.message
               : "加载失败"
             : undefined,
+          rowSelection: {
+            selectedKeys,
+            onChange: setSelectedKeys,
+          },
         }}
       />
 

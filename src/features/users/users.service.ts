@@ -78,35 +78,38 @@ async function getLastLoginAtMap(userIds: string[]): Promise<Map<string, Date>> 
   return map;
 }
 
-export const listUsersService: ListUsersService = async ({
-  page,
-  pageSize,
-  username,
-  name,
-  displayName,
-  email,
-  phone,
-  status,
-  systemRole,
-  roleId,
-  deptId,
-}) => {
+/**
+ * 提取 listUsersService 与 exportUsersService 共享的 where-clause 构建，
+ * 保证「列表分页」与「导出全量」走同一份筛选语义。
+ */
+async function buildUserListWhere(input: {
+  username?: string;
+  name?: string;
+  displayName?: string;
+  email?: string;
+  phone?: string;
+  status?: "enabled" | "disabled";
+  systemRole?: "admin" | "member";
+  roleId?: string;
+  deptId?: string;
+}): Promise<SQL[]> {
   const where: SQL[] = [];
   const searchClauses: SQL[] = [];
-  if (username) searchClauses.push(like(schema.user.username, `%${username}%`));
-  if (name) searchClauses.push(like(schema.user.name, `%${name}%`));
-  if (displayName) searchClauses.push(like(schema.user.displayName, `%${displayName}%`));
-  if (email) searchClauses.push(like(schema.user.email, `%${email}%`));
-  if (phone) searchClauses.push(like(schema.user.phone, `%${phone}%`));
+  if (input.username) searchClauses.push(like(schema.user.username, `%${input.username}%`));
+  if (input.name) searchClauses.push(like(schema.user.name, `%${input.name}%`));
+  if (input.displayName)
+    searchClauses.push(like(schema.user.displayName, `%${input.displayName}%`));
+  if (input.email) searchClauses.push(like(schema.user.email, `%${input.email}%`));
+  if (input.phone) searchClauses.push(like(schema.user.phone, `%${input.phone}%`));
   if (searchClauses.length > 0) {
     const cond = or(...searchClauses);
     if (cond) where.push(cond);
   }
-  if (roleId) {
+  if (input.roleId) {
     const matched = await getDb()
       .select({ userId: schema.userRole.userId })
       .from(schema.userRole)
-      .where(eq(schema.userRole.roleId, roleId));
+      .where(eq(schema.userRole.roleId, input.roleId));
     const userIds = matched.map((m) => m.userId);
     where.push(
       inArray(
@@ -115,16 +118,22 @@ export const listUsersService: ListUsersService = async ({
       ),
     );
   }
-  if (deptId) where.push(eq(schema.user.deptId, deptId));
-  if (systemRole) {
-    where.push(eq(schema.user.role, systemRole));
+  if (input.deptId) where.push(eq(schema.user.deptId, input.deptId));
+  if (input.systemRole) {
+    where.push(eq(schema.user.role, input.systemRole));
   }
-  if (status) {
-    if (status === "disabled") where.push(isNotNull(schema.user.deletedAt));
+  if (input.status) {
+    if (input.status === "disabled") where.push(isNotNull(schema.user.deletedAt));
     else where.push(isNull(schema.user.deletedAt));
   } else {
     where.push(isNull(schema.user.deletedAt));
   }
+  return where;
+}
+
+export const listUsersService: ListUsersService = async (input) => {
+  const { page, pageSize } = input;
+  const where = await buildUserListWhere(input);
   const offset = (page - 1) * pageSize;
   const [rows, totalRow] = await Promise.all([
     getDb()
@@ -174,6 +183,50 @@ export const listUsersService: ListUsersService = async ({
     ),
     total: Number(totalRow[0]?.count ?? 0),
   };
+};
+
+/**
+ * 导出当前筛选条件下全部用户为 CSV（不带分页）。
+ * 与 listUsersService 共用 buildUserListWhere 保证语义一致。
+ * 返回 CSV 文本，前端用 Blob + a.download 触发下载。
+ */
+export const exportUsersService = async (
+  input: Parameters<typeof buildUserListWhere>[0],
+): Promise<string> => {
+  const where = await buildUserListWhere(input);
+  const rows = await getDb()
+    .select()
+    .from(schema.user)
+    .where(and(...where))
+    .orderBy(desc(schema.user.createdAt));
+  const ids = rows.map((r) => r.id);
+  const lastLoginMap = await getLastLoginAtMap(ids);
+  const headers = ["用户名", "姓名", "昵称", "邮箱", "手机号", "状态", "最后登录", "创建时间"];
+  const csvEscape = (v: unknown): string => {
+    if (v === null || v === undefined) return "";
+    const s = String(v);
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+  const lines = [headers.join(",")];
+  for (const r of rows) {
+    const status = r.deletedAt ? "已禁用" : "启用";
+    const lastLogin = lastLoginMap.get(r.id);
+    lines.push(
+      [
+        csvEscape(r.username),
+        csvEscape(r.name),
+        csvEscape(r.displayName),
+        csvEscape(r.email),
+        csvEscape(r.phone),
+        csvEscape(status),
+        csvEscape(lastLogin ? lastLogin.toISOString().slice(0, 19).replace("T", " ") : ""),
+        csvEscape(r.createdAt.toISOString().slice(0, 19).replace("T", " ")),
+      ].join(","),
+    );
+  }
+  // UTF-8 BOM：让 Excel 直接识别中文不乱码
+  return `﻿${lines.join("\r\n")}`;
 };
 
 export const getUserService: GetUserService = async (id) => {

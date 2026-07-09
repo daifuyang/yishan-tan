@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -26,6 +26,7 @@ import { useDictDataByCode, useDictDataList } from "~/features/dicts/dicts.queri
 import { dictDataListQuerySchema } from "~/features/dicts/dicts.schema";
 import type { DictDataDto } from "~/features/dicts/dicts.types";
 import {
+  useBulkDeleteDictDatas,
   useCreateDictData,
   useDeleteDictData,
   useUpdateDictData,
@@ -73,6 +74,8 @@ function AdminDictDataPage() {
   const [editForm, setEditForm] = React.useState<EditDictDataFormValue>(EMPTY_DATA_FORM);
   const [createForm, setCreateForm] = React.useState<CreateDictDataFormValue>(EMPTY_DATA_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const query = dictDataListQuerySchema.parse(buildListQuery(typeCode, filters, page, pageSize));
   const list = useDictDataList(query);
@@ -83,6 +86,7 @@ function AdminDictDataPage() {
   const createMut = useCreateDictData();
   const updateMut = useUpdateDictData();
   const deleteMut = useDeleteDictData();
+  const bulkDeleteMut = useBulkDeleteDictDatas();
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
@@ -171,6 +175,17 @@ function AdminDictDataPage() {
     },
     [deleteMut],
   );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误由 useMutation 状态显示
+    }
+  }, [bulkDeleteMut, selectedKeys]);
 
   const columns: ResourceColumn<DictDataDto>[] = [
     {
@@ -290,7 +305,7 @@ function AdminDictDataPage() {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.label}」？`}
-              description="删除后该字典数据将被停用，无法在表单选项源中继续使用。"
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -427,10 +442,43 @@ function AdminDictDataPage() {
         filterLoading={list.isFetching}
         toolbarTitle="字典数据列表"
         toolbarActions={
-          <Button type="button" size="sm" onClick={handleOpenCreate}>
-            <Plus className="size-3.5" aria-hidden />
-            新建字典数据
-          </Button>
+          <>
+            {selectedKeys.length > 0 ? (
+              <Popconfirm
+                open={bulkDeletePopconfirmOpen}
+                onOpenChange={(next) => {
+                  if (!next && bulkDeletePopconfirmOpen) {
+                    setBulkDeletePopconfirmOpen(false);
+                    bulkDeleteMut.reset();
+                  }
+                }}
+                title={`批量删除 ${selectedKeys.length} 个字典数据？`}
+                description="你确认批量删除吗？"
+                confirmLabel="删除"
+                tone="danger"
+                loading={bulkDeleteMut.isPending}
+                onConfirm={() => void handleBulkDelete()}
+                side="bottom"
+                align="end"
+                sideOffset={6}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkDeleteMut.isPending}
+                  onClick={() => setBulkDeletePopconfirmOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  批量删除 ({selectedKeys.length})
+                </Button>
+              </Popconfirm>
+            ) : null}
+            <Button type="button" size="sm" onClick={handleOpenCreate}>
+              <Plus className="size-3.5" aria-hidden />
+              新建字典数据
+            </Button>
+          </>
         }
         tableProps={{
           columns: columns as ResourceColumn<DictDataDto>[],
@@ -451,6 +499,10 @@ function AdminDictDataPage() {
               ? list.error.message
               : "加载失败"
             : undefined,
+          rowSelection: {
+            selectedKeys,
+            onChange: setSelectedKeys,
+          },
         }}
       />
 

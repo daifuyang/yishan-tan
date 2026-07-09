@@ -69,14 +69,14 @@ export function AdminSidebarContent({ collapsed = false, onNavigate }: AdminSide
   const { isOpen, toggle } = useNavState(tree, currentPath, !isLoading);
 
   return (
-    <div className="flex h-full flex-col bg-sidebar-bg text-text-strong">
-      <nav aria-label="后台主导航" className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
+    <div className="flex h-full w-full flex-col bg-sidebar-bg text-text-strong">
+      <nav aria-label="后台主导航" className="min-h-0 w-full flex-1 overflow-y-auto px-2 py-3">
         {isLoading ? (
           <SidebarSkeleton collapsed={collapsed} />
         ) : (
           <>
             {isError ? <SidebarErrorHint /> : null}
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex w-full flex-col gap-0.5">
               {tree.map((item) => (
                 <NavNode
                   key={item.id}
@@ -212,7 +212,7 @@ function NavLeaf({
 
   if (collapsed) {
     return (
-      <li className="relative">
+      <li className="relative w-full">
         <span
           aria-hidden
           className={cn(
@@ -228,7 +228,7 @@ function NavLeaf({
               aria-current={active ? "page" : undefined}
               aria-label={leaf.name}
               className={cn(
-                "group relative flex items-center justify-center rounded-[4px] py-2 transition-colors duration-150",
+                "group relative flex w-full items-center justify-center rounded-[4px] py-2 transition-colors duration-150",
                 active
                   ? "bg-line-soft text-text-strong"
                   : "text-text-soft hover:bg-line-soft hover:text-text-strong",
@@ -250,13 +250,13 @@ function NavLeaf({
   }
 
   return (
-    <li className="relative">
+    <li className="relative w-full">
       <Link
         to={targetPath}
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "group relative flex items-center gap-2.5 rounded-[4px] py-2 transition-colors duration-150",
+          "group relative flex w-full items-center gap-2.5 rounded-[4px] py-2 transition-colors duration-150",
           isTopLevel
             ? "pl-4 pr-3 text-[14px]"
             : depth === 1

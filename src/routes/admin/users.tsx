@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, Plus, ShieldOff } from "lucide-react";
+import { ChevronDown, Download, Plus, ShieldOff, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -45,11 +45,14 @@ import { useAssignableRoles, useUsersList } from "~/features/users/users.queries
 import type { UserListQuery } from "~/features/users/users.schema";
 import type { AdminUserDto } from "~/features/users/users.types";
 import {
+  useBulkDeleteUsers,
   useBulkUpdateUserStatus,
   useCreateUser,
   useDeleteUser,
+  useExportUsers,
   useUpdateUser,
 } from "~/features/users/users.use-mutations";
+import { downloadCsv } from "~/lib/download-csv";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -123,6 +126,8 @@ function AdminUsersPage() {
   const updateMut = useUpdateUser();
   const deleteMut = useDeleteUser();
   const bulkUpdateMut = useBulkUpdateUserStatus();
+  const bulkDeleteMut = useBulkDeleteUsers();
+  const exportMut = useExportUsers();
   const createMut = useCreateUser();
   const assignableRolesQuery = useAssignableRoles();
   const assignableRoles = assignableRolesQuery.data?.items ?? [];
@@ -238,6 +243,29 @@ function AdminUsersPage() {
       // 错误提示由 useMutation errorMessage 暴露
     }
   }, [bulkUpdateMut, selectedKeys]);
+
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误提示由 useMutation errorMessage 暴露；保留弹层让用户看到错误
+    }
+  }, [bulkDeleteMut, selectedKeys]);
+
+  const handleExport = React.useCallback(async () => {
+    try {
+      const csv = await exportMut.mutateAsync(query);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      downloadCsv(`users-${stamp}.csv`, csv);
+    } catch {
+      // 错误提示由 useMutation errorMessage 暴露
+    }
+  }, [exportMut, query]);
 
   const handleDeleteConfirm = React.useCallback(
     async (row: AdminUserDto) => {
@@ -437,7 +465,7 @@ function AdminUsersPage() {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.displayName ?? row.username}」？`}
-              description="删除后该账号将被停用，无法再登录。"
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -454,7 +482,7 @@ function AdminUsersPage() {
                 if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
               }}
               title="禁用账号"
-              description="你确认禁用此账号吗？"
+              description="你确认禁用吗？"
               confirmLabel="禁用"
               tone="danger"
               loading={updateMut.isPending && disablePopconfirmRowId === row.id}
@@ -610,17 +638,58 @@ function AdminUsersPage() {
         toolbarActions={
           <>
             {selectedKeys.length > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={bulkUpdateMut.isPending}
-                onClick={() => void handleBulkDisable()}
-              >
-                <ShieldOff className="size-3.5" aria-hidden />
-                批量停用 ({selectedKeys.length})
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkUpdateMut.isPending}
+                  onClick={() => void handleBulkDisable()}
+                >
+                  <ShieldOff className="size-3.5" aria-hidden />
+                  批量停用 ({selectedKeys.length})
+                </Button>
+                <Popconfirm
+                  open={bulkDeletePopconfirmOpen}
+                  onOpenChange={(next) => {
+                    if (!next && bulkDeletePopconfirmOpen) {
+                      setBulkDeletePopconfirmOpen(false);
+                      bulkDeleteMut.reset();
+                    }
+                  }}
+                  title={`批量删除 ${selectedKeys.length} 个账号？`}
+                  description="你确认批量删除吗？"
+                  confirmLabel="删除"
+                  tone="danger"
+                  loading={bulkDeleteMut.isPending}
+                  onConfirm={() => void handleBulkDelete()}
+                  side="bottom"
+                  align="end"
+                  sideOffset={6}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={bulkDeleteMut.isPending}
+                    onClick={() => setBulkDeletePopconfirmOpen(true)}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden />
+                    批量删除 ({selectedKeys.length})
+                  </Button>
+                </Popconfirm>
+              </>
             ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exportMut.isPending}
+              onClick={() => void handleExport()}
+            >
+              <Download className="size-3.5" aria-hidden />
+              {exportMut.isPending ? "导出中…" : "导出"}
+            </Button>
             <TooltipProvider delayDuration={200}>
               <Tooltip>
                 <TooltipTrigger asChild>

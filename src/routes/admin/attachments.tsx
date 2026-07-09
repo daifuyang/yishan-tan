@@ -37,7 +37,10 @@ import {
 } from "~/features/attachments/attachments.queries";
 import type { AttachmentCategory } from "~/features/attachments/attachments.schema";
 import type { AttachmentDto } from "~/features/attachments/attachments.types";
-import { useDeleteAttachment } from "~/features/attachments/attachments.use-mutations";
+import {
+  useBulkDeleteAttachments,
+  useDeleteAttachment,
+} from "~/features/attachments/attachments.use-mutations";
 import { MONO_CHIP } from "~/lib/classes";
 import { cn } from "~/lib/utils";
 
@@ -157,11 +160,14 @@ function AdminAttachmentsPage() {
   const [pageSize, setPageSize] = React.useState(20);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [copyRowId, setCopyRowId] = React.useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const query = buildListQuery(filters, page, pageSize);
   const list = useAttachmentsList(query);
   const categoriesQuery = useAttachmentCategories();
   const deleteMut = useDeleteAttachment();
+  const bulkDeleteMut = useBulkDeleteAttachments();
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
@@ -212,6 +218,17 @@ function AdminAttachmentsPage() {
     },
     [deleteMut],
   );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误由 useMutation 状态显示
+    }
+  }, [bulkDeleteMut, selectedKeys]);
 
   const handleCopyLink = React.useCallback(async (row: AttachmentDto) => {
     const url = row.url;
@@ -380,7 +397,7 @@ function AdminAttachmentsPage() {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.name}」？`}
-              description="将同时尝试清理默认存储上的对象。无法清理时仅删除数据库记录。"
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -400,97 +417,136 @@ function AdminAttachmentsPage() {
   const categoryOptions = (categoriesQuery.data ?? []) as AttachmentCategory[];
 
   return (
-    <ResourcePage
-      title="媒体库"
-      filterColumns={3}
-      filterCollapsible
-      filterDefaultCollapsed
-      filter={
-        <>
-          <QueryFormItem label="文件名" htmlFor="filter-keyword">
-            <Input
-              id="filter-keyword"
-              className={FILTER_CONTROL_CLASS}
-              allowClear
-              placeholder="搜索附件名"
-              value={draft.keyword}
-              onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
-            />
-          </QueryFormItem>
+    <>
+      <ResourcePage
+        title="媒体库"
+        filterColumns={3}
+        filterCollapsible
+        filterDefaultCollapsed
+        filter={
+          <>
+            <QueryFormItem label="文件名" htmlFor="filter-keyword">
+              <Input
+                id="filter-keyword"
+                className={FILTER_CONTROL_CLASS}
+                allowClear
+                placeholder="搜索附件名"
+                value={draft.keyword}
+                onChange={(e) => applyDraftPatch({ keyword: e.target.value })}
+              />
+            </QueryFormItem>
 
-          <QueryFormItem label="MIME 类型" htmlFor="filter-mime">
-            <Input
-              id="filter-mime"
-              className={FILTER_CONTROL_CLASS}
-              allowClear
-              placeholder="例如 image、application/pdf"
-              value={draft.mime}
-              onChange={(e) => applyDraftPatch({ mime: e.target.value })}
-            />
-          </QueryFormItem>
+            <QueryFormItem label="MIME 类型" htmlFor="filter-mime">
+              <Input
+                id="filter-mime"
+                className={FILTER_CONTROL_CLASS}
+                allowClear
+                placeholder="例如 image、application/pdf"
+                value={draft.mime}
+                onChange={(e) => applyDraftPatch({ mime: e.target.value })}
+              />
+            </QueryFormItem>
 
-          <QueryFormItem label="分类" htmlFor="filter-category">
-            <Select
-              value={draft.category}
-              onValueChange={(v) => applyDraftPatch({ category: v as CategoryFilter })}
-            >
-              <SelectTrigger id="filter-category" className={FILTER_CONTROL_CLASS}>
-                <SelectValue placeholder="请选择" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                {categoryOptions.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </QueryFormItem>
+            <QueryFormItem label="分类" htmlFor="filter-category">
+              <Select
+                value={draft.category}
+                onValueChange={(v) => applyDraftPatch({ category: v as CategoryFilter })}
+              >
+                <SelectTrigger id="filter-category" className={FILTER_CONTROL_CLASS}>
+                  <SelectValue placeholder="请选择" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部</SelectItem>
+                  {categoryOptions.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {CATEGORY_LABELS[c]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </QueryFormItem>
 
-          <QueryFormItem label="上传时间" htmlFor="filter-created-range">
-            <DateRangePicker
-              id="filter-created-range"
-              value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
-              onChange={(r) =>
-                applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
-              }
+            <QueryFormItem label="上传时间" htmlFor="filter-created-range">
+              <DateRangePicker
+                id="filter-created-range"
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
+                onChange={(r) =>
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                }
+              />
+            </QueryFormItem>
+          </>
+        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
+        onFilterReset={handleResetFilters}
+        filterLoading={list.isFetching}
+        toolbarTitle="媒体列表"
+        toolbarActions={
+          <>
+            {selectedKeys.length > 0 ? (
+              <Popconfirm
+                open={bulkDeletePopconfirmOpen}
+                onOpenChange={(next) => {
+                  if (!next && bulkDeletePopconfirmOpen) {
+                    setBulkDeletePopconfirmOpen(false);
+                    bulkDeleteMut.reset();
+                  }
+                }}
+                title={`批量删除 ${selectedKeys.length} 个附件？`}
+                description="你确认批量删除吗？"
+                confirmLabel="删除"
+                tone="danger"
+                loading={bulkDeleteMut.isPending}
+                onConfirm={() => void handleBulkDelete()}
+                side="bottom"
+                align="end"
+                sideOffset={6}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkDeleteMut.isPending}
+                  onClick={() => setBulkDeletePopconfirmOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  批量删除 ({selectedKeys.length})
+                </Button>
+              </Popconfirm>
+            ) : null}
+            <UploadAttachment
+              onUploaded={() => {
+                void list.refetch();
+              }}
             />
-          </QueryFormItem>
-        </>
-      }
-      filterValues={draft}
-      onFilterSubmit={handleFilterSubmit}
-      onFilterReset={handleResetFilters}
-      filterLoading={list.isFetching}
-      toolbarTitle="媒体列表"
-      toolbarActions={
-        <UploadAttachment
-          onUploaded={() => {
-            void list.refetch();
-          }}
-        />
-      }
-      tableProps={{
-        columns: columns as ResourceColumn<AttachmentDto>[],
-        data: items,
-        rowKey: (row) => row.id,
-        page,
-        pageSize,
-        total,
-        onPageChange: setPage,
-        onPageSizeChange: (size) => {
-          setPageSize(size);
-          setPage(1);
-        },
-        loading: list.isFetching,
-        emptyTitle: "暂无附件",
-        error: list.isError
-          ? list.error instanceof Error
-            ? list.error.message
-            : "加载失败"
-          : undefined,
-      }}
-    />
+          </>
+        }
+        tableProps={{
+          columns: columns as ResourceColumn<AttachmentDto>[],
+          data: items,
+          rowKey: (row) => row.id,
+          page,
+          pageSize,
+          total,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          loading: list.isFetching,
+          emptyTitle: "暂无附件",
+          error: list.isError
+            ? list.error instanceof Error
+              ? list.error.message
+              : "加载失败"
+            : undefined,
+          rowSelection: {
+            selectedKeys,
+            onChange: setSelectedKeys,
+          },
+        }}
+      />
+    </>
   );
 }

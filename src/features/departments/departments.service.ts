@@ -75,12 +75,7 @@ export const listDepartmentsService: ListDepartmentsService = async ({
   name,
   status,
 }) => {
-  const where: SQL[] = [isNull(schema.department.deletedAt)];
-  if (status) where.push(eq(schema.department.status, status));
-  if (name) {
-    const cond = or(like(schema.department.name, `%${name}%`));
-    if (cond) where.push(cond);
-  }
+  const where = buildDepartmentListWhere({ name, status });
   const offset = (page - 1) * pageSize;
   const [rows, totalRow] = await Promise.all([
     buildQuery(where)
@@ -96,6 +91,59 @@ export const listDepartmentsService: ListDepartmentsService = async ({
     items: rows.map((r) => toDto(r as DepartmentRow)),
     total: Number(totalRow[0]?.count ?? 0),
   };
+};
+
+/**
+ * 提取 listDepartmentsService 与 exportDepartmentsService 共享的 where-clause 构建。
+ */
+function buildDepartmentListWhere(input: {
+  name?: string;
+  status?: "enabled" | "disabled";
+}): SQL[] {
+  const where: SQL[] = [isNull(schema.department.deletedAt)];
+  if (input.status) where.push(eq(schema.department.status, input.status));
+  if (input.name) {
+    const cond = or(like(schema.department.name, `%${input.name}%`));
+    if (cond) where.push(cond);
+  }
+  return where;
+}
+
+/**
+ * 导出当前筛选条件下全部部门为 CSV（不带分页）。
+ * 与 listDepartmentsService 共用 buildDepartmentListWhere 保证语义一致。
+ */
+export const exportDepartmentsService = async (input: {
+  name?: string;
+  status?: "enabled" | "disabled";
+}): Promise<string> => {
+  const where = buildDepartmentListWhere(input);
+  const rows = await buildQuery(where).orderBy(
+    asc(schema.department.sort),
+    asc(schema.department.createdAt),
+  );
+  const headers = ["部门名称", "上级部门", "负责人", "排序", "状态", "创建时间"];
+  const csvEscape = (v: unknown): string => {
+    if (v === null || v === undefined) return "";
+    const s = String(v);
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+  const lines = [headers.join(",")];
+  for (const r of rows as DepartmentRow[]) {
+    lines.push(
+      [
+        csvEscape(r.name),
+        csvEscape(r.parentName),
+        csvEscape(r.leaderName),
+        csvEscape(r.sort),
+        csvEscape(r.status === "enabled" ? "启用" : "已禁用"),
+        csvEscape(r.createdAt.toISOString().slice(0, 19).replace("T", " ")),
+      ].join(","),
+    );
+  }
+  // UTF-8 BOM：让 Excel 直接识别中文不乱码
+  return `﻿${lines.join("\r\n")}`;
 };
 
 export const getDepartmentTreeService: GetDepartmentTreeService = async () => {

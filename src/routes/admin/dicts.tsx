@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, Plus, Settings2 } from "lucide-react";
+import { ChevronDown, Plus, Settings2, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -32,6 +32,7 @@ import { useDictTypesList } from "~/features/dicts/dicts.queries";
 import { dictTypeListQuerySchema } from "~/features/dicts/dicts.schema";
 import type { DictTypeListItemDto } from "~/features/dicts/dicts.types";
 import {
+  useBulkDeleteDictTypes,
   useCreateDictType,
   useDeleteDictType,
   useUpdateDictType,
@@ -83,12 +84,15 @@ function AdminDictsPage() {
   const [createForm, setCreateForm] = React.useState<CreateDictTypeFormValue>(EMPTY_TYPE_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const query = dictTypeListQuerySchema.parse(buildListQuery(filters, page, pageSize));
   const list = useDictTypesList(query);
   const createMut = useCreateDictType();
   const updateMut = useUpdateDictType();
   const deleteMut = useDeleteDictType();
+  const bulkDeleteMut = useBulkDeleteDictTypes();
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
@@ -176,6 +180,17 @@ function AdminDictsPage() {
     },
     [deleteMut],
   );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误由 useMutation 状态显示
+    }
+  }, [bulkDeleteMut, selectedKeys]);
 
   const handleManageData = React.useCallback(
     (row: DictTypeListItemDto) => {
@@ -342,7 +357,7 @@ function AdminDictsPage() {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.name}」？`}
-              description="删除后该字典类型将被停用，已有的字典数据保留但无法再次使用。"
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -359,7 +374,7 @@ function AdminDictsPage() {
                 if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
               }}
               title="禁用字典类型"
-              description="禁用后该字典类型不再可用，已有的字典数据保留但无法再次使用。"
+              description="你确认禁用吗？"
               confirmLabel="禁用"
               tone="danger"
               loading={updateMut.isPending && disablePopconfirmRowId === row.id}
@@ -472,10 +487,43 @@ function AdminDictsPage() {
         filterLoading={list.isFetching}
         toolbarTitle="字典类型"
         toolbarActions={
-          <Button type="button" size="sm" onClick={handleOpenCreate}>
-            <Plus className="size-3.5" aria-hidden />
-            新建字典类型
-          </Button>
+          <>
+            {selectedKeys.length > 0 ? (
+              <Popconfirm
+                open={bulkDeletePopconfirmOpen}
+                onOpenChange={(next) => {
+                  if (!next && bulkDeletePopconfirmOpen) {
+                    setBulkDeletePopconfirmOpen(false);
+                    bulkDeleteMut.reset();
+                  }
+                }}
+                title={`批量删除 ${selectedKeys.length} 个字典类型？`}
+                description="你确认批量删除吗？"
+                confirmLabel="删除"
+                tone="danger"
+                loading={bulkDeleteMut.isPending}
+                onConfirm={() => void handleBulkDelete()}
+                side="bottom"
+                align="end"
+                sideOffset={6}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkDeleteMut.isPending}
+                  onClick={() => setBulkDeletePopconfirmOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  批量删除 ({selectedKeys.length})
+                </Button>
+              </Popconfirm>
+            ) : null}
+            <Button type="button" size="sm" onClick={handleOpenCreate}>
+              <Plus className="size-3.5" aria-hidden />
+              新建字典类型
+            </Button>
+          </>
         }
         tableProps={{
           columns: columns as ResourceColumn<DictTypeListItemDto>[],
@@ -496,6 +544,10 @@ function AdminDictsPage() {
               ? list.error.message
               : "加载失败"
             : undefined,
+          rowSelection: {
+            selectedKeys,
+            onChange: setSelectedKeys,
+          },
         }}
       />
 

@@ -397,7 +397,7 @@ function AdminPortalsPage() {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.name}」？`}
-              description="删除后该门户将被停用，且默认门户不可删除。"
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -414,7 +414,7 @@ function AdminPortalsPage() {
                 if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
               }}
               title="禁用门户"
-              description="禁用后该门户将不再作为可访问的入口。"
+              description="你确认禁用吗？"
               confirmLabel="禁用"
               tone="danger"
               loading={updateMut.isPending && disablePopconfirmRowId === row.id}

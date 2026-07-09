@@ -54,6 +54,26 @@ export function useDeleteDictType() {
   });
 }
 
+export function useBulkDeleteDictTypes() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const settled = await Promise.allSettled(ids.map((id) => deleteDictType({ data: { id } })));
+      const failed = settled.filter((s) => s.status === "rejected") as PromiseRejectedResult[];
+      if (failed.length > 0) {
+        const messages = failed.map((f) =>
+          f.reason instanceof Error ? f.reason.message : String(f.reason),
+        );
+        throw new Error(`${failed.length}/${ids.length} 条删除失败：${messages[0]}`);
+      }
+      return { deleted: ids.length };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: dictsQueryKey.types() });
+    },
+  });
+}
+
 export function useCreateDictData() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -92,6 +112,29 @@ export function useDeleteDictData() {
   return useMutation({
     mutationFn: async (id: string) => {
       return deleteDictData({ data: { id } });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dictsQueryKey.datas() }),
+        queryClient.invalidateQueries({ queryKey: dictsQueryKey.types() }),
+      ]);
+    },
+  });
+}
+
+export function useBulkDeleteDictDatas() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const settled = await Promise.allSettled(ids.map((id) => deleteDictData({ data: { id } })));
+      const failed = settled.filter((s) => s.status === "rejected") as PromiseRejectedResult[];
+      if (failed.length > 0) {
+        const messages = failed.map((f) =>
+          f.reason instanceof Error ? f.reason.message : String(f.reason),
+        );
+        throw new Error(`${failed.length}/${ids.length} 条删除失败：${messages[0]}`);
+      }
+      return { deleted: ids.length };
     },
     onSuccess: async () => {
       await Promise.all([

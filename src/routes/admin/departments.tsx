@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -24,11 +24,14 @@ import {
 import { useDepartmentTree } from "~/features/departments/departments.queries";
 import type { DepartmentDto, DepartmentNode } from "~/features/departments/departments.types";
 import {
+  useBulkDeleteDepartments,
   useCreateDepartment,
   useDeleteDepartment,
+  useExportDepartments,
   useUpdateDepartment,
 } from "~/features/departments/departments.use-mutations";
 import { useUsersList } from "~/features/users/users.queries";
+import { downloadCsv } from "~/lib/download-csv";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -153,6 +156,8 @@ function AdminDepartmentsPage() {
   const [createParentName, setCreateParentName] = React.useState<string | null>(null);
 
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   // 记录用户手动折叠过的节点 id，避免后续 refetch/过滤切换时被自动展开覆盖
   const userCollapsedIds = React.useRef<Set<string>>(new Set());
@@ -172,6 +177,8 @@ function AdminDepartmentsPage() {
   const createMut = useCreateDepartment();
   const updateMut = useUpdateDepartment();
   const deleteMut = useDeleteDepartment();
+  const bulkDeleteMut = useBulkDeleteDepartments();
+  const exportMut = useExportDepartments();
 
   // 名称 / 状态按客户端过滤（树结构天然按层级呈现，过滤命中节点会保留其父链）。
   // 客户端过滤使用 draft，提交按钮仅承担"对齐 ResourcePage 形态"职责，行为即时生效。
@@ -276,6 +283,30 @@ function AdminDepartmentsPage() {
     },
     [deleteMut],
   );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误由 useMutation 状态显示；保留弹层让用户看到错误
+    }
+  }, [bulkDeleteMut, selectedKeys]);
+
+  const handleExport = React.useCallback(async () => {
+    try {
+      const csv = await exportMut.mutateAsync({
+        name: draft.name.trim() || undefined,
+        status: draft.status === "all" ? undefined : draft.status,
+      });
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      downloadCsv(`departments-${stamp}.csv`, csv);
+    } catch {
+      // 错误提示由 useMutation errorMessage 暴露
+    }
+  }, [exportMut, draft.name, draft.status]);
 
   const handleEditSubmit = async () => {
     if (!editing) return;
@@ -472,7 +503,7 @@ function AdminDepartmentsPage() {
               if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
             }}
             title={`删除「${row.name}」？`}
-            description="删除后该部门将被停用，下属部门需先迁移或删除。"
+            description="你确认删除吗？"
             confirmLabel="删除"
             tone="danger"
             loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -529,10 +560,53 @@ function AdminDepartmentsPage() {
         filterLoading={treeQuery.isFetching}
         toolbarTitle="部门树"
         toolbarActions={
-          <Button type="button" size="sm" onClick={() => handleOpenCreate(null)}>
-            <Plus className="size-3.5" aria-hidden />
-            新建
-          </Button>
+          <>
+            {selectedKeys.length > 0 ? (
+              <Popconfirm
+                open={bulkDeletePopconfirmOpen}
+                onOpenChange={(next) => {
+                  if (!next && bulkDeletePopconfirmOpen) {
+                    setBulkDeletePopconfirmOpen(false);
+                    bulkDeleteMut.reset();
+                  }
+                }}
+                title={`批量删除 ${selectedKeys.length} 个部门？`}
+                description="你确认批量删除吗？"
+                confirmLabel="删除"
+                tone="danger"
+                loading={bulkDeleteMut.isPending}
+                onConfirm={() => void handleBulkDelete()}
+                side="bottom"
+                align="end"
+                sideOffset={6}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkDeleteMut.isPending}
+                  onClick={() => setBulkDeletePopconfirmOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  批量删除 ({selectedKeys.length})
+                </Button>
+              </Popconfirm>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exportMut.isPending}
+              onClick={() => void handleExport()}
+            >
+              <Download className="size-3.5" aria-hidden />
+              {exportMut.isPending ? "导出中…" : "导出"}
+            </Button>
+            <Button type="button" size="sm" onClick={() => handleOpenCreate(null)}>
+              <Plus className="size-3.5" aria-hidden />
+              新建
+            </Button>
+          </>
         }
         tableProps={{
           columns: columns as ResourceColumn<FlatDepartmentRow>[],
@@ -558,6 +632,10 @@ function AdminDepartmentsPage() {
               ? treeQuery.error.message
               : "加载失败"
             : undefined,
+          rowSelection: {
+            selectedKeys,
+            onChange: setSelectedKeys,
+          },
         }}
       />
 

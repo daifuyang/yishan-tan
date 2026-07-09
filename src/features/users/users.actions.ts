@@ -14,6 +14,7 @@ import {
   createApiKeyService,
   deleteApiKeyService,
   deleteUserService,
+  exportUsersService,
   getUserService,
   listApiKeysService,
   listMyLoginLogsService,
@@ -67,6 +68,13 @@ export const deleteUser = createServerFn({ method: "POST" })
       throw new Error("CANNOT_DELETE_SELF");
     }
     return deleteUserService(data.id);
+  });
+
+export const exportUsers = createServerFn({ method: "GET" })
+  .validator(userListQuerySchema.omit({ page: true, pageSize: true }))
+  .handler(async ({ data }) => {
+    await adminCtx();
+    return exportUsersService(data);
   });
 
 export const changeMyPassword = createServerFn({ method: "POST" })

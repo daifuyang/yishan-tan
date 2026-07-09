@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
@@ -37,7 +37,12 @@ import {
 import { useAssignableMenus, useRolesList } from "~/features/roles/roles.queries";
 import { type DataScope, roleListQuerySchema } from "~/features/roles/roles.schema";
 import type { RoleListItemDto } from "~/features/roles/roles.types";
-import { useCreateRole, useDeleteRole, useUpdateRole } from "~/features/roles/roles.use-mutations";
+import {
+  useBulkDeleteRoles,
+  useCreateRole,
+  useDeleteRole,
+  useUpdateRole,
+} from "~/features/roles/roles.use-mutations";
 import { placeholders } from "~/lib/copy";
 import { normalizeDateRange } from "~/lib/date-range";
 
@@ -97,12 +102,15 @@ function AdminRolesPage() {
   const [createForm, setCreateForm] = React.useState<CreateRoleFormValue>(EMPTY_CREATE_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const query = buildListQuery(filters, page, pageSize);
   const list = useRolesList(query);
   const createMut = useCreateRole();
   const updateMut = useUpdateRole();
   const deleteMut = useDeleteRole();
+  const bulkDeleteMut = useBulkDeleteRoles();
   const assignableMenusQuery = useAssignableMenus();
   const menuTree = assignableMenusQuery.data ?? [];
   const menuTreeOptions: MenuTreeNode[] = React.useMemo(
@@ -197,6 +205,17 @@ function AdminRolesPage() {
     },
     [deleteMut],
   );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    if (selectedKeys.length === 0) return;
+    try {
+      await bulkDeleteMut.mutateAsync(selectedKeys);
+      setSelectedKeys([]);
+      setBulkDeletePopconfirmOpen(false);
+    } catch {
+      // 错误由 useMutation 状态显示；保留弹层让用户看到错误
+    }
+  }, [bulkDeleteMut, selectedKeys]);
 
   const columns: ResourceColumn<RoleListItemDto>[] = [
     {
@@ -345,7 +364,7 @@ function AdminRolesPage() {
                 if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
               }}
               title={`删除「${row.name}」？`}
-              description="删除后该角色将被停用，已绑定的角色会保留但无法再次使用。"
+              description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
               loading={deleteMut.isPending && popconfirmRowId === row.id}
@@ -362,7 +381,7 @@ function AdminRolesPage() {
                 if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
               }}
               title="禁用角色"
-              description="禁用后，已分配该角色的用户将失去对应权限。"
+              description="你确认禁用吗？"
               confirmLabel="禁用"
               tone="danger"
               loading={updateMut.isPending && disablePopconfirmRowId === row.id}
@@ -467,10 +486,43 @@ function AdminRolesPage() {
         filterLoading={list.isFetching}
         toolbarTitle="角色列表"
         toolbarActions={
-          <Button type="button" size="sm" onClick={handleOpenCreate}>
-            <Plus className="size-3.5" aria-hidden />
-            新建
-          </Button>
+          <>
+            {selectedKeys.length > 0 ? (
+              <Popconfirm
+                open={bulkDeletePopconfirmOpen}
+                onOpenChange={(next) => {
+                  if (!next && bulkDeletePopconfirmOpen) {
+                    setBulkDeletePopconfirmOpen(false);
+                    bulkDeleteMut.reset();
+                  }
+                }}
+                title={`批量删除 ${selectedKeys.length} 个角色？`}
+                description="你确认批量删除吗？"
+                confirmLabel="删除"
+                tone="danger"
+                loading={bulkDeleteMut.isPending}
+                onConfirm={() => void handleBulkDelete()}
+                side="bottom"
+                align="end"
+                sideOffset={6}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkDeleteMut.isPending}
+                  onClick={() => setBulkDeletePopconfirmOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  批量删除 ({selectedKeys.length})
+                </Button>
+              </Popconfirm>
+            ) : null}
+            <Button type="button" size="sm" onClick={handleOpenCreate}>
+              <Plus className="size-3.5" aria-hidden />
+              新建
+            </Button>
+          </>
         }
         tableProps={{
           columns: columns as ResourceColumn<RoleListItemDto>[],
@@ -491,6 +543,10 @@ function AdminRolesPage() {
               ? list.error.message
               : "加载失败"
             : undefined,
+          rowSelection: {
+            selectedKeys,
+            onChange: setSelectedKeys,
+          },
         }}
       />
 
