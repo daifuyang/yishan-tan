@@ -66,6 +66,7 @@ function formatDateTime(iso: string): string {
 function AdminDictDataPage() {
   const navigate = useNavigate();
   const { typeCode } = Route.useParams();
+  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -100,24 +101,29 @@ function AdminDictDataPage() {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
   React.useEffect(() => {
     resetPageOnFilterChange();
   }, [
-    filters.label,
-    filters.value,
-    filters.extra,
-    filters.status,
-    filters.createdFrom,
-    filters.createdTo,
+    draft.label,
+    draft.value,
+    draft.extra,
+    draft.status,
+    draft.createdFrom,
+    draft.createdTo,
     resetPageOnFilterChange,
   ]);
 
-  const applyFilterPatch = React.useCallback((patch: Partial<FilterState>) => {
-    setFilters((s) => ({ ...s, ...patch }));
+  const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
+    setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
+  const handleFilterSubmit = React.useCallback(() => {
+    setFilters(draft);
+  }, [draft]);
+
   const handleResetFilters = React.useCallback(() => {
+    setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
@@ -373,8 +379,8 @@ function AdminDictDataPage() {
                 className={FILTER_CONTROL_CLASS}
                 allowClear
                 placeholder="如:启用"
-                value={filters.label}
-                onChange={(e) => applyFilterPatch({ label: e.target.value })}
+                value={draft.label}
+                onChange={(e) => applyDraftPatch({ label: e.target.value })}
               />
             </QueryFormItem>
 
@@ -384,8 +390,8 @@ function AdminDictDataPage() {
                 className={FILTER_CONTROL_CLASS}
                 allowClear
                 placeholder="如:active"
-                value={filters.value}
-                onChange={(e) => applyFilterPatch({ value: e.target.value })}
+                value={draft.value}
+                onChange={(e) => applyDraftPatch({ value: e.target.value })}
               />
             </QueryFormItem>
 
@@ -395,15 +401,15 @@ function AdminDictDataPage() {
                 className={FILTER_CONTROL_CLASS}
                 allowClear
                 placeholder="如:补充说明"
-                value={filters.extra}
-                onChange={(e) => applyFilterPatch({ extra: e.target.value })}
+                value={draft.extra}
+                onChange={(e) => applyDraftPatch({ extra: e.target.value })}
               />
             </QueryFormItem>
 
             <QueryFormItem label="状态" htmlFor="filter-status">
               <Select
-                value={filters.status}
-                onValueChange={(v) => applyFilterPatch({ status: v as StatusFilter })}
+                value={draft.status}
+                onValueChange={(v) => applyDraftPatch({ status: v as StatusFilter })}
               >
                 <SelectTrigger id="filter-status" className={FILTER_CONTROL_CLASS}>
                   <SelectValue placeholder="请选择" />
@@ -419,25 +425,16 @@ function AdminDictDataPage() {
             <QueryFormItem label="创建时间" htmlFor="filter-created-range">
               <DateRangePicker
                 id="filter-created-range"
-                value={{ start: filters.createdFrom || null, end: filters.createdTo || null }}
+                value={{ start: draft.createdFrom || null, end: draft.createdTo || null }}
                 onChange={(r) =>
-                  applyFilterPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
+                  applyDraftPatch({ createdFrom: r.start ?? "", createdTo: r.end ?? "" })
                 }
               />
             </QueryFormItem>
           </>
         }
-        filterValues={filters}
-        onFilterChange={(next) =>
-          setFilters({
-            label: String(next.label ?? ""),
-            value: String(next.value ?? ""),
-            extra: String(next.extra ?? ""),
-            status: (next.status as StatusFilter) ?? "all",
-            createdFrom: String(next.createdFrom ?? ""),
-            createdTo: String(next.createdTo ?? ""),
-          })
-        }
+        filterValues={draft}
+        onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
         filterLoading={list.isFetching}
         toolbarTitle="字典数据列表"

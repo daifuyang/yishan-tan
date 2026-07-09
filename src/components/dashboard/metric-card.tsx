@@ -18,7 +18,7 @@ const TREND_BADGE_VARIANT: Record<
   NonNullable<MetricCardProps["trend"]>,
   React.ComponentProps<typeof Badge>["variant"]
 > = {
-  up: "success",
+  up: "glow",
   down: "destructive",
   neutral: "soft",
 };

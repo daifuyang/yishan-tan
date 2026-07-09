@@ -94,15 +94,15 @@ function AdminLoginLogsPage() {
   const allItems = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
   // IP / User Agent 是只读客户端筛选，避免再发一次查询。
-  // 客户端过滤使用 draft，IP/UA 输入即生效，提交按钮仅承担"对齐 ResourcePage 形态"职责。
+  // 客户端过滤使用提交后的 filters，与 ResourcePage 的「查询」按钮语义一致。
   const items = React.useMemo(
     () =>
       allItems.filter(
         (item) =>
-          matchesIpFilter(item.ipAddress, draft.ipAddress) &&
-          matchesUserAgentFilter(item.userAgent, draft.userAgent),
+          matchesIpFilter(item.ipAddress, filters.ipAddress) &&
+          matchesUserAgentFilter(item.userAgent, filters.userAgent),
       ),
-    [allItems, draft.ipAddress, draft.userAgent],
+    [allItems, filters.ipAddress, filters.userAgent],
   );
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));

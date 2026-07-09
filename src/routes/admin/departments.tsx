@@ -141,6 +141,7 @@ function findNodeInTree(nodes: DepartmentNode[], id: string): DepartmentNode | n
 
 function AdminDepartmentsPage() {
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(50);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -181,10 +182,10 @@ function AdminDepartmentsPage() {
   const exportMut = useExportDepartments();
 
   // 名称 / 状态按客户端过滤（树结构天然按层级呈现，过滤命中节点会保留其父链）。
-  // 客户端过滤使用 draft，提交按钮仅承担"对齐 ResourcePage 形态"职责，行为即时生效。
+  // 客户端过滤使用提交后的 filters，确保与 ResourcePage 的「查询」按钮语义一致。
   const filteredTree = React.useMemo(
-    () => filterTree(tree, draft.name.trim(), draft.status),
-    [tree, draft.name, draft.status],
+    () => filterTree(tree, filters.name.trim(), filters.status),
+    [tree, filters.name, filters.status],
   );
 
   const flatRows = React.useMemo(
@@ -215,8 +216,13 @@ function AdminDepartmentsPage() {
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
+    setFilters(DEFAULT_FILTERS);
     setPage(1);
   }, []);
+
+  const handleFilterSubmit = React.useCallback(() => {
+    setFilters(draft);
+  }, [draft]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅作为 filter 变化的触发器
   React.useEffect(() => {
@@ -298,15 +304,15 @@ function AdminDepartmentsPage() {
   const handleExport = React.useCallback(async () => {
     try {
       const csv = await exportMut.mutateAsync({
-        name: draft.name.trim() || undefined,
-        status: draft.status === "all" ? undefined : draft.status,
+        name: filters.name.trim() || undefined,
+        status: filters.status === "all" ? undefined : filters.status,
       });
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       downloadCsv(`departments-${stamp}.csv`, csv);
     } catch {
       // 错误提示由 useMutation errorMessage 暴露
     }
-  }, [exportMut, draft.name, draft.status]);
+  }, [exportMut, filters.name, filters.status]);
 
   const handleEditSubmit = async () => {
     if (!editing) return;
@@ -557,6 +563,7 @@ function AdminDepartmentsPage() {
         }
         filterValues={draft}
         onFilterReset={handleResetFilters}
+        onFilterSubmit={handleFilterSubmit}
         filterLoading={treeQuery.isFetching}
         toolbarTitle="部门树"
         toolbarActions={
