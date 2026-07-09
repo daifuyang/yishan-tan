@@ -183,6 +183,11 @@ function AdminRolesPage() {
     createMut.reset();
   };
 
+  const closeRowConfirms = React.useCallback(() => {
+    setPopconfirmRowId(null);
+    setDisablePopconfirmRowId(null);
+  }, []);
+
   const handleToggleStatus = React.useCallback(
     async (row: RoleListItemDto) => {
       const next = row.status === "enabled" ? "disabled" : "enabled";
@@ -352,6 +357,8 @@ function AdminRolesPage() {
                 className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setMoreMenuRowId(null);
+                  setDisablePopconfirmRowId(null);
                   setPopconfirmRowId(row.id);
                 }}
                 disabled={deleteMut.isPending}
@@ -362,6 +369,9 @@ function AdminRolesPage() {
             <DropdownMenu
               open={moreMenuRowId === row.id}
               onOpenChange={(next) => {
+                if (next) {
+                  setPopconfirmRowId(null);
+                }
                 setMoreMenuRowId(next ? row.id : null);
                 if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
               }}
@@ -372,7 +382,10 @@ function AdminRolesPage() {
                   variant="link"
                   size="sm"
                   className={TABLE_ACTION_CLASS}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeRowConfirms();
+                  }}
                   disabled={isSystem || updateMut.isPending}
                 >
                   更多
@@ -413,6 +426,7 @@ function AdminRolesPage() {
                     <DropdownMenuItem
                       onSelect={(e) => {
                         e.preventDefault();
+                        setPopconfirmRowId(null);
                         setDisablePopconfirmRowId(row.id);
                       }}
                       disabled={isSystem}
