@@ -36,8 +36,8 @@ inputs:
   prod-env-file:
     description: |
       Multiline string with the contents of PROD_ENV_FILE; injected by the calling
-      workflow as ${{ secrets.PROD_ENV_FILE }}.
-      Required — composite-action steps cannot read the github secrets context directly.
+      workflow as `\${{ secrets.PROD_ENV_FILE }}`. Required because composite-action
+      steps cannot read the github secrets context directly.
     required: true
 
 outputs:
