@@ -1,4 +1,5 @@
 import { defineConfig } from "drizzle-kit";
+import { getDatabaseUrl } from "./src/lib/database-url";
 
 export default defineConfig({
   schema: "./db/schema/index.ts",
@@ -6,8 +7,7 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     url:
-      process.env.DATABASE_URL ??
-      "postgres://yishan_tan:change_me_in_production@localhost:5432/yishan_tan",
+      getDatabaseUrl() ?? "postgres://yishan_tan:change_me_in_production@localhost:5432/yishan_tan",
   },
   verbose: true,
   strict: true,

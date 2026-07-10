@@ -24,7 +24,7 @@ db/
 scripts/
   arch/                         # 架构边界检查
   generators/                   # 资源脚手架生成器
-fc-deploy/                      # FC3 部署入口（s.yaml / bootstrap / .env.example）
+deploy/fc/                      # FC3 部署入口（s.yaml / bootstrap / .env.example）
 ```
 
 ## 快速开始
@@ -51,7 +51,7 @@ npm run dev     # http://localhost:3000
 ```bash
 npm run dev          # 本地开发
 npm run build        # 生产构建
-npm run build:fc     # 生成 fc-deploy/code/
+npm run build:fc     # 生成 deploy/fc/code/
 npm run typecheck    # TypeScript 类型检查
 npm run lint:check   # Biome 检查
 npm run arch:check   # 架构边界检查
@@ -63,7 +63,7 @@ npm run gen:resource -- <domain>   # 新功能目录脚手架
 ```bash
 npm run build
 npm run build:fc
-DOCBASE_FC_ENV_FILE=fc-deploy/prod.env npm run deploy
+YISHAN_FC_ENV_FILE=deploy/fc/prod.env npm run deploy
 ```
 
-详见 `OWN.md` 与 `fc-deploy/README.md`。
+详见 `OWN.md` 与 `deploy/fc/README.md`。

@@ -1,10 +1,11 @@
 import { readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import postgres from "postgres";
+import { getDatabaseUrl } from "../src/lib/database-url";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getDatabaseUrl();
 if (!databaseUrl) {
-  console.error("DATABASE_URL is required");
+  console.error("Database config is required. Set DATABASE_URL or split DATABASE_* variables.");
   process.exit(1);
 }
 

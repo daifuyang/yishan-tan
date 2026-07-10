@@ -1,0 +1,56 @@
+edition: 3.0.0
+name: yishan-tan-migrator
+access: "enterprise"
+
+# 与 deploy/fc/s.yaml 完全分离的轻量部署单元：
+# - 一个 fc3 函数，只在 invoke 时运行 drizzle-kit migrate + 首次 admin seed
+# - 不挂 trigger；通过 `s fc3 invoke` 触发（无域名、无证书）
+# - 与 app 共享同一 VPC、同一数据库凭据
+#
+# 部署：
+#   ( cd deploy/fc && s deploy -y --use-local )
+# 调用：
+#   bash scripts/migrate-invoke.sh
+
+vars:
+  region: cn-shanghai
+
+resources:
+  migrator:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: yishan-tan-migrator
+      description: yishan-tan schema migrator (invoked on demand, no trigger)
+      runtime: custom.debian12
+      code: ./code-migrator
+      memorySize: 512
+      timeout: 120
+      handler: not-used
+      customRuntimeConfig:
+        command:
+          - /code/bootstrap
+        port: 9000
+      vpcConfig:
+        vpcId: ${env(VPC_ID)}
+        vSwitchIds:
+          - ${env(VSWITCH_ID)}
+        securityGroupId: ${env(SECURITY_GROUP_ID)}
+      environmentVariables:
+        # FC3 自带 node-22；通过 PATH 暴露给 bootstrap
+        PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/sbin:/bin
+        NODE_PATH: /opt/nodejs/node_modules
+        NODE_ENV: production
+        MIGRATIONS_FOLDER: /code/db/migrations
+
+        # 与 app 同源 DB 凭据
+        DATABASE_USER: ${env(DATABASE_USER)}
+        DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
+        DATABASE_NAME: ${env(DATABASE_NAME)}
+        DATABASE_HOST: ${env(DATABASE_HOST)}
+        DATABASE_PORT: ${env(DATABASE_PORT)}
+
+        # SEED_ADMIN_* (email/username/password/display-name) intentionally omitted here:
+        # the s tool errors on empty env() values, and migrate.mjs already provides sensible
+        # defaults (admin / admin123 / admin@example.com / 超级管理员). To override per
+        # environment, set them in deploy/fc/prod.env AND re-add the line here.

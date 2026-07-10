@@ -3,7 +3,11 @@ import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
-import { FILTER_CONTROL_CLASS, TABLE_ACTION_CLASS } from "@/components/admin/data-table/tokens";
+import {
+  FILTER_CONTROL_CLASS,
+  TABLE_ACTION_CLASS,
+  TABLE_DANGER_ACTION_CLASS,
+} from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
 import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
 import { ResourcePage, resolveMenuIcon } from "@/components/admin/layout";
@@ -92,6 +96,7 @@ function AdminMenusPage() {
   const [editForm, setEditForm] = React.useState<EditMenuFormValue>(EMPTY_EDIT_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [moreMenuRowId, setMoreMenuRowId] = React.useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
@@ -183,6 +188,24 @@ function AdminMenusPage() {
       }
     },
     [updateMut],
+  );
+
+  const closeRowConfirms = React.useCallback(() => {
+    setPopconfirmRowId(null);
+    setDisablePopconfirmRowId(null);
+  }, []);
+
+  const handleDisableConfirm = React.useCallback(
+    async (row: MenuRow) => {
+      try {
+        await handleToggleStatus(row);
+        setDisablePopconfirmRowId(null);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [handleToggleStatus],
   );
 
   const handleDeleteConfirm = React.useCallback(
@@ -407,19 +430,39 @@ function AdminMenusPage() {
                 启用
               </Button>
             ) : (
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className={TABLE_ACTION_CLASS}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDisablePopconfirmRowId(row.node.id);
+              <Popconfirm
+                open={disablePopconfirmRowId === row.node.id}
+                onOpenChange={(next) => {
+                  if (!next && disablePopconfirmRowId === row.node.id)
+                    setDisablePopconfirmRowId(null);
                 }}
-                disabled={updateMut.isPending}
+                title="禁用菜单"
+                description="你确认禁用吗？"
+                confirmLabel="禁用"
+                tone="danger"
+                loading={updateMut.isPending && disablePopconfirmRowId === row.node.id}
+                onConfirm={() => {
+                  void handleDisableConfirm(row);
+                }}
+                placement="top"
+                sideOffset={8}
+                arrow
               >
-                禁用
-              </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className={TABLE_DANGER_ACTION_CLASS}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMoreMenuRowId(null);
+                    setDisablePopconfirmRowId(row.node.id);
+                  }}
+                  disabled={updateMut.isPending}
+                >
+                  禁用
+                </Button>
+              </Popconfirm>
             )}
             <Button
               type="button"
@@ -434,67 +477,60 @@ function AdminMenusPage() {
               <Plus className="size-3.5" aria-hidden />
               新建子菜单
             </Button>
-            <DropdownMenu>
+            <DropdownMenu
+              open={moreMenuRowId === row.node.id}
+              onOpenChange={(next) => {
+                if (next) closeRowConfirms();
+                setMoreMenuRowId(next ? row.node.id : null);
+                if (!next && disablePopconfirmRowId === row.node.id)
+                  setDisablePopconfirmRowId(null);
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
                   variant="link"
                   size="sm"
                   className={TABLE_ACTION_CLASS}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeRowConfirms();
+                  }}
                 >
                   更多
                   <ChevronDown className="size-3.5" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="w-32 rounded-[4px]">
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={isProtected || deleteMut.isPending}
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setPopconfirmRowId(row.node.id);
+                <Popconfirm
+                  open={popconfirmRowId === row.node.id}
+                  onOpenChange={(next) => {
+                    if (!next && popconfirmRowId === row.node.id) setPopconfirmRowId(null);
                   }}
+                  title={`删除「${row.node.name}」？`}
+                  description="你确认删除吗？"
+                  confirmLabel="删除"
+                  tone="danger"
+                  loading={deleteMut.isPending && popconfirmRowId === row.node.id}
+                  onConfirm={() => handleDeleteConfirm(row)}
+                  placement="top"
+                  sideOffset={8}
+                  arrow
                 >
-                  删除
-                </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={isProtected || deleteMut.isPending}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setMoreMenuRowId(null);
+                      setPopconfirmRowId(row.node.id);
+                    }}
+                  >
+                    删除
+                  </DropdownMenuItem>
+                </Popconfirm>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Popconfirm
-              open={popconfirmRowId === row.node.id}
-              onOpenChange={(next) => {
-                if (!next && popconfirmRowId === row.node.id) setPopconfirmRowId(null);
-              }}
-              title={`删除「${row.node.name}」？`}
-              description="你确认删除吗？"
-              confirmLabel="删除"
-              tone="danger"
-              loading={deleteMut.isPending && popconfirmRowId === row.node.id}
-              onConfirm={() => handleDeleteConfirm(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
-            >
-              <span aria-hidden className="size-0" />
-            </Popconfirm>
-            <Popconfirm
-              open={disablePopconfirmRowId === row.node.id}
-              onOpenChange={(next) => {
-                if (!next && disablePopconfirmRowId === row.node.id)
-                  setDisablePopconfirmRowId(null);
-              }}
-              title="禁用菜单"
-              description="你确认禁用吗？"
-              confirmLabel="禁用"
-              tone="danger"
-              loading={updateMut.isPending && disablePopconfirmRowId === row.node.id}
-              onConfirm={() => handleToggleStatus(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
-            >
-              <span aria-hidden className="size-0" />
-            </Popconfirm>
           </div>
         );
       },

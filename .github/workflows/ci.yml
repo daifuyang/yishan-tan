@@ -1,0 +1,48 @@
+name: ci
+
+# 快速校验（typecheck / lint / test / arch:check）。
+# 不需要云权限：所有 PR / push 都跑，~2 分钟内可出结果。
+# deploy.yml 复用本 workflow 的 check job？
+
+on:
+  # 三种入口都支持：触发自身、给 deploy.yml 用 workflow_call、调手工跑
+  workflow_call:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Test
+        run: npm test
+
+      - name: Arch check
+        run: npm run arch:check

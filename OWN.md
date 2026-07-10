@@ -69,9 +69,10 @@ src/features/<domain>/
 - `scripts/arch/check-naming.mjs`：feature 文件名以 `<domain>.` 为前缀，REST 顶级资源名必须复数，子资源允许非复数。
 
 ## 部署约定
-- `fc-deploy/s.yaml` 是 FC3 部署唯一入口。
+- `deploy/fc/s.yaml` 是 FC3 部署唯一入口。
 - `bootstrap` 只启动应用，不执行迁移或安装。
-- 真实环境变量写在 `fc-deploy/prod.env`，不提交。
+- 真实环境变量写在 `deploy/fc/prod.env`，不提交。
+- 线上数据库通过 VPC 内网访问，使用独立库与独立用户，不复用其他应用账号。
 - `scripts/deploy-fc.sh apply` 完成 build + deploy + smoke。
 
 ## 编码风格

@@ -1,0 +1,91 @@
+name: deploy
+
+# 通过 OIDC 联邦 → 临时 STS → 直接调 `s deploy` / `s cli fc3 invoke`。
+# 触发：main push 或手动。
+# 不配置 Environment required-reviewers（当前用户选择直接 push→deploy）。
+# 若日后需要审批卡：在 repo Settings → Environments → production 加 required reviewers。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_migrate:
+        description: 'Skip invoking yishan-tan-migrator before app deploy (use for emergency rollback)'
+        type: choice
+        required: false
+        default: '0'
+        options: ['0', '1']      # 1 = skip invoke (let schema drift), 0 = normal flow
+
+permissions:
+  contents: read
+  id-token: write   # 必须：用于 OIDC
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false   # 部署一旦开始就让它跑完，不允许半途取消
+
+jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+    with: {}
+    # 不开 secret 类 input，跑 ci 的轻量检查即可。
+
+  deploy-prod:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FC_DEPLOY_ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Serverless Devs (`s` CLI)
+        run: npm install -g @serverless-devs/s
+
+      # OIDC → STS → ~/.s/access.yaml，并取出 PROD_ENV_FILE 内容。
+      # 之后 `s deploy --use-local` / `s cli fc3 invoke` 都直接走 enterprise profile。
+      - name: Assume FC deploy role via OIDC
+        id: sts
+        uses: ./.github/actions/fc-deploy-env
+        with:
+          role-arn: ${{ env.FC_DEPLOY_ROLE_ARN }}
+          audience: aliyun-fc-yishan-tan
+          account-id: "1650595695532785"
+          region: cn-hangzhou
+          profile-name: enterprise
+
+      - name: Verify assumed credentials
+        env:
+          ACCOUNT_ID: "1650595695532785"
+        run: |
+          set -euo pipefail
+          AK=$(s config get -a enterprise --output-format json | jq -r '.enterprise.AccessKeyID')
+          case "$AK" in
+            STS.*) echo "STS AccessKeyId ok: ${AK:0:14}..." ;;
+            *)     echo "::error::Expected STS AccessKeyId but got ${AK}"; exit 1 ;;
+          esac
+
+      - name: Stage deploy/fc/prod.env
+        env:
+          PROD_ENV: ${{ steps.sts.outputs.prod-env }}
+        run: |
+          set -euo pipefail
+          mkdir -p deploy/fc
+          printf '%s\n' "$PROD_ENV" > deploy/fc/prod.env
+          chmod 600 deploy/fc/prod.env
+
+      # YISHAN_SKIP_MIGRATE=1 用于紧急回滚（push 自动 0，手动可传 1）
+      - name: Deploy (build → migrator → invoke → app → smoke)
+        env:
+          YISHAN_SKIP_BUILD: "0"
+          YISHAN_SKIP_MIGRATE: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_migrate || '0' }}
+        run: npm run deploy

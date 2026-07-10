@@ -1,95 +1,125 @@
 #!/usr/bin/env node
 /**
- * 把 TanStack Start 构建产物组装成 fc-deploy/code/，供 FC 上传。
+ * 把 TanStack Start 构建产物组装成 deploy/fc/code/（app 包）+ deploy/fc/code-migrator/（migrator 包）。
  *
- * TanStack Start 输出到 .output/（Nitro 模式）或 dist/（Vite 默认 SSR 模式）。
- * 默认优先使用 .output，缺失时回退 dist。
+ * app 输出（vite Nitro 模式）：
+ *   .output/  -> code/.output/
+ *   deploy/fc/server/bootstrap  -> code/bootstrap
+ *   package.json  -> code/package.json
  *
- * 输出：fc-deploy/code/
- *   - .output/  或  dist/（按实际存在）
- *   - public/（项目根 public/）
- *   - bootstrap（启动脚本）
- *   - package.json（薄包）
+ * migrator 输出（esbuild bundle of scripts/db-migrate.ts）：
+ *   db/migrations/  -> code-migrator/db/migrations/
+ *   scripts/db-migrate.ts  bundled  -> code-migrator/migrate.mjs
+ *   deploy/fc/server/migrator-bootstrap  -> code-migrator/bootstrap
+ *   package.json  -> code-migrator/package.json
  */
 
-import { promises as fs } from "node:fs";
-import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const deployCodeDir = path.join(root, "fc-deploy/code");
+const deployBase = path.join(root, "deploy/fc");
+const appCodeDir = path.join(deployBase, "code");
+const migratorCodeDir = path.join(deployBase, "code-migrator");
 
 function rmrf(p) {
   if (!existsSync(p)) return;
   return fs.rm(p, { recursive: true, force: true });
 }
 
-function pickOutputDir() {
-  const candidates = [".output", "dist"];
-  for (const candidate of candidates) {
-    const abs = path.join(root, candidate);
-    if (existsSync(abs)) return { kind: candidate, abs };
+async function buildAppPackage() {
+  const outDir = path.join(root, ".output");
+  if (!existsSync(outDir)) {
+    throw new Error(".output not found, run `npm run build` first (vite.config must use nitro/vite plugin)");
   }
-  return null;
-}
-
-async function main() {
-  const picked = pickOutputDir();
-  if (!picked) {
-    console.error("[build-fc] .output / dist not found, run `pnpm build` first");
-    process.exit(1);
+  if (!existsSync(path.join(outDir, "server", "index.mjs"))) {
+    throw new Error(".output/server/index.mjs missing; build must emit Nitro output");
   }
 
-  console.log(`[build-fc] preparing code dir (using ${picked.kind}/)`);
-  await rmrf(deployCodeDir);
-  await fs.mkdir(deployCodeDir, { recursive: true });
+  console.log("[build-fc][app] preparing code dir");
+  await rmrf(appCodeDir);
+  await fs.mkdir(appCodeDir, { recursive: true });
 
-  console.log(`[build-fc] copying ${picked.kind}`);
-  await fs.cp(picked.abs, path.join(deployCodeDir, picked.kind), { recursive: true });
+  console.log("[build-fc][app] copying .output/");
+  await fs.cp(outDir, path.join(appCodeDir, ".output"), { recursive: true });
 
-  console.log("[build-fc] copying public/ (if any)");
-  const publicDir = path.join(root, "public");
-  if (existsSync(publicDir)) {
-    await fs.cp(publicDir, path.join(deployCodeDir, "public"), { recursive: true });
-  }
+  console.log("[build-fc][app] copying bootstrap");
+  await fs.cp(path.join(deployBase, "server/bootstrap"), path.join(appCodeDir, "bootstrap"));
 
-  console.log("[build-fc] copying bootstrap");
-  await fs.cp(path.join(root, "fc-deploy/server/bootstrap"), path.join(deployCodeDir, "bootstrap"));
-
-  console.log("[build-fc] writing package.json");
+  console.log("[build-fc][app] writing package.json");
   const pkg = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
   const slim = {
     name: pkg.name,
     version: pkg.version,
     type: "module",
     engines: pkg.engines,
+    scripts: { start: "node .output/server/index.mjs" },
   };
-  await fs.writeFile(path.join(deployCodeDir, "package.json"), JSON.stringify(slim, null, 2));
+  await fs.writeFile(path.join(appCodeDir, "package.json"), JSON.stringify(slim, null, 2));
+}
 
-  console.log("[build-fc] writing start shim");
-  const shim = `#!/usr/bin/env bash
-set -euo pipefail
-cd /code
-export NODE_ENV="${"${NODE_ENV:-production}"}"
-export PORT="${"${PORT:-9000}"}"
-OUT="${picked.kind}"
-if [ -f "$OUT/server/index.mjs" ]; then
-  exec node "$OUT/server/index.mjs"
-elif [ -f "$OUT/server.js" ]; then
-  exec node "$OUT/server.js"
-else
-  echo "no server entry found in $OUT" >&2
-  exit 1
-fi
-`;
-  await fs.writeFile(path.join(deployCodeDir, "start.sh"), shim, { mode: 0o755 });
+async function buildMigratorPackage() {
+  console.log("[build-fc][migrator] preparing code dir");
+  await rmrf(migratorCodeDir);
+  await fs.mkdir(migratorCodeDir, { recursive: true });
 
+  const migrationsSrc = path.join(root, "db/migrations");
+  if (!existsSync(migrationsSrc)) {
+    throw new Error("db/migrations not found; nothing to migrate");
+  }
+  console.log("[build-fc][migrator] copying db/migrations/");
+  await fs.cp(migrationsSrc, path.join(migratorCodeDir, "db/migrations"), { recursive: true });
+
+  console.log("[build-fc][migrator] bundling scripts/db-migrate.ts -> migrate.mjs");
+  const result = spawnSync(
+    path.join(root, "node_modules/.bin/esbuild"),
+    [
+      "scripts/db-migrate.ts",
+      "--bundle",
+      "--platform=node",
+      "--target=node22",
+      "--format=esm",
+      "--banner:js=process.on('uncaughtException', e => { console.error('[uncaught]', e?.stack ?? e); process.exit(1); }); process.on('unhandledRejection', e => { console.error('[unhandledRejection]', e?.stack ?? e); process.exit(1); });",
+      `--outfile=${path.join(migratorCodeDir, "migrate.mjs")}`,
+    ],
+    { cwd: root, stdio: "inherit" },
+  );
+  if (result.status !== 0) {
+    throw new Error(`esbuild bundle failed with exit ${result.status}`);
+  }
+
+  console.log("[build-fc][migrator] copying migrator-bootstrap");
+  await fs.cp(
+    path.join(deployBase, "server/migrator-bootstrap"),
+    path.join(migratorCodeDir, "bootstrap"),
+  );
+
+  console.log("[build-fc][migrator] writing package.json");
+  const pkg = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
+  const slim = {
+    name: `${pkg.name}-migrator`,
+    version: pkg.version,
+    type: "module",
+    engines: pkg.engines,
+    private: true,
+    scripts: { start: "node migrate.mjs" },
+  };
+  await fs.writeFile(
+    path.join(migratorCodeDir, "package.json"),
+    JSON.stringify(slim, null, 2),
+  );
+}
+
+async function main() {
+  await buildAppPackage();
+  await buildMigratorPackage();
   console.log("[build-fc] done");
 }
 
 main().catch((err) => {
-  console.error("[build-fc] failed", err);
+  console.error("[build-fc] failed", err instanceof Error ? err.message : err);
   process.exit(1);
 });

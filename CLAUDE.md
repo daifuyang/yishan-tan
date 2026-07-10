@@ -27,7 +27,7 @@ npm run arch:check       # 全部架构边界检查（见下）
 npm run gen:resource -- <domain>   # 生成新 feature 目录脚手架
 ```
 
-配置：`cp .env.example .env`。关键变量：`DATABASE_URL`、`REDIS_URL`、`BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`。
+配置：`cp .env.example .env`。关键变量：`DATABASE_URL`（或拆分 `DATABASE_*`）、`REDIS_URL`、`BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`。
 **管理员鉴权**：`SYSTEM_ADMIN_IDS`（逗号分隔 userId）是显式白名单，覆盖 DB role；**未配置时回退 `ctx.role === "admin"`**，让 seed 用户登入即可访问后台，避免「必须手抄 userId 写进 .env」（见 `src/lib/authorization.server.ts:isSystemAdmin`）。
 
 CI 前置门槛：`typecheck` + `lint` + `arch:check` + `test` 都要过。改动跨层引用后务必跑 `arch:check`，它是脚本级硬约束，不是建议。
@@ -69,10 +69,10 @@ Service 抛错一律用 `Errors.*` 工厂（`src/lib/errors.ts`）：`unauthenti
 
 ## 部署
 
-`fc-deploy/s.yaml` 是 FC3 唯一入口；`bootstrap` 只启动应用，不跑迁移/安装。真实环境变量写 `fc-deploy/prod.env`（不提交）。
+`deploy/fc/s.yaml` 是 FC3 唯一入口；`bootstrap` 只启动应用，不跑迁移/安装。真实环境变量写 `deploy/fc/prod.env`（不提交）。
 
 ```bash
-npm run build && npm run build:fc          # 生成 fc-deploy/code/
+npm run build && npm run build:fc          # 生成 deploy/fc/code/
 npm run deploy:plan / deploy / deploy:smoke / deploy:rollback   # scripts/deploy-fc.sh
 ```
 

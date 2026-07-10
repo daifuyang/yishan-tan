@@ -6,6 +6,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.{test,spec}.{ts,tsx}", "tests/**/*.{test,spec}.{ts,tsx}"],
-    exclude: ["node_modules", "dist", ".output", "fc-deploy/code"],
+    exclude: ["node_modules", "dist", ".output", "deploy/fc/code"],
   },
 });

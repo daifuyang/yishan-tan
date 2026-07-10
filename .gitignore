@@ -6,8 +6,9 @@ dist
 .vite
 .cache
 coverage
-fc-deploy/prod.env
-fc-deploy/code
+deploy/fc/prod.env
+deploy/fc/code
+deploy/fc/certs
 
 # OpenAPI spec 是 npm run openapi:gen 的产物，每次构建重新生成
 openapi.generated.json

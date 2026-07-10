@@ -1,0 +1,150 @@
+name: fc-deploy-env
+
+description: |
+  OIDC-federated STS access for yishan-tan FC3 deploys.
+  Pipeline:
+    1. requests GitHub OIDC token (audience=<audience>)
+    2. exchanges it via aliyun sts AssumeRoleWithOIDC for a 1-hour STS triplet
+    3. writes ~/.s/access.yaml under alias "enterprise" (matches deploy/fc/s.yaml `access: enterprise`)
+    4. emits PROD env contents as the workflow can re-source them without
+       scattering per-key secrets.
+
+inputs:
+  role-arn:
+    description: |
+      Aliyun RAM role ARN with OIDC trust policy pointing at the GitHub OIDC issuer.
+      e.g. acs:ram::1650595695532785:role/github-actions-yishan-tan-deploy
+    required: true
+  audience:
+    description: |
+      OIDC `aud` claim to set when fetching the GH token. The trust policy on the RAM role
+      must allow exactly this value (oidc:aud condition).
+    required: false
+    default: aliyun-fc-yishan-tan
+  account-id:
+    description: "Aliyun AccountID used in the s CLI access.yaml profile"
+    required: false
+    default: "1650595695532785"
+  region:
+    description: "Region for the STS AssumeRoleWithOIDC endpoint"
+    required: false
+    default: cn-hangzhou
+  profile-name:
+    description: "s CLI access profile alias to overwrite (matches deploy/fc s.yaml's `access`)"
+    required: false
+    default: enterprise
+
+outputs:
+  access-key-id:
+    description: "STS SessionAccessKeyId"
+    value: ${{ steps.sts.outputs.access_key_id }}
+  access-key-secret:
+    description: "STS SessionAccessKeySecret"
+    value: ${{ steps.sts.outputs.access_key_secret }}
+  security-token:
+    description: "STS SecurityToken"
+    value: ${{ steps.sts.outputs.security_token }}
+  prod-env:
+    description: "Multiline string with the contents of the PROD_ENV_FILE secret"
+    value: ${{ steps.env.outputs.prod_env }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install aliyun CLI
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" \
+          -o /tmp/aliyun.tgz
+        tar -xzf /tmp/aliyun.tgz -C /tmp
+        if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
+        aliyun --version
+
+    - name: Fetch GitHub OIDC token
+      id: oidc
+      shell: bash
+      env:
+        AUDIENCE: ${{ inputs.audience }}
+      run: |
+        set -euo pipefail
+        TOKEN=$(curl -fsS \
+          -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}" \
+          | jq -r '.value')
+        if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+          echo "::error::Failed to fetch GitHub OIDC token (empty response)"
+          exit 1
+        fi
+        echo "oidc_token_length=${#TOKEN}" >>"$GITHUB_OUTPUT"
+        # Save the JWT to a file so subsequent step can read it via env (avoids shell escaping).
+        echo -n "$TOKEN" >/tmp/oidc.jwt
+
+    - name: Assume RAM role via AssumeRoleWithOIDC
+      id: sts
+      shell: bash
+      env:
+        ROLE_ARN: ${{ inputs.role-arn }}
+        REGION: ${{ inputs.region }}
+        OIDC_TOKEN_FILE: /tmp/oidc.jwt
+        ROLE_SESSION_NAME: gha-${{ github.run_id }}-${{ github.event.pull_request.number || github.sha }}
+      run: |
+        set -euo pipefail
+        OIDC_TOKEN=$(cat "$OIDC_TOKEN_FILE")
+        RESP=$(aliyun sts AssumeRoleWithOIDC \
+          --region "$REGION" \
+          --RoleArn "$ROLE_ARN" \
+          --OIDCToken "$OIDC_TOKEN" \
+          --RoleSessionName "$ROLE_SESSION_NAME" \
+          --DurationSeconds 3600)
+        AK=$(echo "$RESP"  | jq -r '.Credentials.SessionAccessKeyId')
+        SK=$(echo "$RESP"  | jq -r '.Credentials.SessionAccessKeySecret')
+        TOK=$(echo "$RESP" | jq -r '.Credentials.SecurityToken')
+        if [ -z "$AK" ] || [ "$AK" = "null" ]; then
+          echo "::error::AssumeRoleWithOIDC returned no STS credentials; full response:"
+          echo "$RESP"
+          exit 1
+        fi
+        echo "access_key_id=${AK}"     >>"$GITHUB_OUTPUT"
+        echo "access_key_secret=${SK}" >>"$GITHUB_OUTPUT"
+        echo "security_token=${TOK}"   >>"$GITHUB_OUTPUT"
+        rm -f /tmp/oidc.jwt
+
+    - name: Read PROD env from secrets
+      id: env
+      shell: bash
+      env:
+        PROD_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
+      run: |
+        if [ -z "${PROD_ENV_FILE:-}" ]; then
+          echo "::error::Missing required secret PROD_ENV_FILE"
+          exit 1
+        fi
+        # Heredoc output preserves newlines as the workflow multi-line output value.
+        {
+          echo "prod_env<<EOF"
+          echo "$PROD_ENV_FILE"
+          echo "EOF"
+        } >>"$GITHUB_OUTPUT"
+
+    - name: Write Serverless Devs profile (STS, scoped)
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile-name }}
+        ACCOUNT_ID: ${{ inputs.account-id }}
+        AK: ${{ steps.sts.outputs.access_key_id }}
+        SK: ${{ steps.sts.outputs.access_key_secret }}
+        TOK: ${{ steps.sts.outputs.security_token }}
+      run: |
+        set -euo pipefail
+        mkdir -p ~/.s
+        cat >~/.s/access.yaml <<EOF
+        ${PROFILE}:
+          AccessKeyID: ${AK}
+          AccessKeySecret: ${SK}
+          SecurityToken: ${TOK}
+          type: sts
+          AccountID: '${ACCOUNT_ID}'
+          __provider: Alibaba Cloud
+        EOF
+        chmod 600 ~/.s/access.yaml

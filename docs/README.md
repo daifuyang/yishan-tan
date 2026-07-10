@@ -16,5 +16,5 @@
 
 - `README.md`：仓库入口与快速开始
 - `OWN.md`：架构分层约束与命名约定
-- `fc-deploy/README.md`：FC3 部署细节
+- `deploy/fc/README.md`：FC3 部署细节
 - 本目录：以「实现现状」为视角的具体说明

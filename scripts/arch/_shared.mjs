@@ -19,8 +19,7 @@ export async function listFiles(dir, exts = [".ts", ".tsx"]) {
       return;
     }
     for (const ent of entries) {
-      if (ent.name === "node_modules" || ent.name === ".output" || ent.name === "fc-deploy")
-        continue;
+      if (ent.name === "node_modules" || ent.name === ".output" || ent.name === "deploy") continue;
       const p = `${d}/${ent.name}`;
       if (ent.isDirectory()) await walk(p);
       else if (exts.some((e) => ent.name.endsWith(e))) out.push(p);

@@ -1,0 +1,77 @@
+edition: 3.0.0
+name: yishan-tan
+access: "enterprise"
+
+vars:
+  region: cn-shanghai
+  functionName: yishan-tan
+  customDomain: ${env(PUBLIC_APP_DOMAIN)}
+  certName: yishan-tan-cert
+
+resources:
+  function:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: ${vars.functionName}
+      description: Yishan Tan (TanStack Start)
+      runtime: custom.debian12
+      code: ./code
+      memorySize: 1024
+      timeout: 60
+      environmentVariables:
+        NODE_ENV: production
+        APP_LOG_LEVEL: info
+        # FC3 custom.debian12 ships node-22 at /var/fc/lang/nodejs22/bin; expose it via PATH so
+        # the FC custom bootstrap script can resolve `node` without bundling a binary.
+        # (Same pattern as yishan-flow/fc-deploy/s.yaml.)
+        PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/sbin:/bin
+        NODE_PATH: /opt/nodejs/node_modules
+        APP_BASE_URL: ${env(PUBLIC_APP_URL)}
+        BETTER_AUTH_URL: ${env(BETTER_AUTH_URL)}
+        BETTER_AUTH_SECRET: ${env(BETTER_AUTH_SECRET)}
+        BETTER_AUTH_TRUSTED_ORIGINS: ${env(BETTER_AUTH_TRUSTED_ORIGINS)}
+        # SYSTEM_ADMIN_IDS is optional: app falls back to ctx.role === "admin" when unset/empty
+        # (see src/lib/authorization.server.ts). s tool errors on empty env() values, so we omit the
+        # line entirely instead of forwarding an empty string.
+        DATABASE_USER: ${env(DATABASE_USER)}
+        DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
+        DATABASE_NAME: ${env(DATABASE_NAME)}
+        DATABASE_HOST: ${env(DATABASE_HOST)}
+        DATABASE_PORT: ${env(DATABASE_PORT)}
+        REDIS_URL: ${env(REDIS_URL)}
+      vpcConfig:
+        vpcId: ${env(VPC_ID)}
+        vSwitchIds:
+          - ${env(VSWITCH_ID)}
+        securityGroupId: ${env(SECURITY_GROUP_ID)}
+      customRuntimeConfig:
+        command:
+          - /code/bootstrap
+        port: 9000
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            authType: anonymous
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+  domain:
+    component: fc3-domain
+    props:
+      region: ${vars.region}
+      domainName: ${vars.customDomain}
+      protocol: HTTPS
+      certConfig:
+        certName: ${vars.certName}
+        certificate: ${file(./certs/fullchain.cer)}
+        privateKey: ${file(./certs/private.key)}
+      routeConfig:
+        routes:
+          - path: /*
+            functionName: ${vars.functionName}

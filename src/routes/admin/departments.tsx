@@ -283,8 +283,7 @@ function AdminDepartmentsPage() {
         await deleteMut.mutateAsync(row.id);
         setPopconfirmRowId(null);
       } catch {
-        // 关闭弹层；错误由下方横幅通过 useMutation 状态显示
-        setPopconfirmRowId(null);
+        // 保留弹层让用户看到错误
       }
     },
     [deleteMut],
@@ -490,19 +489,6 @@ function AdminDepartmentsPage() {
             <Plus className="size-3.5" aria-hidden />
             新建子部门
           </Button>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className={TABLE_DANGER_ACTION_CLASS}
-            disabled={deleteMut.isPending}
-            onClick={(e) => {
-              e.stopPropagation();
-              setPopconfirmRowId(row.id);
-            }}
-          >
-            删除
-          </Button>
           <Popconfirm
             open={popconfirmRowId === row.id}
             onOpenChange={(next) => {
@@ -514,11 +500,23 @@ function AdminDepartmentsPage() {
             tone="danger"
             loading={deleteMut.isPending && popconfirmRowId === row.id}
             onConfirm={() => handleDeleteConfirm(row)}
-            side="top"
-            align="end"
-            sideOffset={6}
+            placement="top"
+            sideOffset={8}
+            arrow
           >
-            <span aria-hidden className="size-0" />
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className={TABLE_DANGER_ACTION_CLASS}
+              onClick={(e) => {
+                e.stopPropagation();
+                setPopconfirmRowId(row.id);
+              }}
+              disabled={deleteMut.isPending}
+            >
+              删除
+            </Button>
           </Popconfirm>
         </div>
       ),

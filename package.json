@@ -18,6 +18,7 @@
     "deploy:plan": "bash scripts/deploy-fc.sh plan",
     "deploy:smoke": "bash scripts/deploy-fc.sh smoke",
     "deploy:rollback": "bash scripts/deploy-fc.sh rollback",
+    "deploy:migrate": "bash scripts/deploy-fc.sh migrate",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:check": "biome check .",

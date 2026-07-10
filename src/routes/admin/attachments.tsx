@@ -286,7 +286,7 @@ function AdminAttachmentsPage() {
           >
             {row.name}
           </span>
-          <Badge variant="neutral" className={cn("shrink-0 px-1.5", MONO_CHIP)} title={row.mime}>
+          <Badge variant="outline" className={cn("shrink-0 px-1.5", MONO_CHIP)} title={row.mime}>
             {row.mime.split("/")[1]?.toUpperCase() ?? row.mime}
           </Badge>
         </div>

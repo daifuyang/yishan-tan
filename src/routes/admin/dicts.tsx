@@ -84,6 +84,7 @@ function AdminDictsPage() {
   const [createForm, setCreateForm] = React.useState<CreateDictTypeFormValue>(EMPTY_TYPE_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
+  const [moreMenuRowId, setMoreMenuRowId] = React.useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
@@ -167,6 +168,24 @@ function AdminDictsPage() {
       }
     },
     [updateMut],
+  );
+
+  const closeRowConfirms = React.useCallback(() => {
+    setPopconfirmRowId(null);
+    setDisablePopconfirmRowId(null);
+  }, []);
+
+  const handleDisableConfirm = React.useCallback(
+    async (row: DictTypeListItemDto) => {
+      try {
+        await handleToggleStatus(row);
+        setDisablePopconfirmRowId(null);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [handleToggleStatus],
   );
 
   const handleDeleteConfirm = React.useCallback(
@@ -302,28 +321,57 @@ function AdminDictsPage() {
                 启用
               </Button>
             ) : (
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className={TABLE_DANGER_ACTION_CLASS}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDisablePopconfirmRowId(row.id);
+              <Popconfirm
+                open={disablePopconfirmRowId === row.id}
+                onOpenChange={(next) => {
+                  if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
                 }}
-                disabled={updateMut.isPending}
+                title="禁用字典类型"
+                description="你确认禁用吗？"
+                confirmLabel="禁用"
+                tone="danger"
+                loading={updateMut.isPending && disablePopconfirmRowId === row.id}
+                onConfirm={() => {
+                  void handleDisableConfirm(row);
+                }}
+                placement="top"
+                sideOffset={8}
+                arrow
               >
-                禁用
-              </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className={TABLE_DANGER_ACTION_CLASS}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMoreMenuRowId(null);
+                    setDisablePopconfirmRowId(row.id);
+                  }}
+                  disabled={updateMut.isPending}
+                >
+                  禁用
+                </Button>
+              </Popconfirm>
             )}
-            <DropdownMenu>
+            <DropdownMenu
+              open={moreMenuRowId === row.id}
+              onOpenChange={(next) => {
+                if (next) closeRowConfirms();
+                setMoreMenuRowId(next ? row.id : null);
+                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
                   variant="link"
                   size="sm"
                   className={TABLE_ACTION_CLASS}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeRowConfirms();
+                  }}
                 >
                   更多
                   <ChevronDown className="size-3.5" aria-hidden />
@@ -333,58 +381,42 @@ function AdminDictsPage() {
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
+                    setMoreMenuRowId(null);
                     handleManageData(row);
                   }}
                 >
                   <Settings2 className="size-3.5" aria-hidden />
                   管理字典数据
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={deleteMut.isPending}
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setPopconfirmRowId(row.id);
+                <Popconfirm
+                  open={popconfirmRowId === row.id}
+                  onOpenChange={(next) => {
+                    if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
                   }}
+                  title={`删除「${row.name}」？`}
+                  description="你确认删除吗？"
+                  confirmLabel="删除"
+                  tone="danger"
+                  loading={deleteMut.isPending && popconfirmRowId === row.id}
+                  onConfirm={() => handleDeleteConfirm(row)}
+                  placement="top"
+                  sideOffset={8}
+                  arrow
                 >
-                  删除
-                </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={deleteMut.isPending}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setMoreMenuRowId(null);
+                      setPopconfirmRowId(row.id);
+                    }}
+                  >
+                    删除
+                  </DropdownMenuItem>
+                </Popconfirm>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Popconfirm
-              open={popconfirmRowId === row.id}
-              onOpenChange={(next) => {
-                if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
-              }}
-              title={`删除「${row.name}」？`}
-              description="你确认删除吗？"
-              confirmLabel="删除"
-              tone="danger"
-              loading={deleteMut.isPending && popconfirmRowId === row.id}
-              onConfirm={() => handleDeleteConfirm(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
-            >
-              <span aria-hidden className="size-0" />
-            </Popconfirm>
-            <Popconfirm
-              open={disablePopconfirmRowId === row.id}
-              onOpenChange={(next) => {
-                if (!next && disablePopconfirmRowId === row.id) setDisablePopconfirmRowId(null);
-              }}
-              title="禁用字典类型"
-              description="你确认禁用吗？"
-              confirmLabel="禁用"
-              tone="danger"
-              loading={updateMut.isPending && disablePopconfirmRowId === row.id}
-              onConfirm={() => handleToggleStatus(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
-            >
-              <span aria-hidden className="size-0" />
-            </Popconfirm>
           </div>
         );
       },

@@ -6,7 +6,7 @@
       "node_modules",
       ".output",
       "dist",
-      "fc-deploy/code",
+      "deploy/fc/code",
       "**/routeTree.gen.ts",
       "db/migrations",
       "openapi.generated.json"
