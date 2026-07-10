@@ -9,11 +9,10 @@ coverage
 deploy/fc/prod.env
 deploy/fc/code
 deploy/fc/code-migrator
-deploy/fc/certs
-# certs/ 是 acme.sh + aic aliyun-cert:upload 自管的本地副本；
-# Aliyun CAS 才是权威存储（s.yaml 用 certName: yishan-tan-cert 引用），
-# 仓库不该有 .cer/.key。Phase 2 加 scripts/cert-renew.ts + cron 后也会
-# 写到这里，但只用本地、永远别 commit。
+# deploy/fc/certs/ 暂时入了库（commit 进 certs 本体），因为 FC certConfig 要求
+# certName + certificate + privateKey 三件套同步生效，s.yaml 还必须读本地 .cer/.key
+# 文件。等加个跨账号 CAS 读权限、CI 改为预载拉取的路径后，恢复 .gitignore
+# 并把 certs/ 移出去。scripts/cert-renew.sh 在 90 天续期前会接管这件事。
 
 # OpenAPI spec 是 npm run openapi:gen 的产物，每次构建重新生成
 openapi.generated.json
