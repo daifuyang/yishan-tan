@@ -10,6 +10,10 @@ deploy/fc/prod.env
 deploy/fc/code
 deploy/fc/code-migrator
 deploy/fc/certs
+# certs/ 是 acme.sh + aic aliyun-cert:upload 自管的本地副本；
+# Aliyun CAS 才是权威存储（s.yaml 用 certName: yishan-tan-cert 引用），
+# 仓库不该有 .cer/.key。Phase 2 加 scripts/cert-renew.ts + cron 后也会
+# 写到这里，但只用本地、永远别 commit。
 
 # OpenAPI spec 是 npm run openapi:gen 的产物，每次构建重新生成
 openapi.generated.json
