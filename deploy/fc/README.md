@@ -2,6 +2,9 @@
 #
 # deploy/fc 是 FC3 部署的唯一入口；之前有没有根目录 s.yaml 都一律作废。
 #
+# **CI/CD 流程**（OIDC + 临时 STS）见 [../docs/deploy-oidc.md](../docs/deploy-oidc.md)。
+# 本 README 只讲 FC3 函数产物层 + 数据库约定。
+#
 # 目录约定：
 #   s.yaml                 FC3 函数配置（app + 域名）
 #   s.migrator.yaml        仅 migrator 函数的 FC3 配置（无 trigger / 无域名）

@@ -77,3 +77,5 @@ npm run deploy:plan / deploy / deploy:smoke / deploy:rollback   # scripts/deploy
 ```
 
 新增功能优先用 `npm run gen:resource -- <domain>` 生成骨架，再按上面的分层填充。详见 `OWN.md`。
+
+CI/CD 走 OIDC 联邦 + 临时 STS（无长期密钥），完整规范见 [docs/deploy-oidc.md](./docs/deploy-oidc.md)。

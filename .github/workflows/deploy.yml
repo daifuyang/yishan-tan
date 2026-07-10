@@ -52,7 +52,8 @@ jobs:
         run: npm install -g @serverless-devs/s
 
       # OIDC → STS → ~/.s/access.yaml，并取出 PROD_ENV_FILE 内容。
-      # 之后 `s deploy --use-local` / `s cli fc3 invoke` 都直接走 enterprise profile。
+      # 之后 `s deploy --use-local` / `s cli fc3 invoke` 都直接走 default profile
+      # （aliyun CLI / s CLI 公约：default 是「走 OIDC 拿到的临时 STS」语义）。
       - name: Assume FC deploy role via OIDC
         id: sts
         uses: ./.github/actions/fc-deploy-env
@@ -61,7 +62,7 @@ jobs:
           audience: aliyun-fc-yishan-tan
           account-id: "1650595695532785"
           region: cn-hangzhou
-          profile-name: enterprise
+          profile-name: default
           prod-env-file: ${{ secrets.PROD_ENV_FILE }}
 
       - name: Stage deploy/fc/prod.env

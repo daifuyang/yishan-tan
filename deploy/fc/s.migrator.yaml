@@ -1,6 +1,8 @@
 edition: 3.0.0
 name: yishan-tan-migrator
-access: "enterprise"
+# s CLI profile alias; matches deploy/fc/s.yaml and the fc-deploy-env composite action.
+# CI writes OIDC-derived STS to ~/.s/access.yaml under this alias.
+access: "default"
 
 # 与 deploy/fc/s.yaml 完全分离的轻量部署单元：
 # - 一个 fc3 函数，只在 invoke 时运行 drizzle-kit migrate + 首次 admin seed

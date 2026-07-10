@@ -27,7 +27,10 @@ REGION="${REGION:-cn-shanghai}"
 FUNCTION_NAME="${FUNCTION_NAME:-yishan-tan-migrator}"
 SERVICE_NAME="${SERVICE_NAME:-default}"
 QUALIFIER="${QUALIFIER:-LATEST}"
-ACCESS_ALIAS="${ACCESS_ALIAS:-enterprise}"
+# s CLI profile alias; matches deploy/fc/{s.yaml,s.migrator.yaml} `access:` and the
+# fc-deploy-env composite action's `profile-name` default. CI deploy.yml writes its
+# STS triplet to this profile; locally the same alias typically points at a long-lived AK.
+ACCESS_ALIAS="${ACCESS_ALIAS:-default}"
 TIMEOUT="${TIMEOUT:-180}"
 DRY_RUN="${DRY_RUN:-0}"
 

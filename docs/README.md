@@ -11,10 +11,12 @@
 | [`data-model.md`](./data-model.md) | 数据库表结构、字段、枚举、关系 |
 | [`api-reference.md`](./api-reference.md) | REST API 清单与请求 / 响应约定 |
 | [`testing.md`](./testing.md) | 测试覆盖矩阵与下一阶段目标 |
+| [`deploy-oidc.md`](./deploy-oidc.md) | OIDC 联邦 + Aliyun RAM + GitHub Secrets 完整规范 |
 
 ## 与项目其它文档的关系
 
 - `README.md`：仓库入口与快速开始
 - `OWN.md`：架构分层约束与命名约定
 - `deploy/fc/README.md`：FC3 部署细节
+- `.github/README.md`：CI/CD / GitHub Actions 配置指引
 - 本目录：以「实现现状」为视角的具体说明

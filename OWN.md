@@ -74,6 +74,7 @@ src/features/<domain>/
 - 真实环境变量写在 `deploy/fc/prod.env`，不提交。
 - 线上数据库通过 VPC 内网访问，使用独立库与独立用户，不复用其他应用账号。
 - `scripts/deploy-fc.sh apply` 完成 build + deploy + smoke。
+- CI/CD 走 OIDC 联邦 + 临时 STS（无长期密钥），完整规范见 [docs/deploy-oidc.md](./docs/deploy-oidc.md)。
 
 ## 编码风格
 - Biome 1.x 单根。

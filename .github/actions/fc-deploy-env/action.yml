@@ -5,7 +5,8 @@ description: |
   Pipeline:
     1. requests GitHub OIDC token (audience=<audience>)
     2. exchanges it via aliyun sts AssumeRoleWithOIDC for a 1-hour STS triplet
-    3. writes ~/.s/access.yaml under alias "enterprise" (matches deploy/fc/s.yaml `access: enterprise`)
+    3. writes ~/.s/access.yaml under the alias supplied via `profile-name` input
+       (default `default`, matching deploy/fc/s.yaml `access: default`)
     4. emits PROD env contents as the workflow can re-source them without
        scattering per-key secrets.
 
@@ -13,7 +14,7 @@ inputs:
   role-arn:
     description: |
       Aliyun RAM role ARN with OIDC trust policy pointing at the GitHub OIDC issuer.
-      e.g. acs:ram::1650595695532785:role/github-actions-yishan-tan-deploy
+      e.g. acs:ram::1650595695532785:role/yishan-tan-deployer
     required: true
   audience:
     description: |
@@ -33,13 +34,15 @@ inputs:
     description: |
       Aliyun OIDC IdP ARN (acs:ram::<account>:oidc-provider/<name>). Aliyun's
       AssumeRoleWithOIDC requires it explicitly even though the Aliyun CLI
-      help page marks it as optional.
+      help page marks it as optional. The aliyun account has only one IdP
+      per external issuer URL — `github-actions` is shared across all
+      repos that use this aliyun account.
     required: false
-    default: 'acs:ram::1650595695532785:oidc-provider/github-actions-yishan-tan'
+    default: 'acs:ram::1650595695532785:oidc-provider/github-actions'
   profile-name:
-    description: "s CLI access profile alias to overwrite (matches deploy/fc s.yaml's `access`)"
+    description: "s CLI access profile alias to overwrite (matches deploy/fc s.yaml's `access`). Convention: use `default`."
     required: false
-    default: enterprise
+    default: default
   prod-env-file:
     description: |
       Multiline string with the contents of PROD_ENV_FILE; injected by the calling

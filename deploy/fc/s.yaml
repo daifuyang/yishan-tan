@@ -1,6 +1,9 @@
 edition: 3.0.0
 name: yishan-tan
-access: "enterprise"
+# s CLI profile alias. CI writes its OIDC-derived STS triplet to ~/.s/access.yaml under
+# this alias (see .github/actions/fc-deploy-env). Locally this same alias typically points
+# at a long-lived AK for `s deploy --use-local` smoke tests. Convention: use `default`.
+access: "default"
 
 vars:
   region: cn-shanghai
