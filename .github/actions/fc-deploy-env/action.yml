@@ -156,8 +156,8 @@ runs:
           --OIDCToken "$OIDC_TOKEN" \
           --RoleSessionName "$ROLE_SESSION_NAME" \
           --DurationSeconds 3600)
-        AK=$(echo "$RESP"  | jq -r '.Credentials.SessionAccessKeyId')
-        SK=$(echo "$RESP"  | jq -r '.Credentials.SessionAccessKeySecret')
+        AK=$(echo "$RESP"  | jq -r '.Credentials.AccessKeyId')
+        SK=$(echo "$RESP"  | jq -r '.Credentials.AccessKeySecret')
         TOK=$(echo "$RESP" | jq -r '.Credentials.SecurityToken')
         if [ -z "$AK" ] || [ "$AK" = "null" ]; then
           echo "::error::AssumeRoleWithOIDC returned no STS credentials; full response:"
