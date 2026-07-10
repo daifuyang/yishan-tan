@@ -142,7 +142,9 @@ async function main(): Promise<void> {
   const input = parseEnv(process.env);
   const url = getDatabaseUrl(process.env);
   if (!url) {
-    console.error("[db-migrate] DATABASE_URL (or split DATABASE_USER/PASSWORD/HOST/NAME) is not configured");
+    console.error(
+      "[db-migrate] DATABASE_URL (or split DATABASE_USER/PASSWORD/HOST/NAME) is not configured",
+    );
     process.exit(2);
   }
 

@@ -33,7 +33,9 @@ function rmrf(p) {
 async function buildAppPackage() {
   const outDir = path.join(root, ".output");
   if (!existsSync(outDir)) {
-    throw new Error(".output not found, run `npm run build` first (vite.config must use nitro/vite plugin)");
+    throw new Error(
+      ".output not found, run `npm run build` first (vite.config must use nitro/vite plugin)",
+    );
   }
   if (!existsSync(path.join(outDir, "server", "index.mjs"))) {
     throw new Error(".output/server/index.mjs missing; build must emit Nitro output");
@@ -107,10 +109,7 @@ async function buildMigratorPackage() {
     private: true,
     scripts: { start: "node migrate.mjs" },
   };
-  await fs.writeFile(
-    path.join(migratorCodeDir, "package.json"),
-    JSON.stringify(slim, null, 2),
-  );
+  await fs.writeFile(path.join(migratorCodeDir, "package.json"), JSON.stringify(slim, null, 2));
 }
 
 async function main() {
