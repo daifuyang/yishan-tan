@@ -62,6 +62,7 @@ jobs:
           account-id: "1650595695532785"
           region: cn-hangzhou
           profile-name: enterprise
+          prod-env-file: ${{ secrets.PROD_ENV_FILE }}
 
       - name: Verify assumed credentials
         env:

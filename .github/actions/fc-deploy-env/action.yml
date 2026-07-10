@@ -33,6 +33,12 @@ inputs:
     description: "s CLI access profile alias to overwrite (matches deploy/fc s.yaml's `access`)"
     required: false
     default: enterprise
+  prod-env-file:
+    description: |
+      Multiline string with the contents of PROD_ENV_FILE; injected by the calling
+      workflow as ${{ secrets.PROD_ENV_FILE }}.
+      Required — composite-action steps cannot read the github secrets context directly.
+    required: true
 
 outputs:
   access-key-id:
@@ -110,11 +116,11 @@ runs:
         echo "security_token=${TOK}"   >>"$GITHUB_OUTPUT"
         rm -f /tmp/oidc.jwt
 
-    - name: Read PROD env from secrets
+    - name: Read PROD env from input
       id: env
       shell: bash
       env:
-        PROD_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
+        PROD_ENV_FILE: ${{ inputs.prod-env-file }}
       run: |
         if [ -z "${PROD_ENV_FILE:-}" ]; then
           echo "::error::Missing required secret PROD_ENV_FILE"
