@@ -29,6 +29,13 @@ inputs:
     description: "Region for the STS AssumeRoleWithOIDC endpoint"
     required: false
     default: cn-hangzhou
+  oidc-provider-arn:
+    description: |
+      Aliyun OIDC IdP ARN (acs:ram::<account>:oidc-provider/<name>). Aliyun's
+      AssumeRoleWithOIDC requires it explicitly even though the Aliyun CLI
+      help page marks it as optional.
+    required: false
+    default: 'acs:ram::1650595695532785:oidc-provider/github-actions-yishan-tan'
   profile-name:
     description: "s CLI access profile alias to overwrite (matches deploy/fc s.yaml's `access`)"
     required: false
@@ -136,6 +143,7 @@ runs:
       env:
         ROLE_ARN: ${{ inputs.role-arn }}
         REGION: ${{ inputs.region }}
+        OIDC_PROVIDER_ARN: ${{ inputs.oidc-provider-arn }}
         OIDC_TOKEN_FILE: /tmp/oidc.jwt
         ROLE_SESSION_NAME: gha-${{ github.run_id }}-${{ github.event.pull_request.number || github.sha }}
       run: |
@@ -144,6 +152,7 @@ runs:
         RESP=$(aliyun sts AssumeRoleWithOIDC \
           --region "$REGION" \
           --RoleArn "$ROLE_ARN" \
+          --OIDCProviderArn "$OIDC_PROVIDER_ARN" \
           --OIDCToken "$OIDC_TOKEN" \
           --RoleSessionName "$ROLE_SESSION_NAME" \
           --DurationSeconds 3600)
