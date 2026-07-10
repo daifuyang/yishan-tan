@@ -14,6 +14,14 @@
 # - Aliyun RAM：personal 账号有 zerocmf.com DNS 写权限（DNS-01 校验用），
 #   enterprise 账号有 CAS 写权限（上传到 yishan-tan-cert 用）。
 #
+# 触发方式（任选其一）：
+# - 本地 crontab（推荐）：crontab -e 加一行
+#     0 3 * * 0 /home/dfy/workspace/products/yishan-tan/scripts/cert-renew.sh \
+#         >> /home/dfy/.logs/cert-renew.log 2>&1
+#   每周日 03:00 跑一次。cert 离过期 ≤ 30 天才真正续签，否则空跑。
+# - GH Actions schedule workflow（备选，未来实现）：需要 personal AK secrets + 给 OIDC role
+#   加 cas:UploadUserCertificate perms；阈值同上。
+#
 # 触发方式：
 # - 本地 cron（推荐）：crontab -e 加一行 `0 3 * * 0 .../cert-renew.sh` 每周日 03:00 跑。
 # - 未来：GH Actions schedule workflow（需要 personal AK secrets + OIDC STS 给 CAS）。
@@ -66,7 +74,7 @@ else
 fi
 
 if [ "${SHOULD_RENEW:-0}" -eq 0 ]; then
-  step "Cert still fresh (days_left=$DAYS_LEFT > $RENEW_THRESHOLD). Skip."
+  step "Cert still fresh (days_left=$DAYS_LEFT > $RENEW_THRESHOLD_DAYS). Skip."
   exit 0
 fi
 
