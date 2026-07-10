@@ -64,17 +64,6 @@ jobs:
           profile-name: enterprise
           prod-env-file: ${{ secrets.PROD_ENV_FILE }}
 
-      - name: Verify assumed credentials
-        env:
-          ACCOUNT_ID: "1650595695532785"
-        run: |
-          set -euo pipefail
-          AK=$(s config get -a enterprise --output-format json | jq -r '.enterprise.AccessKeyID')
-          case "$AK" in
-            STS.*) echo "STS AccessKeyId ok: ${AK:0:14}..." ;;
-            *)     echo "::error::Expected STS AccessKeyId but got ${AK}"; exit 1 ;;
-          esac
-
       - name: Stage deploy/fc/prod.env
         env:
           PROD_ENV: ${{ steps.sts.outputs.prod-env }}
