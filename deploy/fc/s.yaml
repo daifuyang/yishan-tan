@@ -68,9 +68,9 @@ resources:
       domainName: ${vars.customDomain}
       protocol: HTTPS
       certConfig:
-        # 证书在 Aliyun CAS 中以 yishan-tan-cert 名称存储，由 scripts/cert-renew.ts +
-        # .github/workflows/cert-renew.yml 周期性续签后保持新鲜。
         certName: ${vars.certName}
+        certificate: ${file(./certs/fullchain.cer)}
+        privateKey: ${file(./certs/private.key)}
       routeConfig:
         routes:
           - path: /*
