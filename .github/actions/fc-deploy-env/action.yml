@@ -67,6 +67,50 @@ runs:
         if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
         aliyun --version
 
+        # aliyun CLI SDK refuses to start without a configured profile, even though the
+        # AssumeRoleWithOIDC call itself only uses the OIDC token. Seed a placeholder
+        # AK profile so its credential chain validates; the real auth is the JWT below.
+        mkdir -p ~/.aliyun
+        cat >~/.aliyun/config.json <<EOF
+        {
+          "current": "fcdeploy",
+          "profiles": [
+            {
+              "name": "fcdeploy",
+              "mode": "AK",
+              "access_key_id": "placeholder-ak",
+              "access_key_secret": "placeholder-sk",
+              "sts_token": "",
+              "ram_role_name": "",
+              "ram_role_arn": "",
+              "private_key": "",
+              "key_pairs_cmd": "",
+              "key_pairs_dir": "",
+              "language": "en",
+              "site": "",
+              "retry_timeout": 0,
+              "retry_count": 0,
+              "process_command": "",
+              "credentials_uri": "",
+              "oidc_provider_arn": "",
+              "oidc_token_file": "",
+              "external_id": "",
+              "using_oidc": false,
+              "oidc_token_endpoint": "",
+              "ram_role_session_name": "",
+              "expiration": "",
+              "region_id": "cn-hangzhou",
+              "output_format": "json",
+              "timeout": 0,
+              "insecure": false,
+              "ssl_verify": true
+            }
+          ],
+          "meta_path": ""
+        }
+        EOF
+        chmod 600 ~/.aliyun/config.json
+
     - name: Fetch GitHub OIDC token
       id: oidc
       shell: bash
