@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   integer,
   pgEnum,
@@ -164,7 +165,7 @@ export const department = pgTable("department", {
   id: uuid("id").primaryKey().defaultRandom(),
   parentId: uuid("parent_id"),
   name: text("name").notNull(),
-  leaderId: uuid("leader_id").references((): any => user.id, { onDelete: "set null" }),
+  leaderId: uuid("leader_id").references((): AnyPgColumn => user.id, { onDelete: "set null" }),
   sort: integer("sort").notNull().default(0),
   status: statusEnum("status").notNull().default("enabled"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
