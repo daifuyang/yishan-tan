@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { useStoragesList } from "~/features/storages/storages.queries";
 import {
   type StorageDriver,
@@ -119,14 +120,16 @@ function AdminStoragesPage() {
   const [moreMenuRowId, setMoreMenuRowId] = React.useState<string | null>(null);
 
   const query = buildListQuery(filters, page, pageSize);
-  const list = useStoragesList(query);
+  const permissions = useResourcePermissions("storages");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
+  const list = useStoragesList(query, canRead);
   const createMut = useCreateStorage();
   const updateMut = useUpdateStorage();
   const deleteMut = useDeleteStorage();
   const setDefaultMut = useSetDefaultStorage();
 
-  const items = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const items = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const resetPageOnFilterChange = React.useCallback(() => {
@@ -182,6 +185,7 @@ function AdminStoragesPage() {
   };
 
   const handleOpenCreate = () => {
+    if (!canCreate) return;
     setCreateForm(EMPTY_CREATE_FORM);
     setCreating(true);
   };
@@ -193,6 +197,7 @@ function AdminStoragesPage() {
 
   const handleToggleStatus = React.useCallback(
     async (row: StorageDto) => {
+      if (!canUpdate) return;
       const next: "enabled" | "disabled" = row.status === "enabled" ? "disabled" : "enabled";
       try {
         await updateMut.mutateAsync({ id: row.id, status: next });
@@ -200,7 +205,7 @@ function AdminStoragesPage() {
         // 错误已通过 useMutation errorMessage 暴露
       }
     },
-    [updateMut],
+    [canUpdate, updateMut],
   );
 
   const closeRowConfirms = React.useCallback(() => {
@@ -223,17 +228,19 @@ function AdminStoragesPage() {
 
   const handleSetDefault = React.useCallback(
     async (row: StorageDto) => {
+      if (!canUpdate) return;
       try {
         await setDefaultMut.mutateAsync(row.id);
       } catch {
         // 错误已通过 useMutation errorMessage 暴露
       }
     },
-    [setDefaultMut],
+    [canUpdate, setDefaultMut],
   );
 
   const handleDeleteConfirm = React.useCallback(
     async (row: StorageDto) => {
+      if (!canDelete) return;
       try {
         await deleteMut.mutateAsync(row.id);
         setPopconfirmRowId(null);
@@ -241,7 +248,7 @@ function AdminStoragesPage() {
         // 保留弹层让用户看到错误
       }
     },
-    [deleteMut],
+    [canDelete, deleteMut],
   );
 
   const columns: ResourceColumn<StorageDto>[] = [
@@ -338,6 +345,7 @@ function AdminStoragesPage() {
                 e.stopPropagation();
                 handleStartEdit(row);
               }}
+              disabled={!canUpdate}
             >
               编辑
             </Button>
@@ -354,7 +362,7 @@ function AdminStoragesPage() {
                 e.stopPropagation();
                 void handleSetDefault(row);
               }}
-              disabled={row.isDefault || setDefaultMut.isPending}
+              disabled={row.isDefault || !canUpdate || setDefaultMut.isPending}
             >
               {row.isDefault ? "默认中" : "设为默认"}
             </Button>
@@ -368,7 +376,7 @@ function AdminStoragesPage() {
                   e.stopPropagation();
                   void handleToggleStatus(row);
                 }}
-                disabled={updateMut.isPending}
+                disabled={!canUpdate || updateMut.isPending}
               >
                 启用
               </Button>
@@ -400,7 +408,7 @@ function AdminStoragesPage() {
                     setMoreMenuRowId(null);
                     setDisablePopconfirmRowId(row.id);
                   }}
-                  disabled={updateMut.isPending}
+                  disabled={!canUpdate || updateMut.isPending}
                 >
                   禁用
                 </Button>
@@ -447,7 +455,7 @@ function AdminStoragesPage() {
                 >
                   <DropdownMenuItem
                     variant="destructive"
-                    disabled={row.isDefault || deleteMut.isPending}
+                    disabled={row.isDefault || !canDelete || deleteMut.isPending}
                     onSelect={(e) => {
                       e.preventDefault();
                       setMoreMenuRowId(null);
@@ -579,7 +587,7 @@ function AdminStoragesPage() {
         filterLoading={list.isFetching}
         toolbarTitle="存储列表"
         toolbarActions={
-          <Button type="button" size="sm" onClick={handleOpenCreate}>
+          <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
             新建存储
           </Button>
@@ -596,13 +604,15 @@ function AdminStoragesPage() {
             setPageSize(size);
             setPage(1);
           },
-          loading: list.isFetching,
+          loading: permissions.isPending || list.isFetching,
           emptyTitle: "暂无存储",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
-            : undefined,
+          error:
+            permissions.error ??
+            (list.isError
+              ? list.error instanceof Error
+                ? list.error.message
+                : "加载失败"
+              : undefined),
         }}
       />
 

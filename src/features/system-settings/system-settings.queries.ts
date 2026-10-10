@@ -16,7 +16,7 @@ export const systemSettingsQueryKey = {
   group: (code: string) => [...systemSettingsQueryKey.groups(), code] as const,
 };
 
-export const systemOptionGroupQueryOptions = (groupCode: string) =>
+export const systemOptionGroupQueryOptions = (groupCode: string, enabled = true) =>
   queryOptions<SystemOptionDto[]>({
     queryKey: systemSettingsQueryKey.group(groupCode),
     queryFn: async () => {
@@ -26,12 +26,12 @@ export const systemOptionGroupQueryOptions = (groupCode: string) =>
       if (keys.length === 0) return [];
       return batchGetSystemOptions({ data: { keys } });
     },
-    enabled: Boolean(findSystemOptionGroup(groupCode)),
+    enabled: Boolean(findSystemOptionGroup(groupCode)) && enabled,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
-export function useSystemOptionGroup(groupCode: string) {
-  return useQuery(systemOptionGroupQueryOptions(groupCode));
+export function useSystemOptionGroup(groupCode: string, enabled = true) {
+  return useQuery(systemOptionGroupQueryOptions(groupCode, enabled));
 }

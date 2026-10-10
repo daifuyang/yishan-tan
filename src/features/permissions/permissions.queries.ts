@@ -18,18 +18,29 @@ export function useUserFormOptions(enabled: boolean) {
   });
 }
 
-export type PermissionResource = "departments" | "posts" | "dicts" | "roles" | "menus";
+export type PermissionResource =
+  | "departments"
+  | "posts"
+  | "dicts"
+  | "roles"
+  | "menus"
+  | "settings"
+  | "storages"
+  | "attachments"
+  | "login-logs"
+  | "portals";
 
 export function useResourcePermissions(resource: PermissionResource) {
   const query = useMyPermissions();
   const grants = query.data ?? [];
-  const canRead = grants.includes(`${resource}:read`);
+  const has = (code: string) => grants.includes(code as (typeof grants)[number]);
+  const canRead = has(`${resource}:read`);
   return {
     canRead,
-    canCreate: grants.includes(`${resource}:create`),
-    canUpdate: grants.includes(`${resource}:update`),
-    canDelete: grants.includes(`${resource}:delete`),
-    canExport: resource === "departments" && grants.includes("departments:export"),
+    canCreate: has(`${resource}:create`),
+    canUpdate: has(`${resource}:update`),
+    canDelete: has(`${resource}:delete`),
+    canExport: resource === "departments" && has("departments:export"),
     isPending: query.isPending,
     error: query.isError
       ? "无法加载操作权限，请刷新重试"

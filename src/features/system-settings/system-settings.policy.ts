@@ -1,9 +1,17 @@
-import { requireAdmin } from "~/lib/authorization.server";
+import { assertPermissionService } from "~/features/permissions/permissions.service";
 import { Errors } from "~/lib/errors";
+import type { PermissionCode } from "~/lib/permission-catalog";
 import type { ServiceContext } from "~/lib/service-context";
 
 export async function assertSystemSettingAccess(ctx: ServiceContext): Promise<void> {
-  await requireAdmin(ctx);
+  await assertPermissionService(ctx, "settings:read");
+}
+
+export async function assertSystemSettingOperation(
+  ctx: ServiceContext,
+  code: Extract<PermissionCode, `settings:${string}`>,
+): Promise<void> {
+  await assertPermissionService(ctx, code);
 }
 
 export function assertSystemSettingKey(key: string): void {

@@ -9,10 +9,10 @@
 | npm test | 40 个文件、338 个测试全部通过 |
 | npm run typecheck | 通过 |
 | npm run arch:check | 全部通过，含 11 张资源列表检查 |
-| npm run lint:check | 全仓失败：269 errors / 1 warning，包含既有换行、格式、import 排序等；本次代码单独检查通过，保留既有 any 警告 |
+| npm run lint:check | 通过，299 个文件无诊断 |
 | NODE_ENV=production vite build | 客户端与服务端构建通过 |
 
-本日调研后已实现 A01 用户、部门、岗位、字典、角色、菜单权限接入，详见 [实施说明](./user-permissions.md)。未执行原版 Yishan 的测试。
+本日调研后已实现 A01 用户、部门、岗位、字典、角色、菜单，并将配置、存储、媒体、日志、门户接入统一权限目录，详见 [实施说明](./user-permissions.md)。未执行原版 Yishan 的测试。
 
 新增 permissions.integration.test.ts 使用独立内存 PGlite 执行完整迁移，验证真实关系查询/事务、撤销/禁用、角色与菜单权限越权、管理员保护，以及 REST/Server Function handler 的拒绝和授权写入，共 20 个集成用例。请求上下文和框架适配层使用替身，真实会话传输仍待验证。
 

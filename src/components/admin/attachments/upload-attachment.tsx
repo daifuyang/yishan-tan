@@ -19,6 +19,7 @@ type UploadAttachmentProps = {
   className?: string;
   variant?: "default" | "outline";
   size?: "sm" | "default";
+  disabled?: boolean;
 };
 
 /**
@@ -33,6 +34,7 @@ export function UploadAttachment({
   className,
   variant = "default",
   size = "sm",
+  disabled = false,
 }: UploadAttachmentProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
@@ -84,7 +86,7 @@ export function UploadAttachment({
         size={size}
         variant={variant}
         onClick={handleClick}
-        disabled={uploading}
+        disabled={disabled || uploading}
       >
         {uploading ? (
           <Loader2 className="size-3.5 animate-spin" aria-hidden />

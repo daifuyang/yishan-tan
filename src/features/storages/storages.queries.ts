@@ -22,8 +22,8 @@ export const storagesListQueryOptions = (input: StorageListQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function useStoragesList(input: StorageListQuery) {
-  return useQuery(storagesListQueryOptions(input));
+export function useStoragesList(input: StorageListQuery, enabled = true) {
+  return useQuery({ ...storagesListQueryOptions(input), enabled });
 }
 
 export const storageDetailQueryOptions = (id: string) =>
@@ -34,8 +34,8 @@ export const storageDetailQueryOptions = (id: string) =>
     enabled: Boolean(id),
   });
 
-export function useStorageDetail(id: string) {
-  return useQuery(storageDetailQueryOptions(id));
+export function useStorageDetail(id: string, enabled = true) {
+  return useQuery({ ...storageDetailQueryOptions(id), enabled });
 }
 
 export const defaultStorageQueryOptions = () =>
@@ -47,6 +47,6 @@ export const defaultStorageQueryOptions = () =>
     refetchOnWindowFocus: false,
   });
 
-export function useDefaultStorage() {
-  return useQuery(defaultStorageQueryOptions());
+export function useDefaultStorage(enabled = true) {
+  return useQuery({ ...defaultStorageQueryOptions(), enabled });
 }

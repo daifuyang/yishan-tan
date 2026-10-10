@@ -22,8 +22,8 @@ export const portalsListQueryOptions = (input: PortalListQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function usePortalsList(input: PortalListQuery) {
-  return useQuery(portalsListQueryOptions(input));
+export function usePortalsList(input: PortalListQuery, enabled = true) {
+  return useQuery({ ...portalsListQueryOptions(input), enabled });
 }
 
 export const portalDetailQueryOptions = (id: string) =>
@@ -34,8 +34,8 @@ export const portalDetailQueryOptions = (id: string) =>
     enabled: Boolean(id),
   });
 
-export function usePortalDetail(id: string) {
-  return useQuery(portalDetailQueryOptions(id));
+export function usePortalDetail(id: string, enabled = true) {
+  return useQuery({ ...portalDetailQueryOptions(id), enabled });
 }
 
 export const defaultPortalQueryOptions = () =>
@@ -47,6 +47,6 @@ export const defaultPortalQueryOptions = () =>
     refetchOnWindowFocus: false,
   });
 
-export function useDefaultPortal() {
-  return useQuery(defaultPortalQueryOptions());
+export function useDefaultPortal(enabled = true) {
+  return useQuery({ ...defaultPortalQueryOptions(), enabled });
 }

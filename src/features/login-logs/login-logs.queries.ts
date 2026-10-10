@@ -19,6 +19,6 @@ export const loginLogsListQueryOptions = (input: ListLoginLogsQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function useLoginLogsList(input: ListLoginLogsQuery) {
-  return useQuery(loginLogsListQueryOptions(input));
+export function useLoginLogsList(input: ListLoginLogsQuery, enabled = true) {
+  return useQuery({ ...loginLogsListQueryOptions(input), enabled });
 }

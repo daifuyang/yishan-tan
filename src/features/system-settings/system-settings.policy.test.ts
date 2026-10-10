@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("~/lib/authorization.server", () => ({
-  requireAdmin: vi.fn().mockResolvedValue(undefined),
+  isSystemAdmin: vi.fn(() => true),
   requireSelfOrAdmin: vi.fn(),
   SYSTEM_ADMIN_IDS: [],
 }));
+
+const assertPermissionService = vi.fn().mockResolvedValue(undefined);
+vi.mock("~/features/permissions/permissions.service", () => ({ assertPermissionService }));
 
 const { assertSystemSettingAccess, assertSystemSettingKey } = await import(
   "~/features/system-settings/system-settings.policy"
@@ -22,15 +25,14 @@ describe("system-settings.policy", () => {
   });
 
   describe("assertSystemSettingAccess", () => {
-    it("calls requireAdmin", async () => {
+    it("requires the settings read permission", async () => {
       const ctx = {
         userId: "123e4567-e89b-12d3-a456-426614174000",
         headers: new Headers(),
         authKind: "session" as const,
       };
       await assertSystemSettingAccess(ctx);
-      const { requireAdmin } = await import("~/lib/authorization.server");
-      expect(requireAdmin).toHaveBeenCalledWith(ctx);
+      expect(assertPermissionService).toHaveBeenCalledWith(ctx, "settings:read");
     });
   });
 });

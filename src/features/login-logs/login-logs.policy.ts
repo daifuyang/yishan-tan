@@ -1,9 +1,6 @@
-import { isSystemAdmin } from "~/lib/authorization.server";
-import { Errors } from "~/lib/errors";
+import { assertPermissionService } from "~/features/permissions/permissions.service";
 import type { ServiceContext } from "~/lib/service-context";
 
 export async function assertCanViewLoginLogs(ctx: ServiceContext): Promise<void> {
-  if (!isSystemAdmin(ctx)) {
-    throw Errors.forbidden("仅超级管理员可查看登录日志");
-  }
+  await assertPermissionService(ctx, "login-logs:read");
 }

@@ -41,6 +41,7 @@ import {
   useBulkDeleteAttachments,
   useDeleteAttachment,
 } from "~/features/attachments/attachments.use-mutations";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { MONO_CHIP } from "~/lib/classes";
 import { cn } from "~/lib/utils";
 
@@ -164,13 +165,15 @@ function AdminAttachmentsPage() {
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const query = buildListQuery(filters, page, pageSize);
-  const list = useAttachmentsList(query);
-  const categoriesQuery = useAttachmentCategories();
+  const permissions = useResourcePermissions("attachments");
+  const { canRead, canCreate, canDelete } = permissions;
+  const list = useAttachmentsList(query, canRead);
+  const categoriesQuery = useAttachmentCategories(canRead);
   const deleteMut = useDeleteAttachment();
   const bulkDeleteMut = useBulkDeleteAttachments();
 
-  const items = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const items = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const resetPageOnFilterChange = React.useCallback(() => {
@@ -209,6 +212,7 @@ function AdminAttachmentsPage() {
 
   const handleDeleteConfirm = React.useCallback(
     async (row: AttachmentDto) => {
+      if (!canDelete) return;
       try {
         await deleteMut.mutateAsync(row.id);
         setPopconfirmRowId(null);
@@ -216,11 +220,11 @@ function AdminAttachmentsPage() {
         // 保留弹层让用户看到错误
       }
     },
-    [deleteMut],
+    [canDelete, deleteMut],
   );
 
   const handleBulkDelete = React.useCallback(async () => {
-    if (selectedKeys.length === 0) return;
+    if (!canDelete || selectedKeys.length === 0) return;
     try {
       await bulkDeleteMut.mutateAsync(selectedKeys);
       setSelectedKeys([]);
@@ -228,7 +232,7 @@ function AdminAttachmentsPage() {
     } catch {
       // 错误由 useMutation 状态显示
     }
-  }, [bulkDeleteMut, selectedKeys]);
+  }, [bulkDeleteMut, canDelete, selectedKeys]);
 
   const handleCopyLink = React.useCallback(async (row: AttachmentDto) => {
     const url = row.url;
@@ -386,7 +390,7 @@ function AdminAttachmentsPage() {
                 e.stopPropagation();
                 setPopconfirmRowId(row.id);
               }}
-              disabled={deleteMut.isPending}
+              disabled={!canDelete || deleteMut.isPending}
             >
               <Trash2 className="mr-1 size-3.5" aria-hidden />
               删除
@@ -480,7 +484,7 @@ function AdminAttachmentsPage() {
         filterValues={draft}
         onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
-        filterLoading={list.isFetching}
+        filterLoading={permissions.isPending || list.isFetching}
         toolbarTitle="媒体列表"
         toolbarActions={
           <>
@@ -507,7 +511,7 @@ function AdminAttachmentsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkDeleteMut.isPending}
+                  disabled={!canDelete || bulkDeleteMut.isPending}
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
@@ -516,6 +520,7 @@ function AdminAttachmentsPage() {
               </Popconfirm>
             ) : null}
             <UploadAttachment
+              disabled={!canCreate}
               onUploaded={() => {
                 void list.refetch();
               }}
@@ -534,17 +539,21 @@ function AdminAttachmentsPage() {
             setPageSize(size);
             setPage(1);
           },
-          loading: list.isFetching,
+          loading: permissions.isPending || list.isFetching,
           emptyTitle: "暂无附件",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
+          error:
+            permissions.error ??
+            (list.isError
+              ? list.error instanceof Error
+                ? list.error.message
+                : "加载失败"
+              : undefined),
+          rowSelection: canDelete
+            ? {
+                selectedKeys,
+                onChange: setSelectedKeys,
+              }
             : undefined,
-          rowSelection: {
-            selectedKeys,
-            onChange: setSelectedKeys,
-          },
         }}
       />
     </>

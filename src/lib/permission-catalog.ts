@@ -27,6 +27,20 @@ export const PERMISSION_CATALOG = [
   { code: "menus:create", label: "新增菜单" },
   { code: "menus:update", label: "编辑菜单与启停" },
   { code: "menus:delete", label: "删除菜单" },
+  { code: "settings:read", label: "查看系统配置" },
+  { code: "settings:update", label: "编辑系统配置" },
+  { code: "storages:read", label: "查看存储" },
+  { code: "storages:create", label: "新增存储" },
+  { code: "storages:update", label: "编辑存储与默认项" },
+  { code: "storages:delete", label: "删除存储" },
+  { code: "attachments:read", label: "查看媒体" },
+  { code: "attachments:create", label: "上传媒体" },
+  { code: "attachments:delete", label: "删除媒体" },
+  { code: "login-logs:read", label: "查看登录日志" },
+  { code: "portals:read", label: "查看门户" },
+  { code: "portals:create", label: "新增门户" },
+  { code: "portals:update", label: "编辑门户与默认项" },
+  { code: "portals:delete", label: "删除门户" },
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CATALOG)[number]["code"];

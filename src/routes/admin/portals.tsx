@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { usePortalsList } from "~/features/portals/portals.queries";
 import { portalListQuerySchema } from "~/features/portals/portals.schema";
 import type { PortalDto, PortalThemeMode } from "~/features/portals/portals.types";
@@ -107,14 +108,16 @@ function AdminPortalsPage() {
   const [moreMenuRowId, setMoreMenuRowId] = React.useState<string | null>(null);
 
   const query = buildListQuery(filters, page, pageSize);
-  const list = usePortalsList(query);
+  const permissions = useResourcePermissions("portals");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
+  const list = usePortalsList(query, canRead);
   const createMut = useCreatePortal();
   const updateMut = useUpdatePortal();
   const deleteMut = useDeletePortal();
   const setDefaultMut = useSetDefaultPortal();
 
-  const items = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const items = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const resetPageOnFilterChange = React.useCallback(() => {
@@ -172,6 +175,7 @@ function AdminPortalsPage() {
   };
 
   const handleOpenCreate = () => {
+    if (!canCreate) return;
     setCreateForm(EMPTY_CREATE_FORM);
     setCreating(true);
   };
@@ -183,6 +187,7 @@ function AdminPortalsPage() {
 
   const handleToggleStatus = React.useCallback(
     async (row: PortalDto) => {
+      if (!canUpdate) return;
       const next: "enabled" | "disabled" = row.status === "enabled" ? "disabled" : "enabled";
       try {
         await updateMut.mutateAsync({ id: row.id, status: next });
@@ -190,7 +195,7 @@ function AdminPortalsPage() {
         // 错误已通过 useMutation errorMessage 暴露
       }
     },
-    [updateMut],
+    [canUpdate, updateMut],
   );
 
   const closeRowConfirms = React.useCallback(() => {
@@ -213,17 +218,19 @@ function AdminPortalsPage() {
 
   const handleSetDefault = React.useCallback(
     async (row: PortalDto) => {
+      if (!canUpdate) return;
       try {
         await setDefaultMut.mutateAsync(row.id);
       } catch {
         // 错误已通过 useMutation errorMessage 暴露
       }
     },
-    [setDefaultMut],
+    [canUpdate, setDefaultMut],
   );
 
   const handleDeleteConfirm = React.useCallback(
     async (row: PortalDto) => {
+      if (!canDelete) return;
       try {
         await deleteMut.mutateAsync(row.id);
         setPopconfirmRowId(null);
@@ -231,7 +238,7 @@ function AdminPortalsPage() {
         // 保留弹层让用户看到错误
       }
     },
-    [deleteMut],
+    [canDelete, deleteMut],
   );
 
   const columns: ResourceColumn<PortalDto>[] = [
@@ -335,6 +342,7 @@ function AdminPortalsPage() {
                 e.stopPropagation();
                 handleStartEdit(row);
               }}
+              disabled={!canUpdate}
             >
               编辑
             </Button>
@@ -351,7 +359,7 @@ function AdminPortalsPage() {
                 e.stopPropagation();
                 void handleSetDefault(row);
               }}
-              disabled={row.isDefault || setDefaultMut.isPending}
+              disabled={row.isDefault || !canUpdate || setDefaultMut.isPending}
             >
               {row.isDefault ? "默认中" : "设为默认"}
             </Button>
@@ -365,7 +373,7 @@ function AdminPortalsPage() {
                   e.stopPropagation();
                   void handleToggleStatus(row);
                 }}
-                disabled={updateMut.isPending}
+                disabled={!canUpdate || updateMut.isPending}
               >
                 启用
               </Button>
@@ -397,7 +405,7 @@ function AdminPortalsPage() {
                     setMoreMenuRowId(null);
                     setDisablePopconfirmRowId(row.id);
                   }}
-                  disabled={updateMut.isPending}
+                  disabled={!canUpdate || updateMut.isPending}
                 >
                   禁用
                 </Button>
@@ -444,7 +452,7 @@ function AdminPortalsPage() {
                 >
                   <DropdownMenuItem
                     variant="destructive"
-                    disabled={row.isDefault || deleteMut.isPending}
+                    disabled={row.isDefault || !canDelete || deleteMut.isPending}
                     onSelect={(e) => {
                       e.preventDefault();
                       setMoreMenuRowId(null);
@@ -560,10 +568,10 @@ function AdminPortalsPage() {
         filterValues={draft}
         onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
-        filterLoading={list.isFetching}
+        filterLoading={permissions.isPending || list.isFetching}
         toolbarTitle="门户列表"
         toolbarActions={
-          <Button type="button" size="sm" onClick={handleOpenCreate}>
+          <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
             新建门户
           </Button>
@@ -580,13 +588,15 @@ function AdminPortalsPage() {
             setPageSize(size);
             setPage(1);
           },
-          loading: list.isFetching,
+          loading: permissions.isPending || list.isFetching,
           emptyTitle: "暂无门户",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
-            : undefined,
+          error:
+            permissions.error ??
+            (list.isError
+              ? list.error instanceof Error
+                ? list.error.message
+                : "加载失败"
+              : undefined),
         }}
       />
 

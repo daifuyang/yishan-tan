@@ -4,6 +4,7 @@ import * as React from "react";
 import { OptionRow } from "@/components/admin/settings/option-row";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import {
   SYSTEM_OPTION_GROUPS,
   type SystemOptionDef,
@@ -27,10 +28,12 @@ function AdminSettingsPage() {
 }
 
 function SettingsForm() {
-  const siteQuery = useSystemOptionGroup("site");
-  const authQuery = useSystemOptionGroup("auth");
-  const uploadQuery = useSystemOptionGroup("upload");
-  const uiQuery = useSystemOptionGroup("ui");
+  const permissions = useResourcePermissions("settings");
+  const { canRead, canUpdate } = permissions;
+  const siteQuery = useSystemOptionGroup("site", canRead);
+  const authQuery = useSystemOptionGroup("auth", canRead);
+  const uploadQuery = useSystemOptionGroup("upload", canRead);
+  const uiQuery = useSystemOptionGroup("ui", canRead);
   const saveMut = useSaveAllSystemOptions();
 
   const [draft, setDraft] = React.useState<Record<string, unknown>>({});
@@ -60,7 +63,11 @@ function SettingsForm() {
   }, []);
 
   const isLoading =
-    siteQuery.isLoading || authQuery.isLoading || uploadQuery.isLoading || uiQuery.isLoading;
+    permissions.isPending ||
+    siteQuery.isLoading ||
+    authQuery.isLoading ||
+    uploadQuery.isLoading ||
+    uiQuery.isLoading;
   const isSaving = saveMut.isPending;
   const errorMessage = saveMut.isError
     ? saveMut.error instanceof Error
@@ -69,7 +76,7 @@ function SettingsForm() {
     : undefined;
 
   const handleSave = async () => {
-    if (isSaving || !hydrated) return;
+    if (isSaving || !hydrated || !canUpdate) return;
     const items = SYSTEM_OPTION_GROUPS.flatMap((group) =>
       group.options.map((opt) => ({
         key: opt.key,
@@ -88,6 +95,14 @@ function SettingsForm() {
     setDraft(initialDraft);
     saveMut.reset();
   }, [hydrated, isSaving, initialDraft, saveMut]);
+
+  if (!permissions.isPending && !canRead) {
+    return (
+      <div className="rounded-md border border-line bg-card p-6 text-sm text-text-soft">
+        没有查看该资源的权限
+      </div>
+    );
+  }
 
   const groupedQueries: Record<string, { data: ReturnType<typeof useSystemOptionGroup>["data"] }> =
     {
@@ -110,7 +125,7 @@ function SettingsForm() {
               group={group}
               draft={draft}
               onChange={setOptionValue}
-              disabled={isSaving || !hydrated}
+              disabled={isSaving || !hydrated || !canUpdate}
               isGroupLoading={groupedQueries[group.code]?.data === undefined && isLoading}
             />
           ))}
@@ -134,7 +149,7 @@ function SettingsForm() {
               size="sm"
               variant="outline"
               onClick={handleReset}
-              disabled={isSaving || !hydrated || isLoading}
+              disabled={isSaving || !hydrated || isLoading || !canUpdate}
               className="min-w-[88px]"
             >
               重置
@@ -143,7 +158,7 @@ function SettingsForm() {
               type="button"
               size="sm"
               onClick={() => void handleSave()}
-              disabled={isSaving || !hydrated || isLoading}
+              disabled={isSaving || !hydrated || isLoading || !canUpdate}
               className="min-w-[88px]"
             >
               保存

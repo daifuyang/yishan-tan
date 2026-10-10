@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { assertStorageOperation } from "~/features/storages/storages.policy";
 import { setDefaultStorageService } from "~/features/storages/storages.service";
-import { requireAdmin } from "~/lib/authorization.server";
 import { parseParams } from "~/server/handlers";
 import { handleApiError, ok } from "~/server/http";
 import { requireRequestContext } from "~/server/request-context";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/v1/storages/$id/default")({
       POST: async ({ request, params }) => {
         try {
           const ctx = await requireRequestContext(request);
-          await requireAdmin(ctx);
+          await assertStorageOperation(ctx, "storages:update");
           const { id } = parseParams(idParamSchema, params);
           const storage = await setDefaultStorageService(id);
           return ok(storage);

@@ -26,8 +26,8 @@ export const attachmentsListQueryOptions = (input: AttachmentListQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function useAttachmentsList(input: AttachmentListQuery) {
-  return useQuery(attachmentsListQueryOptions(input));
+export function useAttachmentsList(input: AttachmentListQuery, enabled = true) {
+  return useQuery({ ...attachmentsListQueryOptions(input), enabled });
 }
 
 export const attachmentDetailQueryOptions = (id: string) =>
@@ -51,6 +51,6 @@ export const attachmentCategoriesQueryOptions = () =>
     refetchOnWindowFocus: false,
   });
 
-export function useAttachmentCategories() {
-  return useQuery(attachmentCategoriesQueryOptions());
+export function useAttachmentCategories(enabled = true) {
+  return useQuery({ ...attachmentCategoriesQueryOptions(), enabled });
 }

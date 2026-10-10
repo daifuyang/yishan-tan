@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { contextFromRequest } from "~/server/request-context";
-import { assertCanManageAttachments } from "./attachments.policy";
+import { assertAttachmentOperation } from "./attachments.policy";
 import {
   attachmentCategorySchema,
   attachmentIdSchema,
@@ -16,10 +16,12 @@ import {
   listAttachmentsService,
 } from "./attachments.service";
 
-async function adminCtx() {
+async function operationCtx(
+  code: "attachments:read" | "attachments:create" | "attachments:delete",
+) {
   const ctx = await contextFromRequest(getRequestHeaders());
   if (!ctx) throw new Error("UNAUTHENTICATED");
-  await assertCanManageAttachments(ctx);
+  await assertAttachmentOperation(ctx, code);
   return ctx;
 }
 
@@ -32,7 +34,7 @@ export { categorizeByMime };
 export const recordUploadedAttachment = createServerFn({ method: "POST" })
   .validator(recordAttachmentInputSchema)
   .handler(async ({ data }) => {
-    const ctx = await adminCtx();
+    const ctx = await operationCtx("attachments:create");
     return createAttachmentService({
       storageId: data.storageId ?? null,
       storageKey: data.storageKey,
@@ -50,14 +52,14 @@ export const recordUploadedAttachment = createServerFn({ method: "POST" })
 export const listAttachments = createServerFn({ method: "GET" })
   .validator(attachmentListQuerySchema)
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("attachments:read");
     return listAttachmentsService(data);
   });
 
 export const getAttachment = createServerFn({ method: "GET" })
   .validator(attachmentIdSchema)
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("attachments:read");
     const result = await getAttachmentService(data.id);
     if (!result) throw new Error("NOT_FOUND");
     return result;
@@ -66,11 +68,11 @@ export const getAttachment = createServerFn({ method: "GET" })
 export const deleteAttachment = createServerFn({ method: "POST" })
   .validator(attachmentIdSchema)
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("attachments:delete");
     return deleteAttachmentService(data.id);
   });
 
 export const attachmentCategories = createServerFn({ method: "GET" }).handler(async () => {
-  await adminCtx();
+  await operationCtx("attachments:read");
   return attachmentCategorySchema.options;
 });

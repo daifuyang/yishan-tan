@@ -18,6 +18,7 @@ import {
 import { useLoginLogsList } from "~/features/login-logs/login-logs.queries";
 import type { ListLoginLogsQuery } from "~/features/login-logs/login-logs.schema";
 import type { LoginLogDto } from "~/features/login-logs/login-logs.types";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { MONO_CELL } from "~/lib/classes";
 
 type StatusFilter = "all" | "success" | "failed";
@@ -89,10 +90,12 @@ function AdminLoginLogsPage() {
   const [viewing, setViewing] = React.useState<LoginLogDto | null>(null);
 
   const query = toQuery(filters, page, pageSize);
-  const list = useLoginLogsList(query);
+  const permissions = useResourcePermissions("login-logs");
+  const { canRead } = permissions;
+  const list = useLoginLogsList(query, canRead);
 
-  const allItems = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const allItems = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   // IP / User Agent 是只读客户端筛选，避免再发一次查询。
   // 客户端过滤使用提交后的 filters，与 ResourcePage 的「查询」按钮语义一致。
   const items = React.useMemo(
@@ -304,7 +307,7 @@ function AdminLoginLogsPage() {
         filterValues={draft}
         onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
-        filterLoading={list.isFetching}
+        filterLoading={permissions.isPending || list.isFetching}
         toolbarTitle="日志列表"
         tableProps={{
           columns: columns as ResourceColumn<LoginLogDto>[],
@@ -318,13 +321,15 @@ function AdminLoginLogsPage() {
             setPageSize(size);
             setPage(1);
           },
-          loading: list.isFetching,
+          loading: permissions.isPending || list.isFetching,
           emptyTitle: "暂无日志",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
-            : undefined,
+          error:
+            permissions.error ??
+            (list.isError
+              ? list.error instanceof Error
+                ? list.error.message
+                : "加载失败"
+              : undefined),
         }}
       />
 
