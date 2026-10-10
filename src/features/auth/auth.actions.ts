@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { assertCanManageUsers } from "~/features/users/users.policy";
+import { assertUserOperation } from "~/features/users/users.policy";
 import { contextFromRequest, requireRequestContext } from "~/server/request-context";
 import { createSessionSchema, createUserSchema } from "./auth.schema";
 import {
@@ -23,13 +23,12 @@ export const deleteSession = createServerFn({ method: "POST" }).handler(async ()
 );
 
 /**
- * admin 视角下的新增用户入口。受 assertCanManageUsers 守卫，仅 system admin
- * 可调用；普通注册走单独的 sign-up 端点（不在本 server-fn）。
+ * admin 视角下的新增用户入口。受 assertCanManageUsers 守卫，要求 users:create 权限；业务角色分配单独校验。
  */
 export const createUser = createServerFn({ method: "POST" })
   .validator(createUserSchema)
   .handler(async ({ data }) => {
     const ctx = await requireRequestContext(getRequestHeaders());
-    await assertCanManageUsers(ctx);
+    await assertUserOperation(ctx, "users:create", { roleIds: data.roleIds });
     return createUserService(data, getRequestHeaders());
   });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { permissionCodesSchema } from "~/features/permissions/permissions.schema";
 
 export const statusSchema = z.enum(["enabled", "disabled"]);
 
@@ -14,6 +15,7 @@ export const createRoleSchema = z.object({
   status: statusSchema.default("enabled"),
   dataScope: dataScopeSchema.default("1"),
   menuIds: z.array(z.string().uuid()).optional(),
+  permissionCodes: permissionCodesSchema.optional(),
 });
 
 export const updateRoleSchema = z.object({
@@ -22,6 +24,7 @@ export const updateRoleSchema = z.object({
   status: statusSchema.optional(),
   dataScope: dataScopeSchema.optional(),
   menuIds: z.array(z.string().uuid()).optional(),
+  permissionCodes: permissionCodesSchema.optional(),
 });
 
 export const roleListQuerySchema = z.object({

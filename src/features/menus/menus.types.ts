@@ -1,4 +1,5 @@
 import type { DbMenu } from "~/../db/schema";
+import type { PermissionCode } from "~/lib/permission-catalog";
 
 export type MenuDto = {
   id: string;
@@ -9,6 +10,7 @@ export type MenuDto = {
   icon: string | null;
   type: "group" | "menu" | "action";
   permission: string | null;
+  permissionCodes?: PermissionCode[];
   sort: number;
   status: "enabled" | "disabled";
   createdAt: string;
@@ -39,6 +41,7 @@ export type CreateMenuService = (input: {
   icon?: string;
   type?: "group" | "menu" | "action";
   permission?: string;
+  permissionCodes?: PermissionCode[];
   sort?: number;
   status?: "enabled" | "disabled";
 }) => Promise<MenuDto>;

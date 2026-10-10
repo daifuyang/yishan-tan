@@ -1,15 +1,31 @@
+import {
+  assertAssignableRolesService,
+  assertPermissionService,
+  assertUserTargetService,
+} from "~/features/permissions/permissions.service";
 import { SYSTEM_ADMIN_IDS } from "~/lib/authorization.server";
 import { Errors } from "~/lib/errors";
+import type { PermissionCode } from "~/lib/permission-catalog";
 import type { ServiceContext } from "~/lib/service-context";
+
+export async function assertUserOperation(
+  ctx: ServiceContext,
+  code: PermissionCode,
+  input?: { id?: string; roleIds?: string[] },
+): Promise<void> {
+  await assertPermissionService(ctx, code);
+  if (input?.id && code !== "users:read") {
+    await assertUserTargetService(ctx, input.id);
+  }
+  if (input?.roleIds !== undefined) await assertAssignableRolesService(ctx, input.roleIds);
+}
 
 export function isSystemAdmin(userId: string): boolean {
   return SYSTEM_ADMIN_IDS.includes(userId);
 }
 
 export async function assertCanManageUsers(ctx: ServiceContext): Promise<void> {
-  if (!isSystemAdmin(ctx.userId)) {
-    throw Errors.forbidden("仅超级管理员可执行该操作");
-  }
+  await assertUserOperation(ctx, "users:create");
 }
 
 export function assertNotSelfOrSystemAdmin(targetUserId: string, operatorId: string): void {

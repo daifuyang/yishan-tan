@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * 宪章 §12.1 / §12.2 守卫入口(DESIGN_CHARTER.md):
- *   - §12.1(已注册 4 个 P0 守卫):check-routes / check-actions / check-services / check-naming
+ *   - §12.1:check-routes / check-actions / check-services / check-naming
+ *   - §7.0:check-list-pages（资源列表搜索 + 表格结构）
  *   - §12.2(待补):check-ui-tokens(P1,Phase 2 第 8 条)/ check-ui-naming(P2,Phase 3 第 5 条)
  */
 import { spawnSync } from "node:child_process";
@@ -11,6 +12,7 @@ const checks = [
   "scripts/arch/check-actions.mjs",
   "scripts/arch/check-services.mjs",
   "scripts/arch/check-naming.mjs",
+  "scripts/arch/check-list-pages.mjs",
 ];
 
 let failed = 0;

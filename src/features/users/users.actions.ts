@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireAdmin } from "~/lib/authorization.server";
+import { Errors } from "~/lib/errors";
+import type { PermissionCode } from "~/lib/permission-catalog";
 import { contextFromRequest, requireRequestContext } from "~/server/request-context";
-import { assertCanResetPassword } from "./users.policy";
+import { assertCanResetPassword, assertUserOperation } from "./users.policy";
 import {
   changePasswordSchema,
   loginLogListQuerySchema,
@@ -25,10 +26,10 @@ import {
   updateUserService,
 } from "./users.service";
 
-async function adminCtx() {
+async function adminCtx(code: PermissionCode) {
   const ctx = await contextFromRequest(getRequestHeaders());
-  if (!ctx) throw new Error("UNAUTHENTICATED");
-  await requireAdmin(ctx);
+  if (!ctx) throw Errors.unauthenticated();
+  await assertUserOperation(ctx, code);
   return ctx;
 }
 
@@ -39,26 +40,27 @@ async function userCtx() {
 export const listUsers = createServerFn({ method: "GET" })
   .validator(userListQuerySchema)
   .handler(async ({ data }) => {
-    await adminCtx();
+    await adminCtx("users:read");
     return listUsersService(data);
   });
 
 export const getUser = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    await adminCtx();
+    await adminCtx("users:read");
     const user = await getUserService(data.id);
-    if (!user) throw new Error("NOT_FOUND");
+    if (!user) throw Errors.notFound("用户不存在");
     return user;
   });
 
 export const updateUser = createServerFn({ method: "POST" })
   .validator(updateUserSchema.extend({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    const ctx = await adminCtx();
+    const ctx = await adminCtx("users:update");
     const { id, ...rest } = data;
+    await assertUserOperation(ctx, "users:update", { id, roleIds: rest.roleIds });
     if (rest.status === "disabled" && id === ctx.userId) {
-      throw new Error("CANNOT_DISABLE_SELF");
+      throw Errors.invalid("不能禁用当前登录用户");
     }
     return updateUserService(id, rest);
   });
@@ -66,9 +68,10 @@ export const updateUser = createServerFn({ method: "POST" })
 export const deleteUser = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    const ctx = await adminCtx();
+    const ctx = await adminCtx("users:delete");
+    await assertUserOperation(ctx, "users:delete", { id: data.id });
     if (data.id === ctx.userId) {
-      throw new Error("CANNOT_DELETE_SELF");
+      throw Errors.invalid("不能删除当前登录用户");
     }
     return deleteUserService(data.id);
   });
@@ -76,7 +79,8 @@ export const deleteUser = createServerFn({ method: "POST" })
 export const resetUserPassword = createServerFn({ method: "POST" })
   .validator(resetPasswordSchema)
   .handler(async ({ data }) => {
-    const ctx = await adminCtx();
+    const ctx = await adminCtx("users:reset-password");
+    await assertUserOperation(ctx, "users:reset-password", { id: data.userId });
     assertCanResetPassword(ctx, data.userId);
     return resetUserPasswordService({ userId: data.userId });
   });
@@ -84,7 +88,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
 export const exportUsers = createServerFn({ method: "GET" })
   .validator(userListQuerySchema.omit({ page: true, pageSize: true }))
   .handler(async ({ data }) => {
-    await adminCtx();
+    await adminCtx("users:export");
     return exportUsersService(data);
   });
 

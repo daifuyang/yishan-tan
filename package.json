@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "npm run openapi:gen && vite dev --host 0.0.0.0",
+    "dev": "npm run openapi:gen && dotenv -e .env -- vite dev --host 0.0.0.0",
     "build": "NODE_ENV=production vite build",
     "start": "node .output/server/index.mjs",
     "prebuild": "npm run openapi:gen",
@@ -34,6 +34,7 @@
     "arch:check:actions": "node scripts/arch/check-actions.mjs",
     "arch:check:services": "node scripts/arch/check-services.mjs",
     "arch:check:naming": "node scripts/arch/check-naming.mjs",
+    "arch:check:lists": "node scripts/arch/check-list-pages.mjs",
     "gen:resource": "tsx scripts/generators/gen-resource.ts"
   },
   "dependencies": {
@@ -74,6 +75,7 @@
   "devDependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@biomejs/biome": "^1.9.4",
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

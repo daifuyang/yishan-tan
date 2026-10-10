@@ -1,4 +1,5 @@
 import type { DbRole } from "~/../db/schema";
+import type { PermissionCode } from "~/lib/permission-catalog";
 
 import type { DataScope } from "./roles.schema";
 
@@ -21,6 +22,7 @@ export type RoleListItemDto = RoleDto;
 
 export type RoleDetailDto = RoleDto & {
   menuIds: string[];
+  permissionCodes: PermissionCode[];
 };
 
 export type CreateRoleServiceInput = {
@@ -29,6 +31,7 @@ export type CreateRoleServiceInput = {
   status?: "enabled" | "disabled";
   dataScope?: DataScope;
   menuIds?: string[];
+  permissionCodes?: PermissionCode[];
 };
 
 export type UpdateRoleServiceInput = {
@@ -37,6 +40,7 @@ export type UpdateRoleServiceInput = {
   status?: "enabled" | "disabled";
   dataScope?: DataScope;
   menuIds?: string[];
+  permissionCodes?: PermissionCode[];
 };
 
 export type ListRolesService = (input: {

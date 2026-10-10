@@ -49,6 +49,12 @@ const doc = new OpenApiGeneratorV31(registry.definitions).generateDocument({
 doc.components = {
   ...(doc.components ?? {}),
   securitySchemes: {
+    CookieAuth: {
+      type: "apiKey",
+      in: "cookie",
+      name: "yishantan.session_token",
+      description: "Web 登录会话 cookie（HTTPS 下使用安全 cookie 名）。",
+    },
     ApiKeyAuth: {
       type: "apiKey",
       in: "header",
@@ -57,7 +63,7 @@ doc.components = {
     },
   },
 };
-doc.security = [{ ApiKeyAuth: [] }];
+doc.security = [{ CookieAuth: [] }, { ApiKeyAuth: [] }];
 
 const outFile = resolve(projectRoot, "openapi.generated.json");
 mkdirSync(dirname(outFile), { recursive: true });

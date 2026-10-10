@@ -108,6 +108,7 @@ export const roleListItemDtoSchema = roleDtoSchema.openapi("RoleListItemDto");
 export const roleDetailDtoSchema = roleDtoSchema
   .extend({
     menuIds: z.array(uuid),
+    permissionCodes: z.array(z.string()),
   })
   .openapi("RoleDetailDto");
 
@@ -122,6 +123,7 @@ export const menuDtoSchema = z
     icon: nullableStringOptional,
     type: menuTypeSchema,
     permission: nullableStringOptional,
+    permissionCodes: z.array(z.string()),
     sort: z.number().int().min(0).max(9999),
     status: statusSchema,
     createdAt: isoDate,

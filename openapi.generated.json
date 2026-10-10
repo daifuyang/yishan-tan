@@ -81,6 +81,12 @@
               "null"
             ]
           },
+          "permissionCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "sort": {
             "type": "integer",
             "minimum": 0,
@@ -104,6 +110,7 @@
           "id",
           "name",
           "type",
+          "permissionCodes",
           "sort",
           "status",
           "createdAt",
@@ -1119,10 +1126,17 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "permissionCodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "required": [
-              "menuIds"
+              "menuIds",
+              "permissionCodes"
             ]
           }
         ]
@@ -2367,6 +2381,12 @@
     },
     "parameters": {},
     "securitySchemes": {
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "yishantan.session_token",
+        "description": "Web 登录会话 cookie（HTTPS 下使用安全 cookie 名）。"
+      },
       "ApiKeyAuth": {
         "type": "apiKey",
         "in": "header",
@@ -2760,11 +2780,18 @@
     "/api/v1/users": {
       "post": {
         "operationId": "createUser",
-        "summary": "注册新用户（公开）",
+        "summary": "新增用户（需要 users:create 权限）",
         "tags": [
           "users"
         ],
-        "security": [],
+        "security": [
+          {
+            "CookieAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2876,7 +2903,7 @@
         },
         "responses": {
           "201": {
-            "description": "注册成功",
+            "description": "创建成功",
             "content": {
               "application/json": {
                 "schema": {
@@ -2959,7 +2986,7 @@
       },
       "get": {
         "operationId": "listUsers",
-        "summary": "分页列出用户（admin）",
+        "summary": "分页列出用户（users:read）",
         "tags": [
           "users"
         ],
@@ -3146,7 +3173,7 @@
     "/api/v1/users/{id}": {
       "get": {
         "operationId": "getUser",
-        "summary": "获取单个用户详情（admin）",
+        "summary": "获取单个用户详情（users:read）",
         "tags": [
           "users"
         ],
@@ -3246,7 +3273,7 @@
       },
       "patch": {
         "operationId": "updateUser",
-        "summary": "更新用户（admin）。不能禁用/删除自己",
+        "summary": "更新用户（users:update）；分配角色另需 users:assign-roles",
         "tags": [
           "users"
         ],
@@ -3440,7 +3467,7 @@
       },
       "delete": {
         "operationId": "deleteUser",
-        "summary": "软删除用户（admin）。不能删除自己",
+        "summary": "软删除用户（users:delete）。不能删除自己",
         "tags": [
           "users"
         ],
@@ -4350,6 +4377,22 @@
                       "type": "string",
                       "format": "uuid"
                     }
+                  },
+                  "permissionCodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "users:read",
+                        "users:create",
+                        "users:update",
+                        "users:delete",
+                        "users:reset-password",
+                        "users:export",
+                        "users:assign-roles"
+                      ]
+                    },
+                    "maxItems": 100
                   }
                 },
                 "required": [
@@ -4599,6 +4642,22 @@
                       "type": "string",
                       "format": "uuid"
                     }
+                  },
+                  "permissionCodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "users:read",
+                        "users:create",
+                        "users:update",
+                        "users:delete",
+                        "users:reset-password",
+                        "users:export",
+                        "users:assign-roles"
+                      ]
+                    },
+                    "maxItems": 100
                   }
                 }
               }
@@ -4984,6 +5043,22 @@
                     "type": "string",
                     "maxLength": 100
                   },
+                  "permissionCodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "users:read",
+                        "users:create",
+                        "users:update",
+                        "users:delete",
+                        "users:reset-password",
+                        "users:export",
+                        "users:assign-roles"
+                      ]
+                    },
+                    "maxItems": 100
+                  },
                   "sort": {
                     "type": "integer",
                     "minimum": 0,
@@ -5149,6 +5224,22 @@
                   "permission": {
                     "type": "string",
                     "maxLength": 100
+                  },
+                  "permissionCodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "users:read",
+                        "users:create",
+                        "users:update",
+                        "users:delete",
+                        "users:reset-password",
+                        "users:export",
+                        "users:assign-roles"
+                      ]
+                    },
+                    "maxItems": 100
                   },
                   "sort": {
                     "type": "integer",
@@ -8864,6 +8955,9 @@
   },
   "webhooks": {},
   "security": [
+    {
+      "CookieAuth": []
+    },
     {
       "ApiKeyAuth": []
     }

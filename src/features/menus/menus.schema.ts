@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { permissionCodesSchema } from "~/features/permissions/permissions.schema";
 
 export const menuTypeSchema = z.enum(["group", "menu", "action"]);
 export const statusSchema = z.enum(["enabled", "disabled"]);
@@ -11,6 +12,7 @@ export const createMenuSchema = z.object({
   icon: z.string().max(50).optional(),
   type: menuTypeSchema.default("menu"),
   permission: z.string().max(100).optional(),
+  permissionCodes: permissionCodesSchema.optional(),
   sort: z.number().int().min(0).max(9999).default(0),
   status: statusSchema.default("enabled"),
 });
@@ -23,6 +25,7 @@ export const updateMenuSchema = z.object({
   icon: z.string().max(50).optional(),
   type: menuTypeSchema.optional(),
   permission: z.string().max(100).optional(),
+  permissionCodes: permissionCodesSchema.optional(),
   sort: z.number().int().min(0).max(9999).optional(),
   status: statusSchema.optional(),
 });

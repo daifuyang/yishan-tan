@@ -22,8 +22,8 @@ export const usersListQueryOptions = (input: UserListQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function useUsersList(input: UserListQuery) {
-  return useQuery(usersListQueryOptions(input));
+export function useUsersList(input: UserListQuery, enabled = true) {
+  return useQuery({ ...usersListQueryOptions(input), enabled });
 }
 
 export const userDetailQueryOptions = (id: string) =>

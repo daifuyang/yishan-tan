@@ -448,6 +448,12 @@ shadcn/ui 基础组件 16 个(落地于 `src/components/ui/`),使用 `data-slot`
 
 ## 7. 表格与列表
 
+### 7.0 资源列表结构（强制）
+
+所有后台资源列表必须采用“搜索区 + 表格区”，复用 ResourcePage、QueryFormItem、FilterBar 和 ResourceTable。搜索卡片独立于表格卡片；查询输入与已提交条件分开，提交后回到第一页，重置同时恢复输入、查询条件和页码。树形资源也使用搜索 + 树表格。
+
+详细结构、查询语义、非列表范围和验收要求见 [后台列表规范](./admin-list-standard.md)。用户管理与角色管理为参考实现，现有局部缺口不能覆盖规范。结构守卫 `check-list-pages` 已接入 arch:check；动态行为仍需浏览器验证。
+
 ### 7.1 列对齐
 
 - **文本**:左对齐

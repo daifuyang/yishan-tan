@@ -1,5 +1,7 @@
 # 08 · 媒体库（feature 全建）
 
+> 状态说明（2026-10-09）：本文件保留历史实施步骤与完成记录，“现状盘点”和旧验收数字不代表当前状态。当前实现与剩余项以 [TODO 总览](./README.md) 和 [对齐调研](../docs/yishan-alignment-review.md) 为准。
+
 ## 本任务目标
 
 新增 `/admin/attachments` 全功能页面：上传、列出、按目录 / 类型筛选、删除附件。上传走「当前默认 storage 驱动」（依赖 07-storages）。

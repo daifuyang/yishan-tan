@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
 import { Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
+import { PermissionFields } from "@/components/admin/form/permission-fields";
 import { ResourcePage, resolveMenuIcon } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,7 @@ import {
 } from "~/features/menus/menus.use-mutations";
 import { MONO_CELL } from "~/lib/classes";
 import { placeholders } from "~/lib/copy";
+import type { PermissionCode } from "~/lib/permission-catalog";
 
 type MenuTypeFilter = "all" | "group" | "menu" | "action";
 type StatusFilter = "all" | "enabled" | "disabled";
@@ -166,6 +168,7 @@ function AdminMenusPage() {
       icon: menu.icon ?? "",
       type: menu.type,
       permission: menu.permission ?? "",
+      permissionCodes: menu.permissionCodes ?? [],
       sort: menu.sort,
       status: menu.status,
     });
@@ -250,7 +253,7 @@ function AdminMenusPage() {
     if (editing.mode === "create") {
       await createMut.mutateAsync(payload);
     } else if (editing.menu) {
-      const patch: UpdateMenuInput = {};
+      const patch: UpdateMenuInput = { permissionCodes: payload.permissionCodes };
       if (payload.parentId !== editing.menu.parentId) patch.parentId = payload.parentId ?? null;
       if (payload.name !== editing.menu.name) patch.name = payload.name;
       if ((payload.path ?? null) !== editing.menu.path) patch.path = payload.path;
@@ -710,6 +713,7 @@ type EditMenuFormValue = {
   icon: string;
   type: "group" | "menu" | "action";
   permission: string;
+  permissionCodes: PermissionCode[];
   sort: number;
   status: "enabled" | "disabled";
 };
@@ -722,6 +726,7 @@ const EMPTY_EDIT_FORM: EditMenuFormValue = {
   icon: "",
   type: "menu",
   permission: "",
+  permissionCodes: [],
   sort: 0,
   status: "enabled",
 };
@@ -741,6 +746,7 @@ function buildPayload(form: EditMenuFormValue): CreateMenuInput {
     component: form.type === "group" ? undefined : trim(form.component),
     icon: trim(form.icon),
     permission: form.type === "group" ? undefined : trim(form.permission),
+    permissionCodes: form.permissionCodes,
   };
 }
 
@@ -759,6 +765,11 @@ function EditMenuFields({
 
   return (
     <div className="space-y-3">
+      <PermissionFields
+        description="关联此菜单涉及的操作权限；实际授权需在角色中单独配置。"
+        value={value.permissionCodes}
+        onChange={(permissionCodes) => onChange({ permissionCodes })}
+      />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="menu-name">名称</Label>

@@ -46,10 +46,9 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser } from "~/features/auth/auth.queries";
-import { useDepartmentTree } from "~/features/departments/departments.queries";
 import type { DepartmentNode } from "~/features/departments/departments.types";
-import { usePostsList } from "~/features/posts/posts.queries";
-import { useAssignableRoles, useUsersList } from "~/features/users/users.queries";
+import { useMyPermissions, useUserFormOptions } from "~/features/permissions/permissions.queries";
+import { useUsersList } from "~/features/users/users.queries";
 import type { UserListQuery } from "~/features/users/users.schema";
 import type { AdminUserDto } from "~/features/users/users.types";
 import {
@@ -138,7 +137,16 @@ function AdminUsersPage() {
 
   const query = toQuery(filters, page, pageSize);
   const { data: currentUser } = useCurrentUser();
-  const list = useUsersList(query);
+  const permissions = useMyPermissions();
+  const grants = permissions.data ?? [];
+  const canRead = grants.includes("users:read");
+  const canCreate = grants.includes("users:create");
+  const canUpdate = grants.includes("users:update");
+  const canDelete = grants.includes("users:delete");
+  const canExport = grants.includes("users:export");
+  const canReset = grants.includes("users:reset-password");
+  const canAssignRoles = grants.includes("users:assign-roles");
+  const list = useUsersList(query, canRead);
   const updateMut = useUpdateUser();
   const deleteMut = useDeleteUser();
   const bulkUpdateMut = useBulkUpdateUserStatus();
@@ -146,24 +154,16 @@ function AdminUsersPage() {
   const exportMut = useExportUsers();
   const createMut = useCreateUser();
   const resetPasswordMut = useResetUserPassword();
-  const assignableRolesQuery = useAssignableRoles();
-  const assignableRoles = assignableRolesQuery.data?.items ?? [];
-  const departmentTreeQuery = useDepartmentTree();
-  const departmentTree = departmentTreeQuery.data ?? [];
-  const postsQuery = usePostsList({
-    page: 1,
-    pageSize: 100,
-    status: "enabled",
-  });
-  const posts = postsQuery.data?.items ?? [];
+  const formOptions = useUserFormOptions(
+    (creating || editing !== null) && canRead && (canCreate || canUpdate),
+  );
+  const assignableRoles = formOptions.data?.roles ?? [];
+  const departmentTree = formOptions.data?.departments ?? [];
+  const posts = formOptions.data?.posts ?? [];
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const resetPageOnFilterChange = React.useCallback(() => {
-    setPage(1);
-  }, []);
 
   const clearSelectionOnViewChange = React.useCallback(() => {
     // 翻页/筛选/数据刷新时清空选中，避免跨页错选
@@ -176,19 +176,6 @@ function AdminUsersPage() {
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
-  React.useEffect(() => {
-    resetPageOnFilterChange();
-  }, [
-    filters.username,
-    filters.name,
-    filters.displayName,
-    filters.email,
-    filters.phone,
-    filters.status,
-    resetPageOnFilterChange,
-  ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: page/size/filter used only as trigger for clearing selection
   React.useEffect(() => {
@@ -211,6 +198,8 @@ function AdminUsersPage() {
 
   const handleFilterSubmit = () => {
     setFilters(draft);
+    setPage(1);
+    setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
@@ -451,6 +440,8 @@ function AdminUsersPage() {
       sticky: "right",
       cell: (row) => {
         const isSelf = row.id === currentUser?.id;
+        const protectedTarget = row.role === "admin" && currentUser?.role !== "admin";
+        const mayUpdate = canUpdate && !protectedTarget;
         const isDisabled = row.status === "disabled";
         return (
           <div className="flex items-center justify-end gap-3 whitespace-nowrap">
@@ -459,6 +450,7 @@ function AdminUsersPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
+              disabled={!mayUpdate}
               onClick={(e) => {
                 e.stopPropagation();
                 handleStartEdit(row);
@@ -476,7 +468,7 @@ function AdminUsersPage() {
                   e.stopPropagation();
                   void handleToggleStatus(row);
                 }}
-                disabled={updateMut.isPending}
+                disabled={!mayUpdate || updateMut.isPending}
               >
                 启用
               </Button>
@@ -505,7 +497,7 @@ function AdminUsersPage() {
                     e.stopPropagation();
                     setDisablePopconfirmRowId(row.id);
                   }}
-                  disabled={updateMut.isPending}
+                  disabled={!mayUpdate || updateMut.isPending}
                 >
                   禁用
                 </Button>
@@ -526,7 +518,7 @@ function AdminUsersPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="w-32 rounded-[4px]">
                 <DropdownMenuItem
-                  disabled={isSelf || resetPasswordMut.isPending}
+                  disabled={!canReset || protectedTarget || isSelf || resetPasswordMut.isPending}
                   onSelect={(e) => {
                     e.preventDefault();
                     setResetPopconfirmRowId(row.id);
@@ -537,7 +529,7 @@ function AdminUsersPage() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
-                  disabled={isSelf || deleteMut.isPending}
+                  disabled={!canDelete || protectedTarget || isSelf || deleteMut.isPending}
                   onSelect={(e) => {
                     e.preventDefault();
                     setPopconfirmRowId(row.id);
@@ -604,7 +596,7 @@ function AdminUsersPage() {
         gender: editForm.gender,
         birthDate: editForm.birthDate || null,
         remark: editForm.remark || null,
-        roleIds: editForm.roleIds,
+        roleIds: canAssignRoles ? editForm.roleIds : undefined,
       },
     });
     setEditing(null);
@@ -634,7 +626,7 @@ function AdminUsersPage() {
       gender: createForm.gender,
       birthDate: createForm.birthDate || null,
       remark: createForm.remark || null,
-      roleIds: createForm.roleIds,
+      roleIds: canAssignRoles ? createForm.roleIds : undefined,
     });
     setCreating(false);
     setCreateForm(EMPTY_CREATE_FORM);
@@ -734,7 +726,7 @@ function AdminUsersPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkUpdateMut.isPending}
+                  disabled={!canUpdate || bulkUpdateMut.isPending}
                   onClick={() => void handleBulkDisable()}
                 >
                   <ShieldOff className="size-3.5" aria-hidden />
@@ -762,7 +754,7 @@ function AdminUsersPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={bulkDeleteMut.isPending}
+                    disabled={!canDelete || bulkDeleteMut.isPending}
                     onClick={() => setBulkDeletePopconfirmOpen(true)}
                   >
                     <Trash2 className="size-3.5" aria-hidden />
@@ -775,7 +767,7 @@ function AdminUsersPage() {
               type="button"
               variant="outline"
               size="sm"
-              disabled={exportMut.isPending}
+              disabled={!canExport || exportMut.isPending}
               onClick={() => void handleExport()}
             >
               <Download className="size-3.5" aria-hidden />
@@ -784,13 +776,13 @@ function AdminUsersPage() {
             <TooltipProvider delayDuration={200}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button type="button" size="sm" onClick={handleOpenCreate}>
+                  <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
                     <Plus className="size-3.5" aria-hidden />
                     新建
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p>后台新建用户（仅 admin）</p>
+                  <p>需要新增用户权限</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -810,15 +802,22 @@ function AdminUsersPage() {
           },
           loading: list.isFetching,
           emptyTitle: "暂无数据",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
-            : undefined,
+          error: permissions.isError
+            ? "读取权限失败，请刷新重试"
+            : !permissions.isPending && !canRead
+              ? "没有查看用户权限"
+              : list.isError
+                ? list.error instanceof Error
+                  ? list.error.message
+                  : "加载失败"
+                : undefined,
           rowSelection: {
             selectedKeys,
             onChange: setSelectedKeys,
-            disabled: (row) => row.id === currentUser?.id,
+            disabled: (row) =>
+              (!canDelete && !canUpdate) ||
+              row.id === currentUser?.id ||
+              (row.role === "admin" && currentUser?.role !== "admin"),
           },
         }}
       />
@@ -847,6 +846,7 @@ function AdminUsersPage() {
             key={editing.id}
             user={editing}
             value={editForm}
+            canAssignRoles={canAssignRoles}
             assignableRoles={assignableRoles}
             departmentTree={departmentTree}
             posts={posts}
@@ -877,6 +877,7 @@ function AdminUsersPage() {
         <CreateUserFields
           key="create-form"
           value={createForm}
+          canAssignRoles={canAssignRoles}
           assignableRoles={assignableRoles}
           departmentTree={departmentTree}
           posts={posts}
@@ -1058,6 +1059,7 @@ function PostField({
   options,
   onChange,
 }: {
+  disabled?: boolean;
   id: string;
   value: string[];
   options: Array<{ value: string; label: string; disabled?: boolean }>;
@@ -1083,11 +1085,13 @@ function PostField({
 }
 
 function RoleField({
+  disabled,
   id,
   value,
   options,
   onChange,
 }: {
+  disabled?: boolean;
   id: string;
   value: string[];
   options: Array<{ value: string; label: string; disabled?: boolean }>;
@@ -1097,6 +1101,7 @@ function RoleField({
     <div className="min-w-0 space-y-2.5">
       <Label htmlFor={id}>业务角色</Label>
       <SearchMultiSelect
+        disabled={disabled}
         id={id}
         aria-label="业务角色"
         value={value}
@@ -1116,12 +1121,14 @@ function EditUserFields({
   user,
   value,
   assignableRoles,
+  canAssignRoles,
   departmentTree,
   posts,
   onChange,
 }: {
   user: AdminUserDto;
   value: EditUserFormValue;
+  canAssignRoles: boolean;
   assignableRoles: AssignableRoleOption[];
   departmentTree: DepartmentNode[];
   posts: Array<{
@@ -1260,6 +1267,7 @@ function EditUserFields({
           onChange={(next) => onChange({ postIds: next })}
         />
         <RoleField
+          disabled={!canAssignRoles}
           id="edit-roles"
           value={value.roleIds}
           options={assignableRoles.map((r) => ({
@@ -1294,11 +1302,13 @@ function EditUserFields({
 function CreateUserFields({
   value,
   assignableRoles,
+  canAssignRoles,
   departmentTree,
   posts,
   onChange,
 }: {
   value: CreateUserFormValue;
+  canAssignRoles: boolean;
   assignableRoles: AssignableRoleOption[];
   departmentTree: DepartmentNode[];
   posts: Array<{
@@ -1468,6 +1478,7 @@ function CreateUserFields({
           onChange={(next) => onChange({ postIds: next })}
         />
         <RoleField
+          disabled={!canAssignRoles}
           id="create-roles"
           value={value.roleIds}
           options={roleOptions}

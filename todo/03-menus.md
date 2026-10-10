@@ -1,5 +1,7 @@
 # 03 · 菜单管理
 
+> 状态说明（2026-10-09）：本文件保留历史实施步骤与完成记录，“现状盘点”和旧验收数字不代表当前状态。当前实现与剩余项以 [TODO 总览](./README.md) 和 [对齐调研](../docs/yishan-alignment-review.md) 为准。
+
 ## 本任务目标
 
 落地 `/admin/menus` 页面：树形展示菜单节点（group / menu / action 三类），支持新增子菜单、编辑、调整排序、删除（连同子节点级联）。完成后菜单数据通过 `useAuthorizedMenuTree` 自动反映到左侧 sidebar。

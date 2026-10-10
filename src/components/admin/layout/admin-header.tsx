@@ -3,8 +3,6 @@ import {
   KeyRound,
   LogOut,
   Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
   ScrollText,
   Search,
   Settings,
@@ -31,14 +29,9 @@ import { UserAvatar } from "../display/user-avatar";
 type AdminHeaderProps = {
   onOpenMobileSidebar: () => void;
   collapsed?: boolean;
-  onToggleCollapsed?: () => void;
 };
 
-export function AdminHeader({
-  onOpenMobileSidebar,
-  collapsed = false,
-  onToggleCollapsed,
-}: AdminHeaderProps) {
+export function AdminHeader({ onOpenMobileSidebar, collapsed = false }: AdminHeaderProps) {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
 
@@ -59,30 +52,14 @@ export function AdminHeader({
           >
             <Menu className="size-5" aria-hidden />
           </Button>
-          <div className={cn("flex h-full shrink-0 items-center", collapsed ? "w-16" : "w-64")}>
+          <div
+            className={cn(
+              "flex h-full shrink-0 items-center transition-[width] duration-200 motion-reduce:transition-none",
+              collapsed ? "w-16" : "w-64",
+            )}
+          >
             <HeaderBrand collapsed={collapsed} />
           </div>
-          {onToggleCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={onToggleCollapsed}
-                  aria-label={collapsed ? "展开侧栏" : "收起侧栏"}
-                  className="hidden h-7 w-7 text-text-soft hover:bg-line-soft hover:text-text-strong lg:inline-flex"
-                >
-                  {collapsed ? (
-                    <PanelLeftOpen className="size-4" aria-hidden />
-                  ) : (
-                    <PanelLeftClose className="size-4" aria-hidden />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{collapsed ? "展开侧栏" : "收起侧栏"}</TooltipContent>
-            </Tooltip>
-          ) : null}
         </div>
 
         <div className="hidden flex-1 md:block" aria-hidden />

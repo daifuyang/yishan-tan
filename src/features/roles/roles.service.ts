@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import { isPermissionCode } from "~/lib/permission-catalog";
 import type {
   CreateRoleService,
   DeleteRoleService,
@@ -158,7 +159,15 @@ export const getRoleService: GetRoleService = async ({ id }) => {
     | undefined;
   if (!row) return null;
   const menuIds = await getMenuIds(id);
-  return { ...toDto(row), menuIds };
+  const grants = await getDb()
+    .select()
+    .from(schema.rolePermission)
+    .where(eq(schema.rolePermission.roleId, id));
+  return {
+    ...toDto(row),
+    menuIds,
+    permissionCodes: grants.map((g) => g.permissionCode).filter(isPermissionCode),
+  };
 };
 
 export const createRoleService: CreateRoleService = async ({ ctx, data }) => {
@@ -183,8 +192,12 @@ export const createRoleService: CreateRoleService = async ({ ctx, data }) => {
         .insert(schema.roleMenu)
         .values(data.menuIds.map((menuId) => ({ roleId: row.id, menuId })));
     }
-    const menuIds = await getMenuIds(row.id);
-    return { ...toDto(row as RoleRow), menuIds };
+    const permissionCodes = [...new Set(data.permissionCodes ?? [])];
+    if (permissionCodes.length)
+      await tx
+        .insert(schema.rolePermission)
+        .values(permissionCodes.map((permissionCode) => ({ roleId: row.id, permissionCode })));
+    return { ...toDto(row as RoleRow), menuIds: [...new Set(data.menuIds ?? [])], permissionCodes };
   });
 };
 
@@ -255,8 +268,23 @@ export const updateRoleService: UpdateRoleService = async ({ ctx, id, data }) =>
         })
       | undefined;
     if (!row) throw Errors.notFound("角色不存在");
-    const menuIds = await getMenuIds(id);
-    return { ...toDto(row), menuIds };
+    if (data.permissionCodes !== undefined) {
+      await tx.delete(schema.rolePermission).where(eq(schema.rolePermission.roleId, id));
+      const codes = [...new Set(data.permissionCodes)];
+      if (codes.length)
+        await tx
+          .insert(schema.rolePermission)
+          .values(codes.map((permissionCode) => ({ roleId: id, permissionCode })));
+    }
+    const [menus, grants] = await Promise.all([
+      tx.select().from(schema.roleMenu).where(eq(schema.roleMenu.roleId, id)),
+      tx.select().from(schema.rolePermission).where(eq(schema.rolePermission.roleId, id)),
+    ]);
+    return {
+      ...toDto(row),
+      menuIds: menus.map((m) => m.menuId),
+      permissionCodes: grants.map((g) => g.permissionCode).filter(isPermissionCode),
+    };
   });
 };
 

@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+通用助手执行规则见 [AGENTS.md](./AGENTS.md)。后台资源列表必须遵循 [搜索 + 表格规范](./docs/admin-list-standard.md)，不沿用历史计划中与现行规范冲突的页面结构。
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 Yishan Tan 是后续 TanStack Start 企业级项目的默认底座（enterprise starter base）。技术栈：TanStack Start (React 19 + Vite + Nitro) · better-auth · Drizzle ORM + PostgreSQL 16 · Redis 7 (ioredis) · shadcn/ui + Tailwind v4 · Biome。部署到阿里云函数计算 FC3 custom runtime。
@@ -65,7 +67,7 @@ Service 抛错一律用 `Errors.*` 工厂（`src/lib/errors.ts`）：`unauthenti
 - REST 路由 `/api/v1/<resource>`，顶级资源名**必须复数**（`users`、`sessions`），子资源可非复数（`users/me`）。HTTP 方法语义严格：`POST` 建 / `GET` 列表或详情 / `PATCH` 部分更新 / `DELETE` 删除。
 - import 类型用 `import type { ... }`（`verbatimModuleSyntax`，Biome `useImportType` 为 warn）。字符串优先单引号。缩进 2 空格，行宽 100。默认不写注释，先自描述。
 
-`scripts/arch/` 的四个守卫：`check-routes`（routes 不得直接 import db/auth/redis）、`check-actions`（actions 不得 import db/drizzle）、`check-services`（services 不得 import React/routes/components，强制依赖走白名单 `~/lib/errors`、`~/lib/service-context`、`~/lib/authorization.server`）、`check-naming`（前缀 + 复数规则）。
+`scripts/arch/` 的五个守卫：`check-routes`（routes 不得直接 import db/auth/redis）、`check-actions`（actions 不得 import db/drizzle）、`check-services`（services 不得 import React/routes/components，强制依赖走白名单 `~/lib/errors`、`~/lib/service-context`、`~/lib/authorization.server`）、`check-naming`（前缀 + 复数规则）、`check-list-pages`（资源列表必须提供搜索 + 表格结构）。
 
 ## 部署
 

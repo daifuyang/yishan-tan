@@ -17,6 +17,7 @@ import {
   Popconfirm,
   ResponsiveFormLayer,
 } from "@/components/admin/form";
+import { PermissionFields } from "@/components/admin/form/permission-fields";
 import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getRole } from "~/features/roles/roles.actions";
 import { useAssignableMenus, useRolesList } from "~/features/roles/roles.queries";
 import { type DataScope, roleListQuerySchema } from "~/features/roles/roles.schema";
 import type { RoleListItemDto } from "~/features/roles/roles.types";
@@ -45,6 +47,7 @@ import {
 } from "~/features/roles/roles.use-mutations";
 import { placeholders } from "~/lib/copy";
 import { normalizeDateRange } from "~/lib/date-range";
+import type { PermissionCode } from "~/lib/permission-catalog";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -92,6 +95,8 @@ function formatDateTime(iso: string): string {
 }
 
 function AdminRolesPage() {
+  const [detailError, setDetailError] = React.useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = React.useState(false);
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
@@ -123,25 +128,9 @@ function AdminRolesPage() {
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const resetPageOnFilterChange = React.useCallback(() => {
-    setPage(1);
-  }, []);
-
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
-  React.useEffect(() => {
-    resetPageOnFilterChange();
-  }, [
-    draft.name,
-    draft.description,
-    draft.status,
-    draft.createdFrom,
-    draft.createdTo,
-    resetPageOnFilterChange,
-  ]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
@@ -149,6 +138,10 @@ function AdminRolesPage() {
 
   const handleFilterSubmit = () => {
     setFilters(draft);
+    setPage(1);
+    setSelectedKeys([]);
+    setPage(1);
+    setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
@@ -157,15 +150,25 @@ function AdminRolesPage() {
     setPage(1);
   }, []);
 
-  const handleStartEdit = (row: RoleListItemDto) => {
-    setEditing(row);
-    setEditForm({
-      name: row.name ?? "",
-      description: row.description ?? "",
-      status: row.status,
-      dataScope: row.dataScope ?? "1",
-      menuIds: [],
-    });
+  const handleStartEdit = async (row: RoleListItemDto) => {
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const detail = await getRole({ data: { id: row.id } });
+      setEditing(row);
+      setEditForm({
+        name: row.name ?? "",
+        description: row.description ?? "",
+        status: row.status,
+        dataScope: row.dataScope ?? "1",
+        menuIds: detail.menuIds,
+        permissionCodes: detail.permissionCodes,
+      });
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "加载角色权限失败");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleCloseEdit = () => {
@@ -328,11 +331,12 @@ function AdminRolesPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
+              disabled={detailLoading}
               onClick={(e) => {
                 e.stopPropagation();
                 closeRowConfirms();
                 setMoreMenuRowId(null);
-                handleStartEdit(row);
+                void handleStartEdit(row);
               }}
             >
               编辑
@@ -454,6 +458,7 @@ function AdminRolesPage() {
       status: editForm.status,
       dataScope: editForm.dataScope,
       menuIds: editForm.menuIds,
+      permissionCodes: editForm.permissionCodes,
     });
     setEditing(null);
   };
@@ -465,12 +470,18 @@ function AdminRolesPage() {
       status: createForm.status,
       dataScope: createForm.dataScope,
       menuIds: createForm.menuIds,
+      permissionCodes: createForm.permissionCodes,
     });
     setCreating(false);
   };
 
   return (
     <>
+      {detailError ? (
+        <p role="alert" className="text-body text-destructive">
+          {detailError}
+        </p>
+      ) : null}
       <ResourcePage
         title="角色管理"
         filterColumns={3}
@@ -663,6 +674,7 @@ type EditRoleFormValue = {
   status: "enabled" | "disabled";
   dataScope: DataScope;
   menuIds: string[];
+  permissionCodes: PermissionCode[];
 };
 
 type CreateRoleFormValue = EditRoleFormValue;
@@ -673,6 +685,7 @@ const EMPTY_EDIT_FORM: EditRoleFormValue = {
   status: "enabled",
   dataScope: "1",
   menuIds: [],
+  permissionCodes: [],
 };
 
 const EMPTY_CREATE_FORM: CreateRoleFormValue = {
@@ -681,6 +694,7 @@ const EMPTY_CREATE_FORM: CreateRoleFormValue = {
   status: "enabled",
   dataScope: "1",
   menuIds: [],
+  permissionCodes: [],
 };
 
 function buildListQuery(filters: FilterState, page: number, pageSize: number) {
@@ -806,6 +820,10 @@ function RoleFields({
         />
       </div>
 
+      <PermissionFields
+        value={value.permissionCodes}
+        onChange={(permissionCodes) => onChange({ permissionCodes })}
+      />
       <div className="space-y-1.5">
         <Label>菜单权限</Label>
         <MenuTree

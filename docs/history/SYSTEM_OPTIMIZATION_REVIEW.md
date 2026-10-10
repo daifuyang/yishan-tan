@@ -1,5 +1,7 @@
 # 系统优化评估
 
+> 历史快照：保留 2026-07-10 的评估结论，不代表当前代码与检查状态。最新清理审查见 [代码清理报告](../code-cleanup-review.md)。
+
 > 评估日期：2026-07-10  
 > 项目：`yishan-tan`  
 > 范围：当前代码、根目录文档、`docs/` 文档、工程脚本与质量门禁。
@@ -12,7 +14,7 @@
 - 工程守卫已落地：`arch:check` 覆盖 routes、actions、services、naming。
 - 测试基础较好：当前实际测试为 38 个测试文件、315 个用例。
 - Admin UI 已有共享模式：`ResourcePage`、`ResourceTable`、`FilterBar`、`StatusBadge`、`DateRangePicker`、`Popconfirm` 等组件已经形成统一基础。
-- 文档体系较完整：`README.md`、`OWN.md`、`docs/*`、`ADMIN_UI_OPTIMIZATION_PLAN.md`、`组件架构整改建议.md` 覆盖了架构、UI、测试和部署。
+- 文档体系较完整：`README.md`、`OWN.md`、`docs/*`、`docs/plans/ADMIN_UI_OPTIMIZATION_PLAN.md`、`docs/plans/组件架构整改建议.md` 覆盖了架构、UI、测试和部署。
 
 主要风险不在“大功能缺失”，而在以下几类：
 
@@ -110,7 +112,7 @@ leaderId: uuid("leader_id").references((): any => user.id, { onDelete: "set null
 
 ### 4.2 增加 UI Token 架构守卫
 
-现有 `ADMIN_UI_OPTIMIZATION_PLAN.md` 已提到 `check-ui-tokens`，但脚本尚未落地。
+现有 `docs/plans/ADMIN_UI_OPTIMIZATION_PLAN.md` 已提到 `check-ui-tokens`，但脚本尚未落地。
 
 建议新增：
 
@@ -195,7 +197,7 @@ src/lib/format.ts
 
 ### 5.3 Admin 页面瘦身
 
-`组件架构整改建议.md` 中指出页面职责偏重，这个判断仍然成立。
+`docs/plans/组件架构整改建议.md` 中指出页面职责偏重，这个判断仍然成立。
 
 建议逐步把页面拆成：
 
@@ -248,6 +250,6 @@ src/features/<domain>/hooks/
 - `docs/base-capabilities.md`：基座能力现状。
 - `docs/testing.md`：测试覆盖策略。
 - `docs/DESIGN_CHARTER.md`：Admin UI 设计规约。
-- `ADMIN_UI_OPTIMIZATION_PLAN.md`：Admin UI 优化路线图。
-- `组件架构整改建议.md`：组件架构长期整改建议。
+- `docs/plans/ADMIN_UI_OPTIMIZATION_PLAN.md`：Admin UI 优化路线图。
+- `docs/plans/组件架构整改建议.md`：组件架构长期整改建议。
 

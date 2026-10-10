@@ -222,6 +222,28 @@ export const roleMenu = pgTable(
   (t) => [primaryKey({ columns: [t.roleId, t.menuId] })],
 );
 
+export const rolePermission = pgTable(
+  "role_permission",
+  {
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => role.id, { onDelete: "cascade" }),
+    permissionCode: text("permission_code").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.roleId, t.permissionCode] })],
+);
+
+export const menuPermission = pgTable(
+  "menu_permission",
+  {
+    menuId: uuid("menu_id")
+      .notNull()
+      .references(() => menu.id, { onDelete: "cascade" }),
+    permissionCode: text("permission_code").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.menuId, t.permissionCode] })],
+);
+
 export const dictType = pgTable("dict_type", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),

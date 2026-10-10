@@ -20,6 +20,7 @@ export function useLogout(options: LogoutOptions = {}) {
       return { ok: true as const };
     },
     onSuccess: async () => {
+      queryClient.clear();
       queryClient.setQueryData(currentUserQueryKey, null);
       await queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
       await router.invalidate();

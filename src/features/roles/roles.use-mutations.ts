@@ -11,7 +11,11 @@ export function useCreateRole() {
       return createRole({ data });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: rolesQueryKey.all });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: rolesQueryKey.all }),
+        queryClient.invalidateQueries({ queryKey: ["permissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["menus"] }),
+      ]);
     },
   });
 }
@@ -25,7 +29,11 @@ export function useUpdateRole() {
       return updateRole({ data: { id, ...data } });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: rolesQueryKey.all });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: rolesQueryKey.all }),
+        queryClient.invalidateQueries({ queryKey: ["permissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["menus"] }),
+      ]);
     },
   });
 }
@@ -37,7 +45,11 @@ export function useDeleteRole() {
       return deleteRole({ data: { id } });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: rolesQueryKey.all });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: rolesQueryKey.all }),
+        queryClient.invalidateQueries({ queryKey: ["permissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["menus"] }),
+      ]);
     },
   });
 }
@@ -57,7 +69,11 @@ export function useBulkDeleteRoles() {
       return { deleted: ids.length };
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: rolesQueryKey.all });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: rolesQueryKey.all }),
+        queryClient.invalidateQueries({ queryKey: ["permissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["menus"] }),
+      ]);
     },
   });
 }

@@ -21,6 +21,8 @@
 
 ## 3. 表清单
 
+2026-10-09 新增 `role_permission(role_id, permission_code)` 与 `menu_permission(menu_id, permission_code)`，分别以两列组成联合主键，外键指向角色/菜单并级联删除。前者授予操作权限，后者保存菜单的权限关联；菜单关联不自动赋权。增量迁移和升级说明见 [用户权限说明](./user-permissions.md)。
+
 ### 3.1 `user`
 
 better-auth 用户表，字段严格遵循 better-auth 默认约定。

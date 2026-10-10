@@ -19,18 +19,18 @@ const loginLogsQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20).optional(),
 });
 
-// POST /api/v1/users —— 公开注册（无需鉴权）
+// POST /api/v1/users —— 管理新增（users:create）
 registry.registerPath({
   method: "post",
   path: "/api/v1/users",
   operationId: "createUser",
-  summary: "注册新用户（公开）",
+  summary: "新增用户（需要 users:create 权限）",
   tags: ["users"],
-  security: [],
+  security: [{ CookieAuth: [] }, { ApiKeyAuth: [] }],
   request: { body: { content: { "application/json": { schema: createUserSchema } } } },
   responses: {
     201: {
-      description: "注册成功",
+      description: "创建成功",
       content: { "application/json": { schema: okEnvelope("CreatedUser", publicUserSchema) } },
     },
     ...useErrorResponses(),
@@ -42,7 +42,7 @@ registry.registerPath({
   method: "get",
   path: "/api/v1/users",
   operationId: "listUsers",
-  summary: "分页列出用户（admin）",
+  summary: "分页列出用户（users:read）",
   tags: ["users"],
   request: { query: userListQuerySchema },
   responses: {
@@ -63,7 +63,7 @@ registry.registerPath({
   method: "get",
   path: "/api/v1/users/{id}",
   operationId: "getUser",
-  summary: "获取单个用户详情（admin）",
+  summary: "获取单个用户详情（users:read）",
   tags: ["users"],
   request: { params: idParamSchema },
   responses: {
@@ -80,7 +80,7 @@ registry.registerPath({
   method: "patch",
   path: "/api/v1/users/{id}",
   operationId: "updateUser",
-  summary: "更新用户（admin）。不能禁用/删除自己",
+  summary: "更新用户（users:update）；分配角色另需 users:assign-roles",
   tags: ["users"],
   request: {
     params: idParamSchema,
@@ -100,7 +100,7 @@ registry.registerPath({
   method: "delete",
   path: "/api/v1/users/{id}",
   operationId: "deleteUser",
-  summary: "软删除用户（admin）。不能删除自己",
+  summary: "软删除用户（users:delete）。不能删除自己",
   tags: ["users"],
   request: { params: idParamSchema },
   responses: {

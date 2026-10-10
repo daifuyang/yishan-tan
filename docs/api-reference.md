@@ -63,7 +63,7 @@
 
 ### `POST /api/v1/users`
 
-用户注册。无需鉴权。
+管理新增用户。需要登录及 `users:create`；传入 `roleIds` 还需要 `users:assign-roles`。匿名请求返回 401。非超级管理员 API Key 尚不继承业务角色授权，详见 [权限说明](./user-permissions.md)。
 
 请求体：
 
@@ -162,7 +162,9 @@
 
 删除指定 API Key。
 
-## 5. 用户管理（需要系统管理员）
+## 5. 用户管理（按操作授权）
+
+列表与详情需要 `users:read`，更新需要 `users:update`，删除需要 `users:delete`；更新 `roleIds` 另需 `users:assign-roles`。系统管理员保留管理权限。非管理员不能修改系统管理员，角色分配不能超出操作者自身权限。
 
 ### `GET /api/v1/users`
 

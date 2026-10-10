@@ -2,6 +2,7 @@ import { type SQL, and, asc, eq, inArray, isNull, like, or, sql } from "drizzle-
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import { isPermissionCode } from "~/lib/permission-catalog";
 import type {
   CreateMenuService,
   DeleteMenuService,
@@ -29,6 +30,26 @@ function toDto(row: typeof schema.menu.$inferSelect): MenuDto {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+async function toMenuDtos(rows: (typeof schema.menu.$inferSelect)[]): Promise<MenuDto[]> {
+  if (!rows.length) return [];
+  const grants = await getDb()
+    .select()
+    .from(schema.menuPermission)
+    .where(
+      inArray(
+        schema.menuPermission.menuId,
+        rows.map((r) => r.id),
+      ),
+    );
+  return rows.map((row) => ({
+    ...toDto(row),
+    permissionCodes: grants
+      .filter((g) => g.menuId === row.id)
+      .map((g) => g.permissionCode)
+      .filter(isPermissionCode),
+  }));
 }
 
 function buildTree(items: MenuDto[]): MenuNode[] {
@@ -80,7 +101,7 @@ export const listMenusService: ListMenusService = async ({
       .from(schema.menu)
       .where(and(...where)),
   ]);
-  return { items: rows.map(toDto), total: Number(totalRow[0]?.count ?? 0) };
+  return { items: await toMenuDtos(rows), total: Number(totalRow[0]?.count ?? 0) };
 };
 
 export const getMenuTreeService: GetMenuTreeService = async () => {
@@ -89,14 +110,21 @@ export const getMenuTreeService: GetMenuTreeService = async () => {
     .from(schema.menu)
     .where(isNull(schema.menu.deletedAt))
     .orderBy(asc(schema.menu.sort), asc(schema.menu.createdAt));
-  return buildTree(rows.map(toDto));
+  return buildTree(await toMenuDtos(rows));
 };
 
 export const getAuthorizedMenuTreeService: GetAuthorizedMenuTreeService = async (userId) => {
   const roleIds = await getDb()
     .select({ roleId: schema.userRole.roleId })
     .from(schema.userRole)
-    .where(eq(schema.userRole.userId, userId));
+    .innerJoin(schema.role, eq(schema.role.id, schema.userRole.roleId))
+    .where(
+      and(
+        eq(schema.userRole.userId, userId),
+        eq(schema.role.status, "enabled"),
+        isNull(schema.role.deletedAt),
+      ),
+    );
   if (roleIds.length === 0) return [];
   const ids = roleIds.map((r) => r.roleId);
   const menuIds = await getDb()
@@ -116,7 +144,7 @@ export const getAuthorizedMenuTreeService: GetAuthorizedMenuTreeService = async 
       ),
     )
     .orderBy(asc(schema.menu.sort), asc(schema.menu.createdAt));
-  return buildTree(rows.map(toDto));
+  return buildTree(await toMenuDtos(rows));
 };
 
 export const getAuthorizedMenuPathsService: GetAuthorizedMenuPathsService = async (userId) => {
@@ -146,23 +174,30 @@ export const createMenuService: CreateMenuService = async (input) => {
       .limit(1);
     if (!parent[0]) throw Errors.notFound("上级菜单不存在");
   }
-  const rows = await db
-    .insert(schema.menu)
-    .values({
-      parentId: input.parentId ?? null,
-      name: input.name,
-      path: input.path ?? null,
-      component: input.component ?? null,
-      icon: input.icon ?? null,
-      type: input.type ?? "menu",
-      permission: input.permission ?? null,
-      sort: input.sort ?? 0,
-      status: input.status ?? "enabled",
-    })
-    .returning();
-  const row = rows[0];
-  if (!row) throw Errors.internal("创建菜单失败");
-  return toDto(row);
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(schema.menu)
+      .values({
+        parentId: input.parentId ?? null,
+        name: input.name,
+        path: input.path ?? null,
+        component: input.component ?? null,
+        icon: input.icon ?? null,
+        type: input.type ?? "menu",
+        permission: input.permission ?? null,
+        sort: input.sort ?? 0,
+        status: input.status ?? "enabled",
+      })
+      .returning();
+    const row = rows[0];
+    if (!row) throw Errors.internal("创建菜单失败");
+    const codes = [...new Set(input.permissionCodes ?? [])];
+    if (codes.length)
+      await tx
+        .insert(schema.menuPermission)
+        .values(codes.map((permissionCode) => ({ menuId: row.id, permissionCode })));
+    return { ...toDto(row), permissionCodes: codes };
+  });
 };
 
 export const updateMenuService: UpdateMenuService = async (id, input) => {
@@ -186,13 +221,30 @@ export const updateMenuService: UpdateMenuService = async (id, input) => {
   if (input.permission !== undefined) patch.permission = input.permission;
   if (input.sort !== undefined) patch.sort = input.sort;
   if (input.status !== undefined) patch.status = input.status;
-  if (Object.keys(patch).length > 0) {
-    await db.update(schema.menu).set(patch).where(eq(schema.menu.id, id));
-  }
-  const refreshed = await db.select().from(schema.menu).where(eq(schema.menu.id, id)).limit(1);
-  const row = refreshed[0];
-  if (!row) throw Errors.notFound("菜单不存在");
-  return toDto(row);
+  return db.transaction(async (tx) => {
+    if (Object.keys(patch).length > 0) {
+      await tx.update(schema.menu).set(patch).where(eq(schema.menu.id, id));
+    }
+    if (input.permissionCodes !== undefined) {
+      await tx.delete(schema.menuPermission).where(eq(schema.menuPermission.menuId, id));
+      const codes = [...new Set(input.permissionCodes)];
+      if (codes.length)
+        await tx
+          .insert(schema.menuPermission)
+          .values(codes.map((permissionCode) => ({ menuId: id, permissionCode })));
+    }
+    const grants = await tx
+      .select()
+      .from(schema.menuPermission)
+      .where(eq(schema.menuPermission.menuId, id));
+    const refreshed = await tx.select().from(schema.menu).where(eq(schema.menu.id, id)).limit(1);
+    const row = refreshed[0];
+    if (!row) throw Errors.notFound("菜单不存在");
+    return {
+      ...toDto(row),
+      permissionCodes: grants.map((g) => g.permissionCode).filter(isPermissionCode),
+    };
+  });
 };
 
 /**

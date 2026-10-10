@@ -1,5 +1,7 @@
 # yishan-admin 与 yishan-tan 同路由页面对照
 
+> 历史参考：此文中的“tan 当前情况”与原版目录已部分过时（岗位现为 position，业务页面迁入 modules）。2026-10-09 的现状、已补齐项和剩余差异以 [对齐调研](../yishan-alignment-review.md) 为准。
+
 > 目的：按 `yishan-admin` 现有页面为准，整理 `yishan-tan` 对应路由的列表筛选字段、表格字段、行为按钮、新增/编辑表单字段，供后续逐页对齐使用。
 >
 > 说明：

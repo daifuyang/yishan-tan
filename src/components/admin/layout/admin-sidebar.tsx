@@ -3,6 +3,18 @@ import { ChevronRight } from "lucide-react";
 import * as React from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useAuthorizedMenuTree } from "~/features/menus/menus.queries";
@@ -195,7 +207,6 @@ function NavLeaf({
   if (!targetPath) return null;
   const active = isPathActive(currentPath, targetPath);
   const Icon = resolveMenuIcon(leaf.icon);
-  const isTopLevel = depth === 0;
 
   if (collapsed) {
     return (
@@ -243,25 +254,16 @@ function NavLeaf({
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "group relative flex w-full items-center gap-2.5 rounded-[4px] py-2 transition-colors duration-150",
-          isTopLevel
-            ? "pl-4 pr-3 text-[14px]"
-            : depth === 1
-              ? "pl-10 pr-3 text-[14px]"
-              : depth === 2
-                ? "pl-16 pr-3 text-[14px]"
-                : depth === 3
-                  ? "pl-[5.5rem] pr-3 text-[14px]"
-                  : "pl-[7rem] pr-3 text-[14px]",
+          "group relative flex w-full items-center gap-2.5 rounded-[4px] py-2 pr-3 text-[14px] transition-colors duration-150",
           active
             ? "bg-brand-50 font-medium text-brand-600"
             : "text-text-soft hover:bg-line-soft hover:text-text-strong",
         )}
+        style={{ paddingLeft: `calc(var(--spacing) * ${4 + depth * 6})` }}
       >
         <Icon
           className={cn(
-            "shrink-0 transition-colors",
-            isTopLevel || depth === 1 ? "size-[18px]" : depth === 2 ? "size-[16px]" : "size-3.5",
+            "size-[18px] shrink-0 transition-colors",
             active ? "text-brand-500" : "text-text-mute group-hover:text-text-soft",
           )}
           aria-hidden
@@ -297,10 +299,11 @@ function NavGroup({
   if (collapsed) {
     return (
       <li className="mt-1 first:mt-0">
-        <Tooltip>
-          <TooltipTrigger asChild>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button
               type="button"
+              aria-label={group.name}
               className={cn(
                 "group flex w-full items-center justify-center rounded-[4px] py-2 transition-colors",
                 containsActive
@@ -316,9 +319,25 @@ function NavGroup({
                 aria-hidden
               />
             </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{group.name}</TooltipContent>
-        </Tooltip>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            sideOffset={12}
+            className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-56 overflow-y-auto rounded-lg"
+          >
+            <DropdownMenuLabel>{group.name}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {group.children.map((node) => (
+              <CollapsedMenuNode
+                key={node.id}
+                node={node}
+                currentPath={currentPath}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </li>
     );
   }
@@ -331,32 +350,27 @@ function NavGroup({
             type="button"
             aria-expanded={open}
             className={cn(
-              "group/trigger flex w-full items-center gap-1.5 rounded-[4px] transition-colors",
-              isTopLevel
-                ? // 顶层 group 作为「段落小标题」：略大一号 + semibold + uppercase + tracking 撑起视觉分层
-                  "px-2.5 py-2 text-[14px] font-semibold uppercase tracking-wider text-text-soft hover:text-text-strong"
-                : // 嵌套子 group 与 leaf 视觉相似，作为「次级段落标题」
-                  "px-3 py-1.5 text-[12.5px] font-medium text-text-soft hover:bg-line-soft hover:text-text-strong",
+              "group/trigger flex w-full items-center gap-2.5 rounded-[4px] py-2 pr-3 text-[14px] font-medium text-text-soft transition-colors hover:bg-line-soft hover:text-text-strong",
               containsActive && !isTopLevel && "text-text-strong",
             )}
+            style={{ paddingLeft: `calc(var(--spacing) * ${4 + depth * 6})` }}
           >
-            <ChevronRight
-              className={cn(
-                "shrink-0 transition-transform duration-200",
-                isTopLevel ? "size-3" : "size-3.5",
-                open ? "rotate-90" : "rotate-0",
-              )}
-              aria-hidden
-            />
             <Icon
               className={cn(
                 "shrink-0",
-                isTopLevel ? "size-3.5" : "size-3.5",
+                "size-[18px]",
                 containsActive && isTopLevel ? "text-brand-500" : "text-text-mute",
               )}
               aria-hidden
             />
-            <span className={cn("truncate text-left", isTopLevel && "flex-1")}>{group.name}</span>
+            <span className="flex-1 truncate text-left">{group.name}</span>
+            <ChevronRight
+              className={cn(
+                "size-3.5 shrink-0 transition-transform duration-200",
+                open ? "rotate-90" : "rotate-0",
+              )}
+              aria-hidden
+            />
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent
@@ -385,6 +399,52 @@ function NavGroup({
         </CollapsibleContent>
       </Collapsible>
     </li>
+  );
+}
+
+function CollapsedMenuNode({
+  node,
+  currentPath,
+  onNavigate,
+}: {
+  node: MenuNode;
+  currentPath: string;
+  onNavigate?: () => void;
+}) {
+  const Icon = resolveMenuIcon(node.icon);
+
+  if (!isMenuLeaf(node)) {
+    return (
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          <Icon className="size-4 text-text-mute" aria-hidden />
+          <span className="truncate">{node.name}</span>
+        </DropdownMenuSubTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuSubContent className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-56 overflow-y-auto rounded-lg">
+            {node.children.map((child) => (
+              <CollapsedMenuNode
+                key={child.id}
+                node={child}
+                currentPath={currentPath}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuPortal>
+      </DropdownMenuSub>
+    );
+  }
+
+  if (!node.path) return null;
+  const active = isPathActive(currentPath, node.path);
+  return (
+    <DropdownMenuItem asChild className={cn(active && "bg-brand-50 text-brand-600")}>
+      <Link to={node.path} onClick={onNavigate} aria-current={active ? "page" : undefined}>
+        <Icon className={cn("size-4", active ? "text-brand-500" : "text-text-mute")} aria-hidden />
+        <span className="truncate">{node.name}</span>
+      </Link>
+    </DropdownMenuItem>
   );
 }
 

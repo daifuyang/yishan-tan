@@ -1,246 +1,61 @@
 # 基座能力现状
 
-> 目标：让任何接入方在 5 分钟内搞清楚 yishan-tan 当前已经具备哪些能力、覆盖到哪一层、还有哪些缺口。
+更新日期：2026-10-09。以当前工作区源码及本日实际检查为准。“已实现”表示有代码链路，不代表真实数据库、浏览器或生产验收通过。
 
-## 1. 文档信息
+## 当前定位
 
-- 项目：`yishan-tan`
-- 阶段：后台管理基座 v1
-- 文档版本：v1
-- 配套文档：
-  - `docs/data-model.md` 数据模型
-  - `docs/api-reference.md` REST API 清单
-  - `docs/testing.md` 测试覆盖
+系统管理后台的主要页面与业务已实现，仍需功能补齐和验收。与原版 Yishan 的功能差异见 [对齐调研](./yishan-alignment-review.md)，执行清单见 [TODO 总览](../todo/README.md)。TanStack Start / PostgreSQL / better-auth 是当前架构选择，不要求照搬 Umi / Fastify / MySQL / JWT。
 
-## 2. 目标与范围
+## 能力矩阵
 
-按 `Yishan Tan 基座能力实现计划.md` 的规划，本阶段只补齐“后台管理基座”必需的通用能力，不进入业务模块。
-
-包含：
-
-- 认证与会话增强
-- 用户 / 角色 / 部门 / 菜单 / 字典 / 系统配置 / API Key
-- 登录日志
-- 工程化：lint / typecheck / 架构守卫 / 测试
-
-不包含：
-
-- 文章 / 页面 / 分类 / 模板
-- 商品 / 订单 / SKU
-- 插件运行时
-- 云存储供应商集成
-- 完整后台前端页面
-
-## 3. 已落地的能力
-
-### 3.1 认证与会话
-
-- [x] 注册：`POST /api/v1/users`
-- [x] 登录：`POST /api/v1/sessions`
-- [x] 登出：`DELETE /api/v1/sessions`
-- [x] 当前用户：`GET /api/v1/users/me`
-- [x] 修改当前用户密码：`PATCH /api/v1/users/me`
-- [x] 当前用户登录日志：`GET /api/v1/users/me/login-logs`
-- [x] 登录日志自动写入（成功 / 失败都会落 `login_log`）
-
-### 3.2 API Key
-
-- [x] 列表：`GET /api/v1/api-keys`
-- [x] 创建：`POST /api/v1/api-keys`
-- [x] 删除：`DELETE /api/v1/api-keys/:id`
-- [x] 鉴权：`x-api-key` 头，与 session cookie 并存
-
-### 3.3 用户管理
-
-- [x] 用户列表：`GET /api/v1/users`
-- [x] 用户详情：`GET /api/v1/users/:id`
-- [x] 用户更新：`PATCH /api/v1/users/:id`
-- [x] 用户删除：`DELETE /api/v1/users/:id`
-- [x] 约束：禁止禁用 / 删除当前登录用户，禁止禁用 / 删除系统管理员
-
-### 3.4 角色与权限
-
-- [x] 角色列表：`GET /api/v1/roles`
-- [x] 角色详情：`GET /api/v1/roles/:id`
-- [x] 角色创建：`POST /api/v1/roles`
-- [x] 角色更新：`PATCH /api/v1/roles/:id`
-- [x] 角色删除：`DELETE /api/v1/roles/:id`
-- [x] 角色与菜单绑定：随角色创建 / 更新写入 `role_menu`
-- [x] 用户与角色绑定：用户更新时可携带 `roleIds`
-- [x] 约束：仍有用户绑定时禁止删除角色
-
-### 3.5 部门
-
-- [x] 部门列表：`GET /api/v1/departments`
-- [x] 部门详情：`GET /api/v1/departments/:id`
-- [x] 部门树：`GET /api/v1/departments?tree=1`
-- [x] 部门创建：`POST /api/v1/departments`
-- [x] 部门更新：`PATCH /api/v1/departments/:id`
-- [x] 部门删除：`DELETE /api/v1/departments/:id`
-- [x] 约束：存在子部门时禁止删除，上级不能为自身
-
-### 3.6 菜单与授权
-
-- [x] 菜单列表：`GET /api/v1/menus`
-- [x] 菜单详情：`GET /api/v1/menus/:id`
-- [x] 菜单树：`GET /api/v1/menus?tree=1`
-- [x] 当前用户授权菜单树：`GET /api/v1/menus?authorized=tree`
-- [x] 当前用户授权路径列表：`GET /api/v1/menus?authorized=paths`
-- [x] 菜单创建：`POST /api/v1/menus`
-- [x] 菜单更新：`PATCH /api/v1/menus/:id`
-- [x] 菜单删除：`DELETE /api/v1/menus/:id`
-- [x] 约束：存在子菜单或被角色绑定时禁止删除
-
-### 3.7 系统配置
-
-- [x] 单项读取：`GET /api/v1/system-options/:key`
-- [x] 单项写入：`PUT /api/v1/system-options/:key`
-- [x] 批量读取：`POST /api/v1/system-options`
-- [x] 批量写入：`POST /api/v1/system-options/batch`
-- [x] key 合法性校验：只允许 `^[a-z0-9_.-]+$`
-- [x] 权限：所有写操作要求系统管理员
-
-### 3.8 字典
-
-- [x] 字典类型列表：`GET /api/v1/dict-types`
-- [x] 字典类型详情：`GET /api/v1/dict-types/:id`
-- [x] 字典类型创建：`POST /api/v1/dict-types`
-- [x] 字典类型更新：`PATCH /api/v1/dict-types/:id`
-- [x] 字典类型删除：`DELETE /api/v1/dict-types/:id`
-- [x] 字典数据列表：`GET /api/v1/dicts-data`
-- [x] 字典数据详情：`GET /api/v1/dicts-data/:id`
-- [x] 字典数据创建：`POST /api/v1/dicts-data`
-- [x] 字典数据更新：`PATCH /api/v1/dicts-data/:id`
-- [x] 字典数据删除：`DELETE /api/v1/dicts-data/:id`
-- [x] 约束：字典数据依赖字典类型存在
-
-## 4. 通用能力
-
-### 4.1 统一响应
-
-成功：
-
-```json
-{ "ok": true, "data": {} }
-```
-
-分页：
-
-```json
-{
-  "ok": true,
-  "data": { "items": [] },
-  "meta": { "total": 100, "page": 1, "pageSize": 20 }
-}
-```
-
-失败：
-
-```json
-{ "ok": false, "code": "INVALID", "error": "请求参数不合法", "details": {} }
-```
-
-### 4.2 统一错误码
-
-| Code | 含义 |
-| --- | --- |
-| `UNAUTHENTICATED` | 未登录 |
-| `FORBIDDEN` | 无权限 |
-| `NOT_FOUND` | 资源不存在 |
-| `CONFLICT` | 资源已存在或被占用 |
-| `INVALID_CREDENTIALS` | 凭证错误 |
-| `INVALID` | 参数不合法 |
-| `RATE_LIMITED` | 请求过于频繁 |
-| `INTERNAL` | 内部错误 |
-
-### 4.3 鉴权
-
-- Web：session cookie
-- 自动化 / CLI：`x-api-key`
-- 解析：`src/server/request-context.ts`
-- 路由统一使用 `requireRequestContext / ensureAdmin / requireAdmin`
-
-### 4.4 限流
-
-- 登录接口 `auth:signin` 按 `email + clientIp` 限流，10 次 / 60 秒
-- 实现：`src/lib/rate-limit.server.ts`
-
-### 4.5 分页
-
-- 统一分页 schema：`src/lib/pagination.ts`
-- 默认 `pageSize=20`，最大 100
-
-## 5. 领域边界（feature 内）
-
-每个领域按以下文件组织，所有 `<domain>.<kind>.ts` 都以 `<domain>.` 为前缀：
-
-- `<domain>.schema.ts` zod 入参 / 出参
-- `<domain>.types.ts` 业务 DTO / service 类型
-- `<domain>.service.ts` 业务逻辑
-- `<domain>.policy.ts` 授权判断
-- `<domain>.actions.ts` TanStack Server Function 入口
-- `<domain>.<kind>.test.ts` 测试
-
-涉及领域：
-
-- `auth` 认证与会话
-- `users` 用户管理 / 登录日志 / API Key
-- `roles` 角色管理
-- `departments` 部门管理
-- `menus` 菜单与授权
-- `system-settings` 系统配置
-- `dicts` 字典
-
-## 6. 工程化
-
-- Biome：lint + format + import 排序
-- TypeScript：`tsc --noEmit` 严格模式 + `noUncheckedIndexedAccess`
-- Drizzle ORM + PostgreSQL
-- Redis（ioredis）限流
-- better-auth：session cookie + apiKey
-- Vitest：单元测试
-- TanStack Start：REST + Server Function
-- FC3：custom runtime 部署
-
-## 7. 架构守卫
-
-通过 `npm run arch:check` 执行：
-
-- `check-routes` 禁止 routes 直接访问 db / auth / redis
-- `check-actions` 禁止 actions 直接 import db / drizzle
-- `check-services` 禁止 services import React / routes / components
-- `check-naming` 强制 feature 文件命名以 `<domain>.` 为前缀，REST 顶级资源必须复数
-
-## 8. 验证状态
-
-| 检查项 | 命令 | 状态 |
+| 能力 | 当前实现 | 实际边界 |
 | --- | --- | --- |
-| Lint | `npm run lint:check` | 通过 |
-| Typecheck | `npm run typecheck` | 通过 |
-| 架构守卫 | `npm run arch:check` | 通过 |
-| 单元测试 | `npm test` | 通过（16 文件 / 115 用例） |
+| 认证会话 | 注册、用户名/邮箱登录、登出、当前用户、本人改密；cookie 与 x-api-key | 设置页登录策略未接入认证，不兼容原版 JWT refresh 契约 |
+| 用户 | 搜索分页、详情、新增、编辑、单部门、角色/岗位分配、启停/删除、批量停用/删除、CSV 导出、管理员重置密码 | 原版支持多部门；当前禁用与删除共用 deletedAt，需核对生命周期 |
+| 角色 | CRUD、状态、系统角色、菜单分配、用户操作 permissionCodes、dataScope 保存、批量删除 | 用户域已执行逐操作授权；其它域和 dataScope 查询限制待接入 |
+| 部门 | 树表 CRUD、负责人、状态、批量删除、导出 | 缺部门描述 |
+| 岗位 | CRUD、部门/用户关联、状态、批量删除 | 缺岗位描述；原版当前页面名为 position |
+| 菜单 | 树表 CRUD、group/menu/action、permissionCodes 多权限关联、角色绑定、授权菜单/路径、批量删除 | 多权限关联不自动赋权；缺隐藏/外链/缓存/默认动作，component 不动态注册页面 |
+| 字典 | 类型/数据 CRUD、搜索分页、状态、数据排序、批量删除 | 类型缺排序，数据缺标签样式与默认值/默认切换 |
+| 配置 | K-V 和批量写入；站点、登录、上传、UI 四组保存 | 配置保存与运行时生效需分开评估 |
+| 站点字段 | 名称、域名、标题、Logo/Favicon、SEO、备案、联系方式、页脚全部有配置入口 | 未见完整的标题、图标和站点展示消费链路 |
+| 存储 | 多记录 CRUD、配置、启停、默认切换与唯一默认约束 | 仅 local 上传/删除实现，其余五种驱动占位；缺配置导入导出 |
+| 媒体 | 上传入库、列表搜索分页、缩略图、复制链接、单条/批量删除 | 缺分组、素材编辑/移动/状态、远程图片导入及真实云上传 |
+| 登录日志 | 成功/失败写入、管理列表、详情、本人日志 API | 缺姓名展示，失败链路需集成验证 |
+| API Key | 本人列表、创建、删除、请求鉴权 | 无个人中心；创建仅接受 name，期限固定一年，未开放 scopes/权限交集 |
+| 门户 | 多门户 CRUD、域名/Logo/主题、状态、默认切换 | 仅元配置，没有文章/页面/分类/模板与门户渲染 |
+| 工作台 | 概览与快捷入口 | 指标/趋势/活动为示例；查看 OpenAPI 实际跳转菜单页 |
+| OpenAPI/部署 | 生成契约、/api/openapi.json、FC3 脚本 | 不是所有后台操作都有 REST；本轮未验生产构建部署 |
 
-## 9. 已知缺口与下一阶段
+## 权限、配置与接口边界
 
-按 `Yishan Tan 基座能力实现计划.md` 的迭代顺序，当前为第一阶段完成态。下一阶段候选：
+菜单授权已用于路径和导航。系统资源入口主要要求超级管理员（SYSTEM_ADMIN_IDS，或未配置时回退 admin 身份），不能据此宣称完整接口/按钮 RBAC。
 
-- 附件与上传
-- 内容管理（文章 / 页面 / 分类 / 模板）
-- 商城基础（商品 / 订单 / SKU）
-- 插件运行时
-- 云存储供应商集成
-- 后台前端页面（最小可用 admin）
-- 集成测试（路由级 / service 级基于临时 sqlite schema）
-- 最小 OpenAPI 输出
+用户管理已接入七项操作权限，REST 与 Server Function 共用策略，前端按钮按权限禁用。非管理员不能修改超级管理员或分配超出自身权限的角色。角色编辑回填菜单与操作权限，禁用角色不参与菜单和操作授权。迁移、兼容及验证范围见 [用户权限说明](./user-permissions.md)。公开 POST 用户注册已改为管理创建接口；非管理员 API Key 授权留待 A06。
 
-## 10. 接入指引
+当前全仓搜索未见 auth.login.*、auth.password.minLength、upload.maxSizeMb、upload.allowedTypes、ui.theme、ui.showBreadcrumb、ui.density 被对应运行链路消费。登录使用独立 Redis 限流；上传选 storage 表的默认记录，不读取 upload.driver。设置字段目前支持持久化，运行时生效尚待补齐。
 
-```bash
-cp .env.example .env
-npm install
-npm run db:generate
-npm run db:migrate
-npm run dev
-```
+各 feature 分别定义分页 schema，公共 pagination.ts 尚未统一接入。部分列表在编辑 draft 时就重置页码，尚不完全符合 [列表规范](./admin-list-standard.md)。
 
-默认端口 3000。健康检查：`GET /api/health`。
+REST 覆盖认证/本人、用户、角色、部门、菜单、字典、系统选项、API Key、岗位、存储；上传使用 /api/uploads。附件管理、门户管理和管理员日志主要走 Server Function，不能因缺 REST 文件判为业务缺失。契约以源码与生成 OpenAPI 为准，[API 文档](./api-reference.md) 仍需继续同步。
+
+## 未迁移范围
+
+- 系统基座：地区、模块管理、个人中心、用户以外各域的操作权限绑定。
+- 产品模块：门户内容、商城、CRM。原版 CRM 有源码，但 Demo 默认 manifest 不安装 CRM。
+- 其它工程：Taro 小程序、Docusaurus 文档站、共享 TipTap、Core Package 多产品装配。
+
+后两项单独规划，不默认纳入近期后台基座迭代。
+
+## 实际验证
+
+| 检查 | 2026-10-09 结果 |
+| --- | --- |
+| npm run typecheck | 通过 |
+| npm test | 40 文件 / 329 用例通过，含 11 项隔离 PGlite 集成用例 |
+| npm run arch:check | 全部通过，含 11 张资源列表检查 |
+| npm run lint:check | 全仓未通过；本次代码单独检查通过，保留 schema 既有 any 警告 |
+| 浏览器与构建 | 隔离数据替身验证真实用户/角色页面；生产 Vite 构建通过 |
+| 真实 PG/Redis、云服务、部署 | 未执行，新增迁移未写入真实环境 |
+
+覆盖限制见 [测试文档](./testing.md)。旧“16 文件 / 115 用例、全门禁通过”状态已失效。

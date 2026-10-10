@@ -1,5 +1,7 @@
 # 06 · 岗位管理（feature 全建）
 
+> 状态说明（2026-10-09）：本文件保留历史实施步骤与完成记录，“现状盘点”和旧验收数字不代表当前状态。当前实现与剩余项以 [TODO 总览](./README.md) 和 [对齐调研](../docs/yishan-alignment-review.md) 为准。
+
 ## 本任务目标
 
 新增 `/admin/posts` 全功能页面：维护「岗位」（post = job position），每个岗位挂一个部门 `department_id`。**完全新建的 feature** —— DB schema 不存在、feature 文件夹不存在、路由文件不存在。

@@ -63,7 +63,7 @@ async function checkRestNaming() {
   for (const file of files) {
     const rel = file.replace("src/routes/api/v1/", "");
     const relNoExt = rel.replace(/\.(ts|tsx)$/, "");
-    const segments = relNoExt.split(path.sep);
+    const segments = relNoExt.split(/[\\/]/);
     const resource = segments[0];
     if (!resource) continue;
     if (!isPluralResource(resource)) {

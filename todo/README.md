@@ -1,111 +1,62 @@
-# 老系统后台菜单迁移 checklist 总览
+# 当前 TODO 与 Yishan 对齐总览
 
-> 把"移山后台管理系统"中 14 个后台菜单项，**一项一项**对齐到 yishan-tan。
-> 索引：seed `MENU_SEED`（`db/seed.ts:107-179`）+ 老系统截图。
+更新日期：2026-10-09。基于两边当前工作区源码。00–10 清单保留为历史实施记录，其“现状盘点 / placeholder / 全建”不再作为当前进度依据。
 
-## 状态总览
+差异证据及验收条件见 [对齐调研](../docs/yishan-alignment-review.md)，能力边界见 [基座能力](../docs/base-capabilities.md)。代码存在不等于浏览器验收通过。
 
-| 序号 | 文件 | 老系统菜单 | 后端 | 前端 | 状态 |
-|---|---|---|---|---|---|
-| — | `00-users.md` | 用户管理 | ✅ 完整 | ✅ 完整 | 🟢 **参考实现** |
-| 01 | `01-roles.md` | 角色管理 | ✅ 完整 | ⚠️ placeholder | 🟡 前端补 |
-| 02 | `02-departments.md` | 部门管理 | ✅ 完整 | ⚠️ placeholder | 🟡 前端补 |
-| 03 | `03-menus.md` | 菜单管理 | ✅ 完整 + queries | ⚠️ placeholder | 🟡 前端补 |
-| 04 | `04-dicts.md` | 字典管理 | ✅ 完整 | ⚠️ placeholder | 🟡 前端补 |
-| 05 | `05-settings.md` | 站点配置 | ✅ 完整 | ⚠️ placeholder | 🟡 前端补 |
-| 06 | `06-posts.md` | 岗位管理 | ❌ 无 | ❌ 无 | 🔴 全建 |
-| 07 | `07-storages.md` | 云存储 | ❌ 无 | ❌ 无 | 🔴 全建 |
-| 08 | `08-attachments.md` | 媒体库 | ❌ 无 | ❌ 无 | 🔴 全建 |
-| 09 | `09-login-logs.md` | 登录日志 | ⚠️ 表 + writeLog | ❌ 无路由 | 🟡 后端 list + admin 路由 |
-| 10 | `10-portals.md` | 门户管理 | ❌ 无 | ❌ 无 | 🔴 全建 |
+## 模块状态
 
-**总计**：🟢 1 完成参考 + 🟡 6 前端/路由补 + 🔴 4 feature 全建。
+| 历史清单 | 当前实现 | 剩余差异 |
+| --- | --- | --- |
+| [00 用户](./00-users.md) | CRUD、批量操作、导出、重置密码 | 多部门、状态/删除语义、个人中心 |
+| [01 角色](./01-roles.md) | CRUD、批量删除、菜单及用户操作权限分配、dataScope 配置 | 其它业务域接口权限与数据范围执行 |
+| [02 部门](./02-departments.md) | 树表 CRUD、批量删除、导出 | 描述字段 |
+| [03 菜单](./03-menus.md) | 树表 CRUD、批量删除、授权路径、多权限关联 | 隐藏/外链/缓存/默认动作 |
+| [04 字典](./04-dicts.md) | 类型/数据 CRUD、批量删除、数据排序 | 类型排序、tag/isDefault、子页标题 |
+| [05 配置](./05-settings.md) | 四组保存、原版站点基础字段 | 配置运行时消费 |
+| [06 岗位](./06-posts.md) | CRUD、部门/用户关联、批量删除 | 描述；原版已改为 position 页面 |
+| [07 存储](./07-storages.md) | 多存储配置、默认切换、local 驱动 | 七牛/OSS 流程、配置导入导出 |
+| [08 媒体](./08-attachments.md) | 上传、列表、单条/批量删除 | 分组、编辑/移动/状态、远程导入、云上传 |
+| [09 日志](./09-login-logs.md) | 列表服务、路由、详情 | 姓名与真实失败链路验收 |
+| [10 门户](./10-portals.md) | 多门户元配置 | 内容模块未迁移，不等同门户内容完成 |
 
-## 工作顺序（依赖图）
+## P1：基座闭环
 
-```
-[00] users ✅
-      ↓ 提供 service / queries / multi-select.tsx / sticky 列表参考
-     ┌────────────────────────────┐
-     │                            │
-[01] roles                  [02] departments
-     │                            │
-     │                       [06] posts  ← 依赖 departments
-     │
-[04] dicts → [05] settings  ← dicts 是 enum 选项源
-     
-[03] menus（独立）              [09] login-logs（独立）
-     
-[07] storages → [08] attachments
-     
-[10] portals（最后）
-```
+- [ ] A01：逐业务域接入操作授权（当前完成用户管理试点，其它域待接入）。
+  - [x] A01.1：权限目录、菜单多权限关联、角色 permissionCodes 持久化及回填。
+  - [x] A01.2：用户管理 REST/Server Function 逐操作校验、按钮限制、角色分配防越权。
+  - [ ] A01.3：推广到角色、部门、菜单、字典、岗位、配置、存储、媒体、日志、门户；真实会话联调。
+- [ ] A02：dataScope 查询限制与自定义部门关系、跨部门拒绝验证。
+- [ ] A03：菜单隐藏/外链/默认动作/缓存贯通，受控 component 页面映射。
+- [ ] A04：七牛上传凭证/登记、OSS 必要上传流程、配置导入导出；阻止选择未实现驱动作为可用驱动。
+- [ ] A05：素材分组 CRUD、编辑/移动/状态、远程图片导入、失败清理；保留搜索 + 表格主体。
+- [ ] A06：个人中心资料/改密/API Key，期限与 scopes、权限交集和撤销。
+- [ ] A07：拆分用户禁用与删除，明确多部门；核对登录/会话/Key 生命周期。
+- [ ] Q01：修复编辑 draft 就回第一页；提交查询统一归第一页；验查询/重置/翻页/展开。
+- [ ] Q02：字典数据页 ResourcePage 有效 title，恢复 Lint 和全部门禁。
+- [ ] Q03：配置接入登录、上传、UI、站点展示；统一默认存储来源，未生效字段明确标示。
+- [ ] Q04：真实 PG/Redis、REST/Server Function 权限、浏览器验收；工作台真实数据和正确 OpenAPI 入口。
 
-可并行组：
-- **A 组**：roles / departments / menus / login-logs 四个独立
-- **B 组**：dicts（等 A 出结果再起 settings）
-- **C 组**：storages（等 C 出 attachments）
-- **D 组**：posts（等 departments 完成）
-- **E 组**：portals（最末尾独立）
+## P2：字段与系统模块
 
-## 子 agent 执行规则
+- [ ] A08：部门/岗位 description，贯通 DB、schema、service、DTO、表单。
+- [ ] A09：字典类型排序，数据 tag/isDefault、默认切换和消费者。
+- [ ] A10：日志姓名展示，处理历史日志及用户删除边界。
+- [ ] A11：地区树、省市区查询和联动。
+- [ ] A12：真实模块装配/启停及版本、依赖、状态管理。
+- [ ] Q05：API/数据模型文档同步；日期/分页归并、闲置代码清理、npm/pnpm 和 Windows build 修正。
 
-1. **每份清单**：单 subagent 实施一个清单，不要混做
-2. **每步完成**：跑对应验证再勾选 `[x]`，未验证别勾
-3. **schema 改动后**：先 `npm run db:generate` 看 SQL，跑 `db:migrate` 验证后再动 service
-4. **路径脚本**：CI 必跑 `npm run typecheck && lint && arch:check && test`
-5. **勾完一份**：在 todo/ 文件末尾「完成记录」追加日期 + commit hash（`git rev-parse --short HEAD`）
+## 扩展范围：另立计划
 
-## 标准 checklist 步骤速查
+- [ ] S01：门户页面/文章/分类/模板、编辑器、发布与渲染。
+- [ ] S02：商城；独立界定 CRM 产品范围（原版 Demo 默认未安装 CRM）。
+- [ ] S03：小程序、文档站、共享编辑器和 Core Package 多产品隔离装配。
 
-每份清单都按这个节奏组织 subagent：1) DB → 2) types → 3) schema → 4) service → 5) policy → 6) actions → 7) queries+mutations → 8) REST(可选) → 9) tests → 10) admin 页面 → 11) 验证。
+## 本轮完成
 
-完整模板和"为什么这么排"在 `00-users.md`。
+- [x] 核实 00–10 主要页面/feature 存在，纠正占位/无 feature 总览。
+- [x] 核实用户/部门导出、批量删除、密码重置和站点字段已有代码。
+- [x] 新增当前源码对齐报告与验收条件。
+- [x] 更新能力/测试状态，标明失败门禁与未执行验收。
 
-## 关键参考文件路径（subagent 必读）
-
-```
-# ===== 数据层 =====
-db/schema/index.ts                 # 字段命名严格遵循 better-auth 默认约定
-db/migrations/                     # 所有 ALTER 都在这，每个 PR 一个 000X_*.sql
-db/seed.ts:107-179                 # MENU_SEED 列表，新菜单需在这注册
-
-# ===== 范式参考（每份 subagent 必读） =====
-src/features/users/users.schema.ts          # zod schema 写法
-src/features/users/users.types.ts           # DTO + service 签名
-src/features/users/users.service.ts         # toXxxDto + 事务写法
-src/features/users/users.policy.ts          # policy stub（最简单的形式）
-src/features/users/users.actions.ts         # createServerFn
-src/features/users/users.queries.ts         # queryOptions + useAssignableRoles（跨 feature query 首例）
-src/features/users/users.use-mutations.ts   # useMutation + invalidate
-src/routes/admin/users.tsx                  # 9 列 + sticky right + 6 字段 filter + 编辑表单
-src/components/admin/form/multi-select.tsx  # 通用多选组件（按用户分配角色 / 按角色选菜单会用到）
-
-# ===== 共享组件 =====
-src/components/admin/data-table/resource-table.tsx   # 列宽 + sticky helper
-src/components/admin/data-table/filter-bar.tsx       # 6 字段 + collapse
-src/components/admin/form/index.ts                   # MultiSelect, ResponsiveFormLayer, Popconfirm
-
-# ===== 基础设施 =====
-src/lib/authorization.server.ts                      # requireAdmin + SYSTEM_ADMIN_IDS
-src/lib/errors.ts                                    # Errors.{unauthenticated,forbidden,notFound,conflict,invalid,...}
-src/lib/service-context.ts                           # ServiceContext 类型
-
-# ===== 架构约束（arch:check 会扫） =====
-scripts/arch/check-all.mjs                           # routes 不得 import db, services 不得 import routes
-scripts/arch/check-naming.mjs                        # <domain>.* 前缀 + 复数规则
-
-# ===== 资源生成器 =====
-scripts/generators/gen-resource.ts                   # npm run gen:resource -- <domain>  # 全建时跑这个
-```
-
-## 验证清单
-
-每份 subagent 实施完毕必须自检：
-
-- [ ] `npm run typecheck` 通过（tsc --noEmit 0 error）
-- [ ] `npm run lint` 通过（biome check 0 error / warning）
-- [ ] `npm run arch:check` 4 项全 OK（最严：routes 不引 db；services 不引 routes）
-- [ ] `npm test -- src/features/<domain>/` 全绿
-- [ ] `npm run dev` 浏览器到 `/admin/<slug>`：列对齐老系统、过滤器 6 字段、编辑/删除/分配 e2e 通
-- [ ] 该 feature 文件清单末尾「完成记录」追加 git rev-parse HEAD
+实施更新见 [用户权限说明](../docs/user-permissions.md)。当前 typecheck、arch:check、生产构建通过；40 文件 / 329 测试通过。用户与角色列表已修复 draft 改动触发翻页问题，Q01 其它列表仍待逐页验收。全仓 Lint 尚未通过，不能勾选 Q02。真实数据库尚未执行新增迁移。
