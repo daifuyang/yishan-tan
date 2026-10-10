@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { getPost, listPosts } from "~/features/posts/posts.actions";
+import { getPost, getPostDepartmentOptions, listPosts } from "~/features/posts/posts.actions";
 import type { PostListQuery } from "~/features/posts/posts.schema";
 import type { PostDto } from "~/features/posts/posts.types";
 
@@ -21,8 +21,8 @@ export const postsListQueryOptions = (input: PostListQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function usePostsList(input: PostListQuery) {
-  return useQuery(postsListQueryOptions(input));
+export function usePostsList(input: PostListQuery, enabled = true) {
+  return useQuery({ ...postsListQueryOptions(input), enabled });
 }
 
 export const postDetailQueryOptions = (id: string) =>
@@ -35,4 +35,13 @@ export const postDetailQueryOptions = (id: string) =>
 
 export function usePostDetail(id: string) {
   return useQuery(postDetailQueryOptions(id));
+}
+
+export function usePostDepartmentOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: [...postsQueryKey.all, "department-options"],
+    queryFn: () => getPostDepartmentOptions({ data: { operation: "read" } }),
+    enabled,
+    staleTime: 0,
+  });
 }

@@ -27,8 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDepartmentsList } from "~/features/departments/departments.queries";
-import { usePostsList } from "~/features/posts/posts.queries";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
+import { usePostDepartmentOptions, usePostsList } from "~/features/posts/posts.queries";
 import { postListQuerySchema } from "~/features/posts/posts.schema";
 import type { PostDto } from "~/features/posts/posts.types";
 import {
@@ -74,8 +74,6 @@ const EMPTY_EDIT_FORM: EditPostFormValue = {
   status: "enabled",
 };
 
-const DEPARTMENT_QUERY = { page: 1, pageSize: 100, status: "enabled" as const };
-
 export const Route = createFileRoute("/admin/posts")({
   component: AdminPostsPage,
 });
@@ -105,30 +103,20 @@ function AdminPostsPage() {
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
-  const list = usePostsListPage(filters, page, pageSize);
-  const departments = useDepartmentsList(DEPARTMENT_QUERY);
-  const departmentItems = departments.data?.items ?? [];
+  const permissions = useResourcePermissions("posts");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
+  const list = usePostsListPage(filters, page, pageSize, canRead);
+  const departments = usePostDepartmentOptions(canRead);
+  const departmentItems = departments.data ?? [];
 
   const createMut = useCreatePost();
   const updateMut = useUpdatePost();
   const deleteMut = useDeletePost();
   const bulkDeleteMut = useBulkDeletePosts();
 
-  const items = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const items = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as reset trigger
-  React.useEffect(() => {
-    setPage(1);
-  }, [
-    draft.keyword,
-    draft.departmentId,
-    draft.sortMin,
-    draft.status,
-    draft.createdFrom,
-    draft.createdTo,
-  ]);
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
@@ -139,13 +127,16 @@ function AdminPostsPage() {
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
+    setFilters({ ...draft });
+    setPage(1);
+    setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
+    setSelectedKeys([]);
   }, []);
 
   const handleStartEdit = (row: PostDto) => {
@@ -233,20 +224,10 @@ function AdminPostsPage() {
     deleteMut.reset();
   }, [deleteMut]);
 
-  // 编辑时部门选项：排除自身及其子部门（防环）
-  const editDepartmentOptions = React.useMemo(() => {
-    if (!editing) return [] as Array<{ value: string; label: string }>;
-    const blockedIds = collectDescendantIds(departmentItems, editing.departmentId);
-    blockedIds.add(editing.departmentId);
-    return departmentItems
-      .filter((d) => !blockedIds.has(d.id))
-      .map((d) => ({ value: d.id, label: d.name }));
-  }, [editing, departmentItems]);
-
-  const createDepartmentOptions = React.useMemo(
-    () => departmentItems.map((d) => ({ value: d.id, label: d.name })),
-    [departmentItems],
-  );
+  const editDepartmentOptions = departmentItems.map((d) => ({ value: d.id, label: d.name }));
+  const createDepartmentOptions = departmentItems
+    .filter((d) => d.status === "enabled")
+    .map((d) => ({ value: d.id, label: d.name }));
 
   const columns: ResourceColumn<PostDto>[] = [
     {
@@ -324,6 +305,7 @@ function AdminPostsPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
+              disabled={!canUpdate}
               onClick={(e) => {
                 e.stopPropagation();
                 handleStartEdit(row);
@@ -341,7 +323,7 @@ function AdminPostsPage() {
                   e.stopPropagation();
                   void handleToggleStatus(row);
                 }}
-                disabled={updateMut.isPending}
+                disabled={!canUpdate || updateMut.isPending}
               >
                 启用
               </Button>
@@ -420,7 +402,7 @@ function AdminPostsPage() {
                 >
                   <DropdownMenuItem
                     variant="destructive"
-                    disabled={deleteMut.isPending}
+                    disabled={!canDelete || deleteMut.isPending}
                     onSelect={(e) => {
                       e.preventDefault();
                       setMoreMenuRowId(null);
@@ -439,7 +421,7 @@ function AdminPostsPage() {
   ];
 
   const handleEditSubmit = async () => {
-    if (!editing) return;
+    if (!editing || !canUpdate) return;
     await updateMut.mutateAsync({
       id: editing.id,
       name: editForm.name,
@@ -451,6 +433,7 @@ function AdminPostsPage() {
   };
 
   const handleCreateSubmit = async () => {
+    if (!canCreate) return;
     await createMut.mutateAsync({
       name: createForm.name,
       departmentId: createForm.departmentId,
@@ -566,7 +549,7 @@ function AdminPostsPage() {
         toolbarTitle="岗位列表"
         toolbarActions={
           <>
-            {selectedKeys.length > 0 ? (
+            {canDelete && selectedKeys.length > 0 ? (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -589,7 +572,7 @@ function AdminPostsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkDeleteMut.isPending}
+                  disabled={!canDelete || bulkDeleteMut.isPending}
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
@@ -597,7 +580,7 @@ function AdminPostsPage() {
                 </Button>
               </Popconfirm>
             ) : null}
-            <Button type="button" size="sm" onClick={handleOpenCreate}>
+            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
               <Plus className="size-3.5" aria-hidden />
               新建岗位
             </Button>
@@ -610,22 +593,33 @@ function AdminPostsPage() {
           page,
           pageSize,
           total,
-          onPageChange: setPage,
+          onPageChange: (next) => {
+            setPage(next);
+            setSelectedKeys([]);
+          },
           onPageSizeChange: (size) => {
             setPageSize(size);
             setPage(1);
+            setSelectedKeys([]);
           },
-          loading: list.isFetching,
-          emptyTitle: "暂无岗位",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
+          loading: permissions.isPending || list.isFetching,
+          emptyDescription: permissions.error ?? (list.isError ? list.error.message : undefined),
+          emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无岗位",
+          error:
+            permissions.error ??
+            (departments.isError
+              ? "无法加载部门选项，请重试"
+              : list.isError
+                ? list.error instanceof Error
+                  ? list.error.message
+                  : "加载失败"
+                : undefined),
+          rowSelection: canDelete
+            ? {
+                selectedKeys,
+                onChange: setSelectedKeys,
+              }
             : undefined,
-          rowSelection: {
-            selectedKeys,
-            onChange: setSelectedKeys,
-          },
         }}
       />
 
@@ -688,31 +682,6 @@ function AdminPostsPage() {
   );
 }
 
-type DepartmentItem = { id: string; parentId: string | null; name: string };
-
-function collectDescendantIds(
-  allDepartments: readonly DepartmentItem[],
-  rootId: string,
-): Set<string> {
-  const result = new Set<string>();
-  const childMap = new Map<string, string[]>();
-  for (const d of allDepartments) {
-    if (!d.parentId) continue;
-    const list = childMap.get(d.parentId) ?? [];
-    list.push(d.id);
-    childMap.set(d.parentId, list);
-  }
-  const queue: string[] = [rootId];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || result.has(current)) continue;
-    result.add(current);
-    const kids = childMap.get(current) ?? [];
-    for (const k of kids) queue.push(k);
-  }
-  return result;
-}
-
 function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   const trim = (v: string) => v.trim() || undefined;
   const sortMinNum = filters.sortMin.trim() === "" ? undefined : Number(filters.sortMin);
@@ -732,12 +701,12 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
   });
 }
 
-function usePostsListPage(filters: FilterState, page: number, pageSize: number) {
+function usePostsListPage(filters: FilterState, page: number, pageSize: number, enabled: boolean) {
   const query = React.useMemo(
     () => buildListQuery(filters, page, pageSize),
     [filters, page, pageSize],
   );
-  return usePostsList(query);
+  return usePostsList(query, enabled);
 }
 
 function EditPostFields({

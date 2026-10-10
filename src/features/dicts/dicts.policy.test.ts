@@ -1,35 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ServiceContext } from "~/lib/service-context";
 
-const ADMIN_ID = "123e4567-e89b-12d3-a456-426614174aaa";
-const TARGET_ID = "123e4567-e89b-12d3-a456-426614174001";
+const check = vi.hoisted(() => vi.fn());
+vi.mock("~/features/permissions/permissions.service", () => ({ assertPermissionService: check }));
+const { assertDictOperation } = await import("./dicts.policy");
+const ctx: ServiceContext = { userId: "member", headers: new Headers(), authKind: "session" };
 
-vi.mock("~/lib/authorization.server", () => ({
-  SYSTEM_ADMIN_IDS: [ADMIN_ID],
-  isSystemAdmin: vi.fn((ctx: { userId: string }) => ctx.userId === ADMIN_ID),
-  requireAdmin: vi.fn(),
-  requireSelfOrAdmin: vi.fn(),
-}));
-
-const { assertCanManageDicts } = await import("~/features/dicts/dicts.policy");
-
-describe("dicts.policy", () => {
-  describe("assertCanManageDicts", () => {
-    it("passes for system admin", async () => {
-      const ctx = {
-        userId: ADMIN_ID,
-        headers: new Headers(),
-        authKind: "session" as const,
-      };
-      await expect(assertCanManageDicts(ctx)).resolves.toBeUndefined();
-    });
-
-    it("throws forbidden for non-admin", async () => {
-      const ctx = {
-        userId: TARGET_ID,
-        headers: new Headers(),
-        authKind: "session" as const,
-      };
-      await expect(assertCanManageDicts(ctx)).rejects.toThrow();
-    });
+describe("dicts operation policy", () => {
+  it("checks the requested operation for a delegated member", async () => {
+    check.mockResolvedValueOnce(undefined);
+    await expect(assertDictOperation(ctx, "dicts:read")).resolves.toBeUndefined();
+    expect(check).toHaveBeenLastCalledWith(ctx, "dicts:read");
+  });
+  it("propagates rejection rather than falling back to navigation access", async () => {
+    const error = new Error("forbidden");
+    check.mockRejectedValueOnce(error);
+    await expect(assertDictOperation(ctx, "dicts:delete")).rejects.toBe(error);
   });
 });

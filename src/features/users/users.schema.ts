@@ -31,7 +31,7 @@ export const genderSchema = z.enum(["male", "female", "other"]);
 
 export const updateUserSchema = z.object({
   name: z.string().min(1, "姓名不能为空").max(50, "姓名过长").optional(),
-  displayName: z.string().min(1).max(50).optional(),
+  displayName: z.string().trim().max(50).optional(),
   phone: phoneSchema,
   email: z.string().email().optional(),
   status: statusSchema.optional(),

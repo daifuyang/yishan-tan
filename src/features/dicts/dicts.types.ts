@@ -1,4 +1,5 @@
 import type { DbDictData, DbDictType } from "~/../db/schema";
+import type { DictDataListQuery, DictTypeListQuery } from "./dicts.schema";
 
 export type DictTypeDto = {
   id: string;
@@ -26,12 +27,9 @@ export type DictDataDto = {
   updatedAt: string;
 };
 
-export type ListDictTypesService = (input: {
-  page: number;
-  pageSize: number;
-  keyword?: string;
-  status?: "enabled" | "disabled";
-}) => Promise<{ items: DictTypeListItemDto[]; total: number }>;
+export type ListDictTypesService = (
+  input: DictTypeListQuery,
+) => Promise<{ items: DictTypeListItemDto[]; total: number }>;
 
 export type GetDictTypeService = (id: string) => Promise<DictTypeDto | null>;
 
@@ -53,13 +51,9 @@ export type UpdateDictTypeService = (
 
 export type DeleteDictTypeService = (id: string) => Promise<{ ok: true }>;
 
-export type ListDictDataService = (input: {
-  page: number;
-  pageSize: number;
-  keyword?: string;
-  typeCode?: string;
-  status?: "enabled" | "disabled";
-}) => Promise<{ items: DictDataDto[]; total: number }>;
+export type ListDictDataService = (
+  input: DictDataListQuery,
+) => Promise<{ items: DictDataDto[]; total: number }>;
 
 export type GetDictDataService = (id: string) => Promise<DictDataDto | null>;
 

@@ -22,8 +22,8 @@ export const dictTypesListQueryOptions = (input: DictTypeListQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function useDictTypesList(input: DictTypeListQuery) {
-  return useQuery(dictTypesListQueryOptions(input));
+export function useDictTypesList(input: DictTypeListQuery, enabled = true) {
+  return useQuery({ ...dictTypesListQueryOptions(input), enabled });
 }
 
 export const dictDataListQueryOptions = (input: DictDataListQuery) =>
@@ -35,8 +35,8 @@ export const dictDataListQueryOptions = (input: DictDataListQuery) =>
     refetchOnWindowFocus: false,
   });
 
-export function useDictDataList(input: DictDataListQuery) {
-  return useQuery(dictDataListQueryOptions(input));
+export function useDictDataList(input: DictDataListQuery, enabled = true) {
+  return useQuery({ ...dictDataListQueryOptions(input), enabled });
 }
 
 const DICT_DATA_BY_CODE_QUERY: DictDataListQuery = {

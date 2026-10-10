@@ -11,7 +11,7 @@ import {
 } from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
 import { DateRangePicker, Popconfirm, ResponsiveFormLayer } from "@/components/admin/form";
-import { PageHeader, ResourcePage } from "@/components/admin/layout";
+import { ResourcePage } from "@/components/admin/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDictDataByCode, useDictDataList } from "~/features/dicts/dicts.queries";
+import { useDictDataList } from "~/features/dicts/dicts.queries";
 import { dictDataListQuerySchema } from "~/features/dicts/dicts.schema";
 import type { DictDataDto } from "~/features/dicts/dicts.types";
 import {
@@ -31,6 +31,8 @@ import {
   useDeleteDictData,
   useUpdateDictData,
 } from "~/features/dicts/dicts.use-mutations";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
+import { normalizeDateRange } from "~/lib/date-range";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 
@@ -75,57 +77,42 @@ function AdminDictDataPage() {
   const [editForm, setEditForm] = React.useState<EditDictDataFormValue>(EMPTY_DATA_FORM);
   const [createForm, setCreateForm] = React.useState<CreateDictDataFormValue>(EMPTY_DATA_FORM);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
+  const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
+  const permissions = useResourcePermissions("dicts");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
   const query = dictDataListQuerySchema.parse(buildListQuery(typeCode, filters, page, pageSize));
-  const list = useDictDataList(query);
-  // 同步触发 dictDataByCode 的 invalidation（创建/更新/删除 dictData 后会清理）
-  // 该查询的缓存被 use-mutations 的 dictsQueryKey.datas() invalidate 触发刷新，
-  // 这里调用以让 cache 在挂载时被填充，便于跨页面共享。
-  useDictDataByCode(typeCode);
+  const list = useDictDataList(query, canRead);
   const createMut = useCreateDictData();
   const updateMut = useUpdateDictData();
   const deleteMut = useDeleteDictData();
   const bulkDeleteMut = useBulkDeleteDictDatas();
 
-  const items = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const items = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const resetPageOnFilterChange = React.useCallback(() => {
-    setPage(1);
-  }, []);
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
-  React.useEffect(() => {
-    resetPageOnFilterChange();
-  }, [
-    draft.label,
-    draft.value,
-    draft.extra,
-    draft.status,
-    draft.createdFrom,
-    draft.createdTo,
-    resetPageOnFilterChange,
-  ]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = React.useCallback(() => {
-    setFilters(draft);
+    setFilters({ ...draft });
+    setPage(1);
+    setSelectedKeys([]);
   }, [draft]);
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
+    setSelectedKeys([]);
   }, []);
 
   const handleBack = React.useCallback(() => {
@@ -272,6 +259,7 @@ function AdminDictDataPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
+              disabled={!canUpdate}
               onClick={(e) => {
                 e.stopPropagation();
                 handleStartEdit(row);
@@ -279,48 +267,69 @@ function AdminDictDataPage() {
             >
               编辑
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={isDisabled ? TABLE_ACTION_CLASS : TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleToggleStatus(row);
-              }}
-              disabled={updateMut.isPending}
-            >
-              {isDisabled ? "启用" : "禁用"}
-            </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className={TABLE_DANGER_ACTION_CLASS}
-              onClick={(e) => {
-                e.stopPropagation();
-                setPopconfirmRowId(row.id);
-              }}
-              disabled={deleteMut.isPending}
-            >
-              删除
-            </Button>
+            {isDisabled ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_ACTION_CLASS}
+                disabled={!canUpdate || updateMut.isPending}
+                onClick={() => void handleToggleStatus(row)}
+              >
+                启用
+              </Button>
+            ) : (
+              <Popconfirm
+                open={disablePopconfirmRowId === row.id}
+                onOpenChange={(next) => setDisablePopconfirmRowId(next ? row.id : null)}
+                title="禁用字典数据"
+                description={updateMut.isError ? updateMut.error.message : "你确认禁用吗？"}
+                confirmLabel="禁用"
+                tone="danger"
+                loading={updateMut.isPending}
+                onConfirm={async () => {
+                  try {
+                    await updateMut.mutateAsync({ id: row.id, status: "disabled" });
+                    setDisablePopconfirmRowId(null);
+                  } catch {
+                    /* 保留确认框以展示错误 */
+                  }
+                }}
+              >
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className={TABLE_DANGER_ACTION_CLASS}
+                  disabled={!canUpdate || updateMut.isPending}
+                >
+                  禁用
+                </Button>
+              </Popconfirm>
+            )}
             <Popconfirm
               open={popconfirmRowId === row.id}
               onOpenChange={(next) => {
-                if (!next && popconfirmRowId === row.id) setPopconfirmRowId(null);
+                if (!next) setPopconfirmRowId(null);
               }}
               title={`删除「${row.label}」？`}
               description="你确认删除吗？"
               confirmLabel="删除"
               tone="danger"
-              loading={deleteMut.isPending && popconfirmRowId === row.id}
+              loading={deleteMut.isPending}
               onConfirm={() => handleDeleteConfirm(row)}
-              side="top"
-              align="end"
-              sideOffset={6}
+              placement="top"
             >
-              <span aria-hidden className="size-0" />
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className={TABLE_DANGER_ACTION_CLASS}
+                disabled={!canDelete || deleteMut.isPending}
+                onClick={() => setPopconfirmRowId(row.id)}
+              >
+                删除
+              </Button>
             </Popconfirm>
           </div>
         );
@@ -329,7 +338,7 @@ function AdminDictDataPage() {
   ];
 
   const handleEditSubmit = async () => {
-    if (!editing) return;
+    if (!editing || !canUpdate) return;
     await updateMut.mutateAsync({
       id: editing.id,
       label: editForm.label,
@@ -342,6 +351,7 @@ function AdminDictDataPage() {
   };
 
   const handleCreateSubmit = async () => {
+    if (!canCreate) return;
     await createMut.mutateAsync({
       typeCode,
       label: createForm.label,
@@ -355,20 +365,10 @@ function AdminDictDataPage() {
 
   return (
     <>
-      <PageHeader
+      <ResourcePage<DictDataDto>
         title="字典数据"
         description={`字典类型 ${typeCode}`}
-        actions={
-          <Button type="button" size="sm" variant="outline" onClick={handleBack}>
-            <ArrowLeft className="size-3.5" aria-hidden />
-            返回字典类型
-          </Button>
-        }
-        className="border-b-0 pb-0"
-      />
-
-      <ResourcePage<DictDataDto>
-        title=""
+        filterCollapsible
         filterColumns={3}
         filterDefaultCollapsed
         filter={
@@ -440,7 +440,11 @@ function AdminDictDataPage() {
         toolbarTitle="字典数据列表"
         toolbarActions={
           <>
-            {selectedKeys.length > 0 ? (
+            <Button type="button" size="sm" variant="outline" onClick={handleBack}>
+              <ArrowLeft className="size-3.5" aria-hidden />
+              返回字典类型
+            </Button>
+            {canDelete && selectedKeys.length > 0 ? (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -463,7 +467,7 @@ function AdminDictDataPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkDeleteMut.isPending}
+                  disabled={!canDelete || bulkDeleteMut.isPending}
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
@@ -471,7 +475,7 @@ function AdminDictDataPage() {
                 </Button>
               </Popconfirm>
             ) : null}
-            <Button type="button" size="sm" onClick={handleOpenCreate}>
+            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
               <Plus className="size-3.5" aria-hidden />
               新建字典数据
             </Button>
@@ -484,22 +488,31 @@ function AdminDictDataPage() {
           page,
           pageSize,
           total,
-          onPageChange: setPage,
+          onPageChange: (next) => {
+            setPage(next);
+            setSelectedKeys([]);
+          },
           onPageSizeChange: (size) => {
             setPageSize(size);
             setPage(1);
+            setSelectedKeys([]);
           },
-          loading: list.isFetching,
-          emptyTitle: "暂无字典数据",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
+          loading: permissions.isPending || list.isFetching,
+          emptyDescription: permissions.error ?? (list.isError ? list.error.message : undefined),
+          emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无字典数据",
+          error:
+            permissions.error ??
+            (list.isError
+              ? list.error instanceof Error
+                ? list.error.message
+                : "加载失败"
+              : undefined),
+          rowSelection: canDelete
+            ? {
+                selectedKeys,
+                onChange: setSelectedKeys,
+              }
             : undefined,
-          rowSelection: {
-            selectedKeys,
-            onChange: setSelectedKeys,
-          },
         }}
       />
 
@@ -588,14 +601,17 @@ function buildListQuery(typeCode: string, filters: FilterState, page: number, pa
   const value = trim(filters.value);
   const extra = trim(filters.extra);
   const status = filters.status === "all" ? undefined : filters.status;
-  const createdFrom = trim(filters.createdFrom);
-  const createdTo = trim(filters.createdTo);
-  const keyword = [label, value, extra].filter(Boolean).join(" ") || undefined;
+  const { createdFrom, createdTo } = normalizeDateRange({
+    start: filters.createdFrom || null,
+    end: filters.createdTo || null,
+  });
   return {
     page,
     pageSize,
     typeCode,
-    keyword,
+    label,
+    value,
+    extra,
     status,
     createdFrom,
     createdTo,

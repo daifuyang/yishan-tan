@@ -23,6 +23,11 @@ export const dictTypeListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   keyword: z.string().trim().optional(),
+  name: z.string().trim().optional(),
+  code: z.string().trim().optional(),
+  description: z.string().trim().optional(),
+  createdFrom: z.string().datetime().optional(),
+  createdTo: z.string().datetime().optional(),
   status: statusSchema.optional(),
 });
 
@@ -47,6 +52,11 @@ export const dictDataListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   keyword: z.string().trim().optional(),
+  label: z.string().trim().optional(),
+  value: z.string().trim().optional(),
+  extra: z.string().trim().optional(),
+  createdFrom: z.string().datetime().optional(),
+  createdTo: z.string().datetime().optional(),
   typeCode: z.string().optional(),
   status: statusSchema.optional(),
 });

@@ -1,5 +1,5 @@
 /**
- * /api/v1/departments —— 部门管理（admin）。
+ * /api/v1/departments —— 部门管理（操作权限）。
  */
 import { z } from "zod";
 import {
@@ -20,7 +20,7 @@ registry.registerPath({
   method: "get",
   path: "/api/v1/departments",
   operationId: "listDepartments",
-  summary: "查询部门。tree=1 返回树",
+  summary: "查询部门。tree=1 返回树（departments:read）",
   tags: ["departments"],
   request: { query: departmentListQuerySchema },
   responses: {
@@ -40,7 +40,7 @@ registry.registerPath({
   method: "post",
   path: "/api/v1/departments",
   operationId: "createDepartment",
-  summary: "创建部门（admin）",
+  summary: "创建部门（departments:create）",
   tags: ["departments"],
   request: { body: { content: { "application/json": { schema: createDepartmentSchema } } } },
   responses: {
@@ -58,7 +58,7 @@ registry.registerPath({
   method: "patch",
   path: "/api/v1/departments/{id}",
   operationId: "updateDepartment",
-  summary: "更新部门（admin）。parent 不能是自身或子孙",
+  summary: "更新部门。parent 不能是自身或子孙（departments:update）",
   tags: ["departments"],
   request: {
     params: idParamSchema,
@@ -79,7 +79,7 @@ registry.registerPath({
   method: "delete",
   path: "/api/v1/departments/{id}",
   operationId: "deleteDepartment",
-  summary: "删除部门（admin）。有子部门时不能删",
+  summary: "删除部门。有子部门时不能删（departments:delete）",
   tags: ["departments"],
   request: { params: idParamSchema },
   responses: {

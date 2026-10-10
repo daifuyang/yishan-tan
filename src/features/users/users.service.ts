@@ -251,7 +251,7 @@ export const updateUserService: UpdateUserService = async (id, input) => {
 
   const patch: Partial<typeof schema.user.$inferInsert> = {};
   if (input.name !== undefined) patch.name = input.name;
-  if (input.displayName !== undefined) patch.displayName = input.displayName;
+  if (input.displayName !== undefined) patch.displayName = input.displayName || null;
   if (input.phone !== undefined) patch.phone = input.phone ?? null;
   if (input.email !== undefined) patch.email = input.email;
   if (input.deptId !== undefined) patch.deptId = input.deptId ?? null;

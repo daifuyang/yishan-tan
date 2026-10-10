@@ -1,5 +1,5 @@
 /**
- * /api/v1/dict-types —— 字典类型（admin）。
+ * /api/v1/dict-types —— 字典类型（操作权限）。
  */
 import { z } from "zod";
 import {
@@ -17,7 +17,7 @@ registry.registerPath({
   method: "get",
   path: "/api/v1/dict-types",
   operationId: "listDictTypes",
-  summary: "分页列出字典类型（admin）",
+  summary: "分页列出字典类型（dicts:read）",
   tags: ["dict-types"],
   request: { query: dictTypeListQuerySchema },
   responses: {
@@ -37,7 +37,7 @@ registry.registerPath({
   method: "post",
   path: "/api/v1/dict-types",
   operationId: "createDictType",
-  summary: "创建字典类型（admin）",
+  summary: "创建字典类型（dicts:create）",
   tags: ["dict-types"],
   request: { body: { content: { "application/json": { schema: createDictTypeSchema } } } },
   responses: {
@@ -55,7 +55,7 @@ registry.registerPath({
   method: "get",
   path: "/api/v1/dict-types/{id}",
   operationId: "getDictType",
-  summary: "字典类型详情（admin）",
+  summary: "字典类型详情（dicts:read）",
   tags: ["dict-types"],
   request: { params: idParamSchema },
   responses: {
@@ -73,7 +73,7 @@ registry.registerPath({
   method: "patch",
   path: "/api/v1/dict-types/{id}",
   operationId: "updateDictType",
-  summary: "更新字典类型（admin）",
+  summary: "更新字典类型（dicts:update）",
   tags: ["dict-types"],
   request: {
     params: idParamSchema,
@@ -94,7 +94,7 @@ registry.registerPath({
   method: "delete",
   path: "/api/v1/dict-types/{id}",
   operationId: "deleteDictType",
-  summary: "删除字典类型（admin）",
+  summary: "删除字典类型（dicts:delete）",
   tags: ["dict-types"],
   request: { params: idParamSchema },
   responses: {

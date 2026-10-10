@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { assertDictOperation } from "~/features/dicts/dicts.policy";
 import { updateDictDataSchema } from "~/features/dicts/dicts.schema";
 import {
   deleteDictDataService,
   getDictDataService,
   updateDictDataService,
 } from "~/features/dicts/dicts.service";
-import { requireAdmin } from "~/lib/authorization.server";
 import { Errors } from "~/lib/errors";
 import { parseJsonBody, parseParams } from "~/server/handlers";
 import { handleApiError, ok } from "~/server/http";
@@ -14,18 +14,12 @@ import { requireRequestContext } from "~/server/request-context";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
 
-async function ensureAdminCtx(request: Request) {
-  const ctx = await requireRequestContext(request);
-  await requireAdmin(ctx);
-  return ctx;
-}
-
 export const Route = createFileRoute("/api/v1/dicts-data/$id")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
         try {
-          await ensureAdminCtx(request);
+          await assertDictOperation(await requireRequestContext(request), "dicts:read");
           const { id } = parseParams(idParamSchema, params);
           const row = await getDictDataService(id);
           if (!row) throw Errors.notFound("字典数据不存在");
@@ -36,7 +30,7 @@ export const Route = createFileRoute("/api/v1/dicts-data/$id")({
       },
       PATCH: async ({ request, params }) => {
         try {
-          await ensureAdminCtx(request);
+          await assertDictOperation(await requireRequestContext(request), "dicts:update");
           const { id } = parseParams(idParamSchema, params);
           const body = await parseJsonBody(request, updateDictDataSchema);
           const row = await updateDictDataService(id, body);
@@ -47,7 +41,7 @@ export const Route = createFileRoute("/api/v1/dicts-data/$id")({
       },
       DELETE: async ({ request, params }) => {
         try {
-          await ensureAdminCtx(request);
+          await assertDictOperation(await requireRequestContext(request), "dicts:delete");
           const { id } = parseParams(idParamSchema, params);
           await deleteDictDataService(id);
           return ok({ ok: true });

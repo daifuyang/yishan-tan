@@ -1,9 +1,10 @@
-import { isSystemAdmin } from "~/lib/authorization.server";
-import { Errors } from "~/lib/errors";
+import { assertPermissionService } from "~/features/permissions/permissions.service";
+import type { PermissionCode } from "~/lib/permission-catalog";
 import type { ServiceContext } from "~/lib/service-context";
 
-export async function assertCanManagePosts(ctx: ServiceContext): Promise<void> {
-  if (!isSystemAdmin(ctx)) {
-    throw Errors.forbidden("仅超级管理员可管理岗位");
-  }
+export async function assertPostOperation(
+  ctx: ServiceContext,
+  code: Extract<PermissionCode, `posts:${string}`>,
+): Promise<void> {
+  await assertPermissionService(ctx, code);
 }

@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { contextFromRequest } from "~/server/request-context";
-import { assertCanManageDepartments } from "./departments.policy";
+import { requireRequestContext } from "~/server/request-context";
+import { assertDepartmentOperation } from "./departments.policy";
 import {
   createDepartmentSchema,
   departmentListQuerySchema,
@@ -12,35 +12,35 @@ import {
   createDepartmentService,
   deleteDepartmentService,
   exportDepartmentsService,
+  getDepartmentFormOptionsService,
   getDepartmentService,
   getDepartmentTreeService,
   listDepartmentsService,
   updateDepartmentService,
 } from "./departments.service";
 
-async function adminCtx() {
-  const ctx = await contextFromRequest(getRequestHeaders());
-  if (!ctx) throw new Error("UNAUTHENTICATED");
-  await assertCanManageDepartments(ctx);
+async function operationCtx(code: Parameters<typeof assertDepartmentOperation>[1]) {
+  const ctx = await requireRequestContext(getRequestHeaders());
+  await assertDepartmentOperation(ctx, code);
   return ctx;
 }
 
 export const listDepartments = createServerFn({ method: "GET" })
   .validator(departmentListQuerySchema)
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("departments:read");
     return listDepartmentsService(data);
   });
 
 export const getDepartmentTree = createServerFn({ method: "GET" }).handler(async () => {
-  await adminCtx();
+  await operationCtx("departments:read");
   return getDepartmentTreeService();
 });
 
 export const getDepartment = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("departments:read");
     const dept = await getDepartmentService(data.id);
     if (!dept) throw new Error("NOT_FOUND");
     return dept;
@@ -49,14 +49,14 @@ export const getDepartment = createServerFn({ method: "GET" })
 export const createDepartment = createServerFn({ method: "POST" })
   .validator(createDepartmentSchema)
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("departments:create");
     return createDepartmentService(data);
   });
 
 export const updateDepartment = createServerFn({ method: "POST" })
   .validator(updateDepartmentSchema.extend({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("departments:update");
     const { id, ...rest } = data;
     return updateDepartmentService(id, rest);
   });
@@ -64,13 +64,20 @@ export const updateDepartment = createServerFn({ method: "POST" })
 export const deleteDepartment = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("departments:delete");
     return deleteDepartmentService(data.id);
   });
 
 export const exportDepartments = createServerFn({ method: "GET" })
   .validator(departmentListQuerySchema.omit({ page: true, pageSize: true }))
   .handler(async ({ data }) => {
-    await adminCtx();
+    await operationCtx("departments:export");
     return exportDepartmentsService(data);
+  });
+
+export const getDepartmentFormOptions = createServerFn({ method: "GET" })
+  .validator(z.object({ operation: z.enum(["create", "update"]) }))
+  .handler(async ({ data }) => {
+    await operationCtx(`departments:${data.operation}`);
+    return getDepartmentFormOptionsService();
   });

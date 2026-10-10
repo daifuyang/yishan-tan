@@ -1,35 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ServiceContext } from "~/lib/service-context";
 
-const ADMIN_ID = "123e4567-e89b-12d3-a456-426614174aaa";
-const TARGET_ID = "123e4567-e89b-12d3-a456-426614174001";
+const check = vi.hoisted(() => vi.fn());
+vi.mock("~/features/permissions/permissions.service", () => ({ assertPermissionService: check }));
+const { assertPostOperation } = await import("./posts.policy");
+const ctx: ServiceContext = { userId: "member", headers: new Headers(), authKind: "session" };
 
-vi.mock("~/lib/authorization.server", () => ({
-  SYSTEM_ADMIN_IDS: [ADMIN_ID],
-  isSystemAdmin: vi.fn((ctx: { userId: string }) => ctx.userId === ADMIN_ID),
-  requireAdmin: vi.fn(),
-  requireSelfOrAdmin: vi.fn(),
-}));
-
-const { assertCanManagePosts } = await import("~/features/posts/posts.policy");
-
-describe("posts.policy", () => {
-  describe("assertCanManagePosts", () => {
-    it("passes for system admin", async () => {
-      const ctx = {
-        userId: ADMIN_ID,
-        headers: new Headers(),
-        authKind: "session" as const,
-      };
-      await expect(assertCanManagePosts(ctx)).resolves.toBeUndefined();
-    });
-
-    it("throws forbidden for non-admin", async () => {
-      const ctx = {
-        userId: TARGET_ID,
-        headers: new Headers(),
-        authKind: "session" as const,
-      };
-      await expect(assertCanManagePosts(ctx)).rejects.toThrow();
-    });
+describe("posts operation policy", () => {
+  it("checks the requested operation for a delegated member", async () => {
+    check.mockResolvedValueOnce(undefined);
+    await expect(assertPostOperation(ctx, "posts:read")).resolves.toBeUndefined();
+    expect(check).toHaveBeenLastCalledWith(ctx, "posts:read");
+  });
+  it("propagates rejection rather than falling back to navigation access", async () => {
+    const error = new Error("forbidden");
+    check.mockRejectedValueOnce(error);
+    await expect(assertPostOperation(ctx, "posts:delete")).rejects.toBe(error);
   });
 });

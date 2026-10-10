@@ -2,6 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import {
   getDepartment,
+  getDepartmentFormOptions,
   getDepartmentTree,
   listDepartments,
 } from "~/features/departments/departments.actions";
@@ -39,8 +40,8 @@ export const departmentTreeQueryOptions = () =>
     refetchOnWindowFocus: false,
   });
 
-export function useDepartmentTree() {
-  return useQuery(departmentTreeQueryOptions());
+export function useDepartmentTree(enabled = true) {
+  return useQuery({ ...departmentTreeQueryOptions(), enabled });
 }
 
 export const departmentDetailQueryOptions = (id: string) =>
@@ -53,4 +54,13 @@ export const departmentDetailQueryOptions = (id: string) =>
 
 export function useDepartmentDetail(id: string) {
   return useQuery(departmentDetailQueryOptions(id));
+}
+
+export function useDepartmentFormOptions(operation: "create" | "update", enabled: boolean) {
+  return useQuery({
+    queryKey: [...departmentsQueryKey.all, "form-options", operation],
+    queryFn: () => getDepartmentFormOptions({ data: { operation } }),
+    enabled,
+    staleTime: 0,
+  });
 }

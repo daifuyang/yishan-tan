@@ -1,4 +1,17 @@
-import { type SQL, and, asc, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  like,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
@@ -48,6 +61,11 @@ export const listDictTypesService: ListDictTypesService = async ({
   page,
   pageSize,
   keyword,
+  name,
+  code,
+  description,
+  createdFrom,
+  createdTo,
   status,
 }) => {
   const where: SQL[] = [isNull(schema.dictType.deletedAt)];
@@ -59,13 +77,18 @@ export const listDictTypesService: ListDictTypesService = async ({
     );
     if (cond) where.push(cond);
   }
+  if (name) where.push(like(schema.dictType.name, `%${name}%`));
+  if (code) where.push(like(schema.dictType.code, `%${code}%`));
+  if (description) where.push(like(schema.dictType.description, `%${description}%`));
+  if (createdFrom) where.push(gte(schema.dictType.createdAt, new Date(createdFrom)));
+  if (createdTo) where.push(lte(schema.dictType.createdAt, new Date(createdTo)));
   const offset = (page - 1) * pageSize;
   const [rows, totalRow] = await Promise.all([
     getDb()
       .select()
       .from(schema.dictType)
       .where(and(...where))
-      .orderBy(asc(schema.dictType.createdAt))
+      .orderBy(asc(schema.dictType.createdAt), asc(schema.dictType.id))
       .limit(pageSize)
       .offset(offset),
     getDb()
@@ -167,6 +190,11 @@ export const listDictDataService: ListDictDataService = async ({
   page,
   pageSize,
   keyword,
+  label,
+  value,
+  extra,
+  createdFrom,
+  createdTo,
   typeCode,
   status,
 }) => {
@@ -180,13 +208,18 @@ export const listDictDataService: ListDictDataService = async ({
     );
     if (cond) where.push(cond);
   }
+  if (label) where.push(like(schema.dictData.label, `%${label}%`));
+  if (value) where.push(like(schema.dictData.value, `%${value}%`));
+  if (extra) where.push(like(schema.dictData.extra, `%${extra}%`));
+  if (createdFrom) where.push(gte(schema.dictData.createdAt, new Date(createdFrom)));
+  if (createdTo) where.push(lte(schema.dictData.createdAt, new Date(createdTo)));
   const offset = (page - 1) * pageSize;
   const [rows, totalRow] = await Promise.all([
     getDb()
       .select()
       .from(schema.dictData)
       .where(and(...where))
-      .orderBy(asc(schema.dictData.sort), desc(schema.dictData.createdAt))
+      .orderBy(asc(schema.dictData.sort), desc(schema.dictData.createdAt), asc(schema.dictData.id))
       .limit(pageSize)
       .offset(offset),
     getDb()

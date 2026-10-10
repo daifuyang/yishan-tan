@@ -1,15 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { assertPostOperation } from "~/features/posts/posts.policy";
 import { createPostSchema, postListQuerySchema } from "~/features/posts/posts.schema";
 import { createPostService, listPostsService } from "~/features/posts/posts.service";
-import { ensureAdmin, parseJsonBody, parseQuery } from "~/server/handlers";
+import { parseJsonBody, parseQuery } from "~/server/handlers";
 import { handleApiError, ok, page } from "~/server/http";
+import { requireRequestContext } from "~/server/request-context";
 
 export const Route = createFileRoute("/api/v1/posts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
         try {
-          await ensureAdmin(request);
+          await assertPostOperation(await requireRequestContext(request), "posts:read");
           const query = await parseQuery(request, postListQuerySchema);
           const result = await listPostsService(query);
           return page(result.items, result.total, query.page, query.pageSize);
@@ -19,7 +21,7 @@ export const Route = createFileRoute("/api/v1/posts")({
       },
       POST: async ({ request }) => {
         try {
-          await ensureAdmin(request);
+          await assertPostOperation(await requireRequestContext(request), "posts:create");
           const body = await parseJsonBody(request, createPostSchema);
           const result = await createPostService(body);
           return ok(result, { status: 201 });

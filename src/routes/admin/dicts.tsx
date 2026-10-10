@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Plus, Settings2, Trash2 } from "lucide-react";
 import * as React from "react";
 
@@ -37,6 +37,7 @@ import {
   useDeleteDictType,
   useUpdateDictType,
 } from "~/features/dicts/dicts.use-mutations";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { MONO_CELL } from "~/lib/classes";
 import { placeholders } from "~/lib/copy";
 import { normalizeDateRange } from "~/lib/date-range";
@@ -62,7 +63,7 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 export const Route = createFileRoute("/admin/dicts")({
-  component: AdminDictsPage,
+  component: AdminDictsRoute,
 });
 
 function formatDateTime(iso: string): string {
@@ -70,6 +71,11 @@ function formatDateTime(iso: string): string {
   if (Number.isNaN(d.getTime())) return "--";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function AdminDictsRoute() {
+  const { pathname } = useLocation();
+  return pathname.replace(/\/$/, "") === "/admin/dicts" ? <AdminDictsPage /> : <Outlet />;
 }
 
 function AdminDictsPage() {
@@ -88,50 +94,38 @@ function AdminDictsPage() {
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
+  const permissions = useResourcePermissions("dicts");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
   const query = dictTypeListQuerySchema.parse(buildListQuery(filters, page, pageSize));
-  const list = useDictTypesList(query);
+  const list = useDictTypesList(query, canRead);
   const createMut = useCreateDictType();
   const updateMut = useUpdateDictType();
   const deleteMut = useDeleteDictType();
   const bulkDeleteMut = useBulkDeleteDictTypes();
 
-  const items = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const items = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const resetPageOnFilterChange = React.useCallback(() => {
-    setPage(1);
-  }, []);
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
   }, [page, totalPages, total]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
-  React.useEffect(() => {
-    resetPageOnFilterChange();
-  }, [
-    draft.name,
-    draft.code,
-    draft.description,
-    draft.status,
-    draft.createdFrom,
-    draft.createdTo,
-    resetPageOnFilterChange,
-  ]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
+    setFilters({ ...draft });
+    setPage(1);
+    setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
+    setSelectedKeys([]);
   }, []);
 
   const handleStartEdit = (row: DictTypeListItemDto) => {
@@ -299,6 +293,7 @@ function AdminDictsPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
+              disabled={!canUpdate}
               onClick={(e) => {
                 e.stopPropagation();
                 handleStartEdit(row);
@@ -316,7 +311,7 @@ function AdminDictsPage() {
                   e.stopPropagation();
                   void handleToggleStatus(row);
                 }}
-                disabled={updateMut.isPending}
+                disabled={!canUpdate || updateMut.isPending}
               >
                 启用
               </Button>
@@ -405,7 +400,7 @@ function AdminDictsPage() {
                 >
                   <DropdownMenuItem
                     variant="destructive"
-                    disabled={deleteMut.isPending}
+                    disabled={!canDelete || deleteMut.isPending}
                     onSelect={(e) => {
                       e.preventDefault();
                       setMoreMenuRowId(null);
@@ -424,7 +419,7 @@ function AdminDictsPage() {
   ];
 
   const handleEditSubmit = async () => {
-    if (!editing) return;
+    if (!editing || !canUpdate) return;
     await updateMut.mutateAsync({
       id: editing.id,
       name: editForm.name,
@@ -435,6 +430,7 @@ function AdminDictsPage() {
   };
 
   const handleCreateSubmit = async () => {
+    if (!canCreate) return;
     await createMut.mutateAsync({
       name: createForm.name,
       code: createForm.code,
@@ -520,7 +516,7 @@ function AdminDictsPage() {
         toolbarTitle="字典类型"
         toolbarActions={
           <>
-            {selectedKeys.length > 0 ? (
+            {canDelete && selectedKeys.length > 0 ? (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -543,7 +539,7 @@ function AdminDictsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkDeleteMut.isPending}
+                  disabled={!canDelete || bulkDeleteMut.isPending}
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
@@ -551,7 +547,7 @@ function AdminDictsPage() {
                 </Button>
               </Popconfirm>
             ) : null}
-            <Button type="button" size="sm" onClick={handleOpenCreate}>
+            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
               <Plus className="size-3.5" aria-hidden />
               新建字典类型
             </Button>
@@ -564,22 +560,31 @@ function AdminDictsPage() {
           page,
           pageSize,
           total,
-          onPageChange: setPage,
+          onPageChange: (next) => {
+            setPage(next);
+            setSelectedKeys([]);
+          },
           onPageSizeChange: (size) => {
             setPageSize(size);
             setPage(1);
+            setSelectedKeys([]);
           },
-          loading: list.isFetching,
-          emptyTitle: "暂无字典类型",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
+          loading: permissions.isPending || list.isFetching,
+          emptyDescription: permissions.error ?? (list.isError ? list.error.message : undefined),
+          emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无字典类型",
+          error:
+            permissions.error ??
+            (list.isError
+              ? list.error instanceof Error
+                ? list.error.message
+                : "加载失败"
+              : undefined),
+          rowSelection: canDelete
+            ? {
+                selectedKeys,
+                onChange: setSelectedKeys,
+              }
             : undefined,
-          rowSelection: {
-            selectedKeys,
-            onChange: setSelectedKeys,
-          },
         }}
       />
 
@@ -668,11 +673,12 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     start: filters.createdFrom || null,
     end: filters.createdTo || null,
   });
-  const keyword = [name, code, description].filter(Boolean).join(" ") || undefined;
   return {
     page,
     pageSize,
-    keyword,
+    name,
+    code,
+    description,
     status,
     createdFrom,
     createdTo,

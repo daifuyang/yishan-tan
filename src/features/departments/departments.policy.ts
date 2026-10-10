@@ -1,9 +1,10 @@
-import { isSystemAdmin } from "~/lib/authorization.server";
-import { Errors } from "~/lib/errors";
+import { assertPermissionService } from "~/features/permissions/permissions.service";
+import type { PermissionCode } from "~/lib/permission-catalog";
 import type { ServiceContext } from "~/lib/service-context";
 
-export async function assertCanManageDepartments(ctx: ServiceContext): Promise<void> {
-  if (!isSystemAdmin(ctx)) {
-    throw Errors.forbidden("仅超级管理员可管理部门");
-  }
+export async function assertDepartmentOperation(
+  ctx: ServiceContext,
+  code: Extract<PermissionCode, `departments:${string}`>,
+): Promise<void> {
+  await assertPermissionService(ctx, code);
 }

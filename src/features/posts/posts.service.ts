@@ -191,3 +191,15 @@ export const deletePostService: DeletePostService = async (id) => {
   await db.update(schema.post).set({ deletedAt: new Date() }).where(eq(schema.post.id, id));
   return { ok: true };
 };
+
+export async function getPostDepartmentOptionsService() {
+  return getDb()
+    .select({
+      id: schema.department.id,
+      name: schema.department.name,
+      status: schema.department.status,
+    })
+    .from(schema.department)
+    .where(isNull(schema.department.deletedAt))
+    .orderBy(asc(schema.department.sort), asc(schema.department.id));
+}

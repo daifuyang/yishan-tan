@@ -21,7 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDepartmentTree } from "~/features/departments/departments.queries";
+import {
+  useDepartmentFormOptions,
+  useDepartmentTree,
+} from "~/features/departments/departments.queries";
 import type { DepartmentDto, DepartmentNode } from "~/features/departments/departments.types";
 import {
   useBulkDeleteDepartments,
@@ -30,7 +33,7 @@ import {
   useExportDepartments,
   useUpdateDepartment,
 } from "~/features/departments/departments.use-mutations";
-import { useUsersList } from "~/features/users/users.queries";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { downloadCsv } from "~/lib/download-csv";
 
 type StatusFilter = "all" | "enabled" | "disabled";
@@ -163,16 +166,21 @@ function AdminDepartmentsPage() {
   // 记录用户手动折叠过的节点 id，避免后续 refetch/过滤切换时被自动展开覆盖
   const userCollapsedIds = React.useRef<Set<string>>(new Set());
 
-  const treeQuery = useDepartmentTree();
-  const tree = treeQuery.data ?? [];
-  const usersListQuery = useUsersList({ page: 1, pageSize: 200, status: "enabled" });
+  const permissions = useResourcePermissions("departments");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
+  const treeQuery = useDepartmentTree(canRead);
+  const tree = canRead ? (treeQuery.data ?? []) : [];
+  const formOptions = useDepartmentFormOptions(
+    creating ? "create" : "update",
+    canRead && (creating ? canCreate : editing !== null && canUpdate),
+  );
   const leaderOptions = React.useMemo(
     () =>
-      (usersListQuery.data?.items ?? []).map((u) => ({
+      (formOptions.data?.leaders ?? []).map((u) => ({
         value: u.id,
         label: u.displayName || u.username,
       })),
-    [usersListQuery.data],
+    [formOptions.data],
   );
 
   const createMut = useCreateDepartment();
@@ -218,10 +226,13 @@ function AdminDepartmentsPage() {
     setDraft(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
     setPage(1);
+    setSelectedKeys([]);
   }, []);
 
   const handleFilterSubmit = React.useCallback(() => {
-    setFilters(draft);
+    setFilters({ ...draft });
+    setPage(1);
+    setSelectedKeys([]);
   }, [draft]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅作为 filter 变化的触发器
@@ -314,7 +325,7 @@ function AdminDepartmentsPage() {
   }, [exportMut, filters.name, filters.status]);
 
   const handleEditSubmit = async () => {
-    if (!editing) return;
+    if (!editing || !canUpdate) return;
     await updateMut.mutateAsync({
       id: editing.id,
       name: editForm.name,
@@ -327,6 +338,7 @@ function AdminDepartmentsPage() {
   };
 
   const handleCreateSubmit = async () => {
+    if (!canCreate) return;
     await createMut.mutateAsync({
       name: createForm.name,
       parentId: createForm.parentId,
@@ -469,6 +481,7 @@ function AdminDepartmentsPage() {
             variant="link"
             size="sm"
             className={TABLE_ACTION_CLASS}
+            disabled={!canUpdate}
             onClick={(e) => {
               e.stopPropagation();
               handleStartEdit(row);
@@ -513,7 +526,7 @@ function AdminDepartmentsPage() {
                 e.stopPropagation();
                 setPopconfirmRowId(row.id);
               }}
-              disabled={deleteMut.isPending}
+              disabled={!canDelete || deleteMut.isPending}
             >
               删除
             </Button>
@@ -566,7 +579,7 @@ function AdminDepartmentsPage() {
         toolbarTitle="部门树"
         toolbarActions={
           <>
-            {selectedKeys.length > 0 ? (
+            {canDelete && selectedKeys.length > 0 ? (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -589,7 +602,7 @@ function AdminDepartmentsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkDeleteMut.isPending}
+                  disabled={!canDelete || bulkDeleteMut.isPending}
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
@@ -601,13 +614,18 @@ function AdminDepartmentsPage() {
               type="button"
               variant="outline"
               size="sm"
-              disabled={exportMut.isPending}
+              disabled={!permissions.canExport || exportMut.isPending}
               onClick={() => void handleExport()}
             >
               <Download className="size-3.5" aria-hidden />
               {exportMut.isPending ? "导出中…" : "导出"}
             </Button>
-            <Button type="button" size="sm" onClick={() => handleOpenCreate(null)}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!canCreate}
+              onClick={() => handleOpenCreate(null)}
+            >
               <Plus className="size-3.5" aria-hidden />
               新建
             </Button>
@@ -615,32 +633,43 @@ function AdminDepartmentsPage() {
         }
         tableProps={{
           columns: columns as ResourceColumn<FlatDepartmentRow>[],
-          data: flatRows,
+          data: flatRows.slice((page - 1) * pageSize, page * pageSize),
           rowKey: (row) => row.id,
           page,
           pageSize,
           total,
-          onPageChange: setPage,
+          onPageChange: (next) => {
+            setPage(next);
+            setSelectedKeys([]);
+          },
           onPageSizeChange: (size) => {
             setPageSize(size);
             setPage(1);
+            setSelectedKeys([]);
           },
-          loading: treeQuery.isFetching,
+          loading: permissions.isPending || treeQuery.isFetching,
           // 区分两种 empty：①真空（无任何部门）→ 大图标 + 新建引导；②过滤空（有数据但被过滤掉）→ dashed 横幅 + 清空筛选
-          emptyTitle: treeQuery.isError
-            ? "加载失败"
-            : tree.length === 0
-              ? "暂无部门"
-              : "未找到匹配的部门",
-          error: treeQuery.isError
-            ? treeQuery.error instanceof Error
-              ? treeQuery.error.message
-              : "加载失败"
+          emptyDescription:
+            permissions.error ?? (treeQuery.isError ? treeQuery.error.message : undefined),
+          emptyTitle:
+            permissions.error || treeQuery.isError
+              ? "加载失败"
+              : tree.length === 0
+                ? "暂无部门"
+                : "未找到匹配的部门",
+          error:
+            permissions.error ??
+            (treeQuery.isError
+              ? treeQuery.error instanceof Error
+                ? treeQuery.error.message
+                : "加载失败"
+              : undefined),
+          rowSelection: canDelete
+            ? {
+                selectedKeys,
+                onChange: setSelectedKeys,
+              }
             : undefined,
-          rowSelection: {
-            selectedKeys,
-            onChange: setSelectedKeys,
-          },
         }}
       />
 
@@ -656,11 +685,13 @@ function AdminDepartmentsPage() {
         submitLabel="保存"
         loading={updateMut.isPending}
         errorMessage={
-          updateMut.isError
-            ? updateMut.error instanceof Error
-              ? updateMut.error.message
-              : "保存失败"
-            : undefined
+          formOptions.isError
+            ? "无法加载负责人选项，请重试"
+            : updateMut.isError
+              ? updateMut.error instanceof Error
+                ? updateMut.error.message
+                : "保存失败"
+              : undefined
         }
         onSubmit={handleEditSubmit}
       >
@@ -688,11 +719,13 @@ function AdminDepartmentsPage() {
         submitLabel="创建"
         loading={createMut.isPending}
         errorMessage={
-          createMut.isError
-            ? createMut.error instanceof Error
-              ? createMut.error.message
-              : "创建失败"
-            : undefined
+          formOptions.isError
+            ? "无法加载负责人选项，请重试"
+            : createMut.isError
+              ? createMut.error instanceof Error
+                ? createMut.error.message
+                : "创建失败"
+              : undefined
         }
         onSubmit={handleCreateSubmit}
       >

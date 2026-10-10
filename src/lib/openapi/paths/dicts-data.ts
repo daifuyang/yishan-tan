@@ -1,5 +1,5 @@
 /**
- * /api/v1/dicts-data —— 字典条目（admin）。
+ * /api/v1/dicts-data —— 字典条目（操作权限）。
  */
 import { z } from "zod";
 import {
@@ -17,7 +17,7 @@ registry.registerPath({
   method: "get",
   path: "/api/v1/dicts-data",
   operationId: "listDictData",
-  summary: "分页列出字典条目（admin）",
+  summary: "分页列出字典条目（dicts:read）",
   tags: ["dicts-data"],
   request: { query: dictDataListQuerySchema },
   responses: {
@@ -37,7 +37,7 @@ registry.registerPath({
   method: "post",
   path: "/api/v1/dicts-data",
   operationId: "createDictData",
-  summary: "创建字典条目（admin）。typeCode 必须已存在",
+  summary: "创建字典条目。typeCode 必须已存在（dicts:create）",
   tags: ["dicts-data"],
   request: { body: { content: { "application/json": { schema: createDictDataSchema } } } },
   responses: {
@@ -53,7 +53,7 @@ registry.registerPath({
   method: "get",
   path: "/api/v1/dicts-data/{id}",
   operationId: "getDictData",
-  summary: "字典条目详情（admin）",
+  summary: "字典条目详情（dicts:read）",
   tags: ["dicts-data"],
   request: { params: idParamSchema },
   responses: {
@@ -69,7 +69,7 @@ registry.registerPath({
   method: "patch",
   path: "/api/v1/dicts-data/{id}",
   operationId: "updateDictData",
-  summary: "更新字典条目（admin）",
+  summary: "更新字典条目（dicts:update）",
   tags: ["dicts-data"],
   request: {
     params: idParamSchema,
@@ -88,7 +88,7 @@ registry.registerPath({
   method: "delete",
   path: "/api/v1/dicts-data/{id}",
   operationId: "deleteDictData",
-  summary: "删除字典条目（admin）",
+  summary: "删除字典条目（dicts:delete）",
   tags: ["dicts-data"],
   request: { params: idParamSchema },
   responses: {

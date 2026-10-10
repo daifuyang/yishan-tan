@@ -6,6 +6,19 @@ export const PERMISSION_CATALOG = [
   { code: "users:reset-password", label: "重置密码" },
   { code: "users:export", label: "导出用户" },
   { code: "users:assign-roles", label: "分配业务角色" },
+  { code: "departments:read", label: "查看部门" },
+  { code: "departments:create", label: "新增部门" },
+  { code: "departments:update", label: "编辑部门与启停" },
+  { code: "departments:delete", label: "删除部门" },
+  { code: "departments:export", label: "导出部门" },
+  { code: "posts:read", label: "查看岗位" },
+  { code: "posts:create", label: "新增岗位" },
+  { code: "posts:update", label: "编辑岗位与启停" },
+  { code: "posts:delete", label: "删除岗位" },
+  { code: "dicts:read", label: "查看字典类型与数据" },
+  { code: "dicts:create", label: "新增字典类型与数据" },
+  { code: "dicts:update", label: "编辑字典与启停" },
+  { code: "dicts:delete", label: "删除字典类型与数据" },
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CATALOG)[number]["code"];

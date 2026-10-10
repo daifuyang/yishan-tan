@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { assertDepartmentOperation } from "~/features/departments/departments.policy";
 import {
   createDepartmentSchema,
   departmentListQuerySchema,
@@ -9,8 +10,9 @@ import {
   getDepartmentTreeService,
   listDepartmentsService,
 } from "~/features/departments/departments.service";
-import { ensureAdmin, parseJsonBody, parseQuery } from "~/server/handlers";
+import { parseJsonBody, parseQuery } from "~/server/handlers";
 import { handleApiError, ok, page } from "~/server/http";
+import { requireRequestContext } from "~/server/request-context";
 
 const treeQuerySchema = z.object({ tree: z.literal("1").optional() });
 
@@ -19,7 +21,7 @@ export const Route = createFileRoute("/api/v1/departments")({
     handlers: {
       GET: async ({ request }) => {
         try {
-          await ensureAdmin(request);
+          await assertDepartmentOperation(await requireRequestContext(request), "departments:read");
           const url = new URL(request.url);
           const wantsTree = url.searchParams.get("tree") === "1";
           treeQuerySchema.parse({ tree: url.searchParams.get("tree") ?? undefined });
@@ -36,7 +38,10 @@ export const Route = createFileRoute("/api/v1/departments")({
       },
       POST: async ({ request }) => {
         try {
-          await ensureAdmin(request);
+          await assertDepartmentOperation(
+            await requireRequestContext(request),
+            "departments:create",
+          );
           const body = await parseJsonBody(request, createDepartmentSchema);
           const result = await createDepartmentService(body);
           return ok(result, { status: 201 });

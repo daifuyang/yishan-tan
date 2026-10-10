@@ -319,3 +319,16 @@ export const deleteDepartmentService: DeleteDepartmentService = async (id) => {
     .where(eq(schema.department.id, id));
   return { ok: true };
 };
+
+export async function getDepartmentFormOptionsService() {
+  const leaders = await getDb()
+    .select({
+      id: schema.user.id,
+      username: schema.user.username,
+      displayName: schema.user.displayName,
+    })
+    .from(schema.user)
+    .where(isNull(schema.user.deletedAt))
+    .orderBy(asc(schema.user.username), asc(schema.user.id));
+  return { leaders };
+}
