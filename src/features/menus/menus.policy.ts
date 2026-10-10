@@ -1,9 +1,17 @@
-import { isSystemAdmin } from "~/lib/authorization.server";
-import { Errors } from "~/lib/errors";
+import {
+  assertAssignablePermissionCodesService,
+  assertPermissionService,
+} from "~/features/permissions/permissions.service";
+import type { PermissionCode } from "~/lib/permission-catalog";
 import type { ServiceContext } from "~/lib/service-context";
 
-export async function assertCanManageMenus(ctx: ServiceContext): Promise<void> {
-  if (!isSystemAdmin(ctx)) {
-    throw Errors.forbidden("仅超级管理员可管理菜单");
+export async function assertMenuOperation(
+  ctx: ServiceContext,
+  code: Extract<PermissionCode, `menus:${string}`>,
+  permissionCodes?: PermissionCode[],
+): Promise<void> {
+  await assertPermissionService(ctx, code);
+  if (permissionCodes !== undefined) {
+    await assertAssignablePermissionCodesService(ctx, permissionCodes);
   }
 }

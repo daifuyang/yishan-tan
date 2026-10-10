@@ -1,35 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 
-const ADMIN_ID = "123e4567-e89b-12d3-a456-426614174aaa";
-const TARGET_ID = "123e4567-e89b-12d3-a456-426614174001";
-
-vi.mock("~/lib/authorization.server", () => ({
-  SYSTEM_ADMIN_IDS: [ADMIN_ID],
-  isSystemAdmin: vi.fn((ctx: { userId: string }) => ctx.userId === ADMIN_ID),
-  requireAdmin: vi.fn(),
-  requireSelfOrAdmin: vi.fn(),
+vi.mock("~/features/permissions/permissions.service", () => ({
+  assertPermissionService: vi.fn(),
+  assertAssignablePermissionCodesService: vi.fn(),
 }));
 
-const { assertCanManageMenus } = await import("~/features/menus/menus.policy");
+const { assertMenuOperation } = await import("~/features/menus/menus.policy");
 
 describe("menus.policy", () => {
-  describe("assertCanManageMenus", () => {
-    it("passes for system admin", async () => {
+  describe("assertMenuOperation", () => {
+    it("passes for a granted operation", async () => {
       const ctx = {
-        userId: ADMIN_ID,
+        userId: "123e4567-e89b-12d3-a456-426614174aaa",
         headers: new Headers(),
         authKind: "session" as const,
       };
-      await expect(assertCanManageMenus(ctx)).resolves.toBeUndefined();
+      await expect(assertMenuOperation(ctx, "menus:read")).resolves.toBeUndefined();
     });
 
-    it("throws forbidden for non-admin", async () => {
+    it("validates permission assignments", async () => {
       const ctx = {
-        userId: TARGET_ID,
+        userId: "123e4567-e89b-12d3-a456-426614174001",
         headers: new Headers(),
         authKind: "session" as const,
       };
-      await expect(assertCanManageMenus(ctx)).rejects.toThrow();
+      await expect(
+        assertMenuOperation(ctx, "menus:update", ["users:read"]),
+      ).resolves.toBeUndefined();
     });
   });
 });

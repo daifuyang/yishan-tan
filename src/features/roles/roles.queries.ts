@@ -15,17 +15,18 @@ export const rolesQueryKey = {
   assignableMenus: () => [...rolesQueryKey.all, "assignable-menus"] as const,
 };
 
-export const rolesListQueryOptions = (input: RoleListQuery) =>
+export const rolesListQueryOptions = (input: RoleListQuery, enabled = true) =>
   queryOptions<{ items: RoleListItemDto[]; total: number }>({
     queryKey: rolesQueryKey.list(input),
     queryFn: async () => listRoles({ data: input }),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
+    enabled,
   });
 
-export function useRolesList(input: RoleListQuery) {
-  return useQuery(rolesListQueryOptions(input));
+export function useRolesList(input: RoleListQuery, enabled = true) {
+  return useQuery(rolesListQueryOptions(input, enabled));
 }
 
 export const rolesDetailQueryOptions = (id: string) =>
@@ -49,15 +50,16 @@ export function useRoleDetail(id: string | null | undefined) {
  * 仅启用中、可分配给角色的菜单。
  * 通过菜单树接口拿整树（含 group/menu/action），由 MenuTree 自行渲染与筛选。
  */
-const assignableMenuTreeQueryOptions = () =>
+const assignableMenuTreeQueryOptions = (enabled = true) =>
   queryOptions<MenuNode[]>({
     queryKey: rolesQueryKey.assignableMenus(),
     queryFn: async () => getMenuTree(),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
+    enabled,
   });
 
-export function useAssignableMenus() {
-  return useQuery(assignableMenuTreeQueryOptions());
+export function useAssignableMenus(enabled = true) {
+  return useQuery(assignableMenuTreeQueryOptions(enabled));
 }

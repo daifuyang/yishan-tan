@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { assertRoleOperation } from "~/features/roles/roles.policy";
 import { updateRoleSchema } from "~/features/roles/roles.schema";
 import {
   deleteRoleService,
   getRoleService,
   updateRoleService,
 } from "~/features/roles/roles.service";
-import { requireAdmin } from "~/lib/authorization.server";
 import { Errors } from "~/lib/errors";
-import { ensureAdmin, parseJsonBody, parseParams } from "~/server/handlers";
+import { parseJsonBody, parseParams } from "~/server/handlers";
 import { handleApiError, ok } from "~/server/http";
 import { requireRequestContext } from "~/server/request-context";
 
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/v1/roles/$id")({
     handlers: {
       GET: async ({ request, params }) => {
         try {
-          await ensureAdmin(request);
+          await assertRoleOperation(await requireRequestContext(request), "roles:read");
           const { id } = parseParams(idParamSchema, params);
           const role = await getRoleService({ id });
           if (!role) throw Errors.notFound("角色不存在");
@@ -31,9 +31,9 @@ export const Route = createFileRoute("/api/v1/roles/$id")({
       PATCH: async ({ request, params }) => {
         try {
           const ctx = await requireRequestContext(request);
-          await requireAdmin(ctx);
           const { id } = parseParams(idParamSchema, params);
           const body = await parseJsonBody(request, updateRoleSchema);
+          await assertRoleOperation(ctx, "roles:update", body.permissionCodes);
           const role = await updateRoleService({ ctx, id, data: body });
           return ok(role);
         } catch (error) {
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/api/v1/roles/$id")({
       },
       DELETE: async ({ request, params }) => {
         try {
-          await ensureAdmin(request);
+          await assertRoleOperation(await requireRequestContext(request), "roles:delete");
           const { id } = parseParams(idParamSchema, params);
           await deleteRoleService({ id });
           return ok({ ok: true });

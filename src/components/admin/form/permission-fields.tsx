@@ -10,7 +10,7 @@ export function PermissionFields({
   const id = useId();
   return (
     <fieldset className="space-y-2 rounded-md border border-line p-3">
-      <legend className="px-1 text-body text-text-strong">用户管理操作权限</legend>
+      <legend className="px-1 text-body text-text-strong">操作权限</legend>
       <p className="text-caption text-text-mute">{description}</p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {PERMISSION_CATALOG.map((permission) => (

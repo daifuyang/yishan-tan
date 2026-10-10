@@ -50,13 +50,19 @@ const {
 const { createRoleService, updateRoleService, getRoleService } = await import(
   "~/features/roles/roles.service"
 );
+const roleActions = await import("~/features/roles/roles.actions");
 const { createMenuService, updateMenuService, getMenuTreeService, getAuthorizedMenuPathsService } =
   await import("~/features/menus/menus.service");
+const menuActions = await import("~/features/menus/menus.actions");
 const { assertUserOperation } = await import("~/features/users/users.policy");
 const userActions = await import("~/features/users/users.actions");
 const authActions = await import("~/features/auth/auth.actions");
 const { Route: listRoute } = await import("~/routes/api/v1/users/index");
 const { Route: detailRoute } = await import("~/routes/api/v1/users/$id");
+const { Route: roleListRoute } = await import("~/routes/api/v1/roles/index");
+const { Route: roleDetailRoute } = await import("~/routes/api/v1/roles/$id");
+const { Route: menuRoute } = await import("~/routes/api/v1/menus");
+const { Route: menuDetailRoute } = await import("~/routes/api/v1/menus/$id");
 const createRoute = listRoute;
 type TestRoute = {
   options: {
@@ -162,6 +168,62 @@ describe("permissions on isolated PostgreSQL", () => {
         data: { username: "newuser", email: "new@example.test", password: "LongPassword1" },
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("enforces role and menu operation permissions through both entries", async () => {
+    const input = {
+      request: new Request("http://localhost/api/v1/roles"),
+      params: { id: roleId },
+    };
+    expect((await handlers(roleListRoute).GET(input)).status).toBe(403);
+    expect(
+      (
+        await handlers(menuRoute).GET({
+          ...input,
+          request: new Request("http://localhost/api/v1/menus?tree=1"),
+        })
+      ).status,
+    ).toBe(403);
+    await expect(roleActions.listRoles({ data: { page: 1, pageSize: 20 } })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(menuActions.getMenuTree()).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await db.insert(schema.rolePermission).values([
+      { roleId, permissionCode: "roles:read" },
+      { roleId, permissionCode: "roles:create" },
+      { roleId, permissionCode: "roles:update" },
+      { roleId, permissionCode: "roles:delete" },
+      { roleId, permissionCode: "menus:read" },
+      { roleId, permissionCode: "menus:create" },
+      { roleId, permissionCode: "menus:update" },
+      { roleId, permissionCode: "menus:delete" },
+    ]);
+
+    const role = await roleActions.createRole({
+      data: { name: "Delegated role", permissionCodes: ["users:read"] },
+    });
+    expect(role.name).toBe("Delegated role");
+    await expect(
+      roleActions.updateRole({ data: { id: role.id, permissionCodes: ["users:delete"] } }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await roleActions.updateRole({ data: { id: role.id, description: "Updated" } });
+
+    const roleResponse = await handlers(roleListRoute).GET(input);
+    expect(roleResponse.status).toBe(200);
+    const menu = await menuActions.createMenu({ data: { name: "Delegated menu", type: "group" } });
+    expect(menu.name).toBe("Delegated menu");
+    await menuActions.updateMenu({ data: { id: menu.id, name: "Updated menu" } });
+    const menuResponse = await handlers(menuDetailRoute).DELETE({
+      request: new Request(`http://localhost/api/v1/menus/${menu.id}`),
+      params: { id: menu.id },
+    });
+    expect(menuResponse.status).toBe(200);
+    const roleDeleteResponse = await handlers(roleDetailRoute).DELETE({
+      request: new Request(`http://localhost/api/v1/roles/${role.id}`),
+      params: { id: role.id },
+    });
+    expect(roleDeleteResponse.status).toBe(200);
   });
   it("allows delegated updates through both entries and rejects role edits without permission", async () => {
     await db.insert(schema.rolePermission).values({ roleId, permissionCode: "users:update" });

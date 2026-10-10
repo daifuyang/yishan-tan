@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { getRole } from "~/features/roles/roles.actions";
 import { useAssignableMenus, useRolesList } from "~/features/roles/roles.queries";
 import { type DataScope, roleListQuerySchema } from "~/features/roles/roles.schema";
@@ -95,6 +96,9 @@ function formatDateTime(iso: string): string {
 }
 
 function AdminRolesPage() {
+  const permissions = useResourcePermissions("roles");
+  const menuPermissions = useResourcePermissions("menus");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
   const [detailError, setDetailError] = React.useState<string | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
@@ -112,20 +116,20 @@ function AdminRolesPage() {
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
   const query = buildListQuery(filters, page, pageSize);
-  const list = useRolesList(query);
+  const list = useRolesList(query, canRead);
   const createMut = useCreateRole();
   const updateMut = useUpdateRole();
   const deleteMut = useDeleteRole();
   const bulkDeleteMut = useBulkDeleteRoles();
-  const assignableMenusQuery = useAssignableMenus();
+  const assignableMenusQuery = useAssignableMenus(menuPermissions.canRead);
   const menuTree = assignableMenusQuery.data ?? [];
   const menuTreeOptions: MenuTreeNode[] = React.useMemo(
     () => toMenuTreeNodes(menuTree),
     [menuTree],
   );
 
-  const items = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
+  const items = canRead ? (list.data?.items ?? []) : [];
+  const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   React.useEffect(() => {
@@ -151,6 +155,7 @@ function AdminRolesPage() {
   }, []);
 
   const handleStartEdit = async (row: RoleListItemDto) => {
+    if (!canUpdate) return;
     setDetailLoading(true);
     setDetailError(null);
     try {
@@ -177,6 +182,7 @@ function AdminRolesPage() {
   };
 
   const handleOpenCreate = () => {
+    if (!canCreate) return;
     setCreateForm(EMPTY_CREATE_FORM);
     setCreating(true);
   };
@@ -193,6 +199,7 @@ function AdminRolesPage() {
 
   const handleToggleStatus = React.useCallback(
     async (row: RoleListItemDto) => {
+      if (!canUpdate) return false;
       const next = row.status === "enabled" ? "disabled" : "enabled";
       try {
         await updateMut.mutateAsync({ id: row.id, status: next });
@@ -202,7 +209,7 @@ function AdminRolesPage() {
         return false;
       }
     },
-    [updateMut],
+    [canUpdate, updateMut],
   );
 
   const handleDisableConfirm = React.useCallback(
@@ -219,6 +226,7 @@ function AdminRolesPage() {
 
   const handleDeleteConfirm = React.useCallback(
     async (row: RoleListItemDto) => {
+      if (!canDelete) return;
       try {
         await deleteMut.mutateAsync(row.id);
         setPopconfirmRowId(null);
@@ -226,10 +234,11 @@ function AdminRolesPage() {
         // 保留弹层让用户看到错误
       }
     },
-    [deleteMut],
+    [canDelete, deleteMut],
   );
 
   const handleBulkDelete = React.useCallback(async () => {
+    if (!canDelete) return;
     if (selectedKeys.length === 0) return;
     try {
       await bulkDeleteMut.mutateAsync(selectedKeys);
@@ -238,7 +247,7 @@ function AdminRolesPage() {
     } catch {
       // 错误由 useMutation 状态显示；保留弹层让用户看到错误
     }
-  }, [bulkDeleteMut, selectedKeys]);
+  }, [bulkDeleteMut, canDelete, selectedKeys]);
 
   const columns: ResourceColumn<RoleListItemDto>[] = [
     {
@@ -331,7 +340,7 @@ function AdminRolesPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
-              disabled={detailLoading}
+              disabled={!canUpdate || detailLoading}
               onClick={(e) => {
                 e.stopPropagation();
                 closeRowConfirms();
@@ -367,7 +376,7 @@ function AdminRolesPage() {
                   setDisablePopconfirmRowId(null);
                   setPopconfirmRowId(row.id);
                 }}
-                disabled={deleteMut.isPending}
+                disabled={!canDelete || deleteMut.isPending}
               >
                 删除
               </Button>
@@ -392,7 +401,7 @@ function AdminRolesPage() {
                     e.stopPropagation();
                     closeRowConfirms();
                   }}
-                  disabled={isSystem || updateMut.isPending}
+                  disabled={isSystem || !canUpdate || updateMut.isPending}
                 >
                   更多
                   <ChevronDown className="size-3.5" aria-hidden />
@@ -407,7 +416,7 @@ function AdminRolesPage() {
                         if (ok) setMoreMenuRowId(null);
                       });
                     }}
-                    disabled={isSystem}
+                    disabled={isSystem || !canUpdate}
                   >
                     启用
                   </DropdownMenuItem>
@@ -435,7 +444,7 @@ function AdminRolesPage() {
                         setPopconfirmRowId(null);
                         setDisablePopconfirmRowId(row.id);
                       }}
-                      disabled={isSystem}
+                      disabled={isSystem || !canUpdate}
                     >
                       禁用
                     </DropdownMenuItem>
@@ -541,7 +550,7 @@ function AdminRolesPage() {
         filterValues={draft}
         onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
-        filterLoading={list.isFetching}
+        filterLoading={permissions.isPending || list.isFetching}
         toolbarTitle="角色列表"
         toolbarActions={
           <>
@@ -568,7 +577,7 @@ function AdminRolesPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkDeleteMut.isPending}
+                  disabled={!canDelete || bulkDeleteMut.isPending}
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
@@ -576,7 +585,7 @@ function AdminRolesPage() {
                 </Button>
               </Popconfirm>
             ) : null}
-            <Button type="button" size="sm" onClick={handleOpenCreate}>
+            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
               <Plus className="size-3.5" aria-hidden />
               新建
             </Button>
@@ -594,13 +603,16 @@ function AdminRolesPage() {
             setPageSize(size);
             setPage(1);
           },
-          loading: list.isFetching,
-          emptyTitle: "暂无角色",
-          error: list.isError
-            ? list.error instanceof Error
-              ? list.error.message
-              : "加载失败"
-            : undefined,
+          loading: permissions.isPending || list.isFetching,
+          emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无角色",
+          emptyDescription:
+            permissions.error ??
+            (list.isError
+              ? list.error instanceof Error
+                ? list.error.message
+                : "加载失败"
+              : undefined),
+          error: undefined,
           rowSelection: {
             selectedKeys,
             onChange: setSelectedKeys,

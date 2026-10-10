@@ -19,6 +19,14 @@ export const PERMISSION_CATALOG = [
   { code: "dicts:create", label: "新增字典类型与数据" },
   { code: "dicts:update", label: "编辑字典与启停" },
   { code: "dicts:delete", label: "删除字典类型与数据" },
+  { code: "roles:read", label: "查看角色" },
+  { code: "roles:create", label: "新增角色" },
+  { code: "roles:update", label: "编辑角色与启停" },
+  { code: "roles:delete", label: "删除角色" },
+  { code: "menus:read", label: "查看菜单" },
+  { code: "menus:create", label: "新增菜单" },
+  { code: "menus:update", label: "编辑菜单与启停" },
+  { code: "menus:delete", label: "删除菜单" },
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CATALOG)[number]["code"];

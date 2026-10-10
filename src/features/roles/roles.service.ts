@@ -1,6 +1,7 @@
 import { type SQL, and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import * as schema from "~/../db/schema";
+import { isSystemAdmin } from "~/lib/authorization.server";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
 import { isPermissionCode } from "~/lib/permission-catalog";
@@ -210,6 +211,10 @@ export const updateRoleService: UpdateRoleService = async ({ ctx, id, data }) =>
     .limit(1);
   const existingRow = existing[0];
   if (!existingRow) throw Errors.notFound("角色不存在");
+
+  if (existingRow.isSystemDefault && !isSystemAdmin(ctx)) {
+    throw Errors.forbidden("系统默认角色仅超级管理员可修改");
+  }
 
   if (existingRow.isSystemDefault && data.status === "disabled") {
     throw Errors.invalid("系统默认角色不可禁用");

@@ -37,6 +37,7 @@ import {
   useDeleteMenu,
   useUpdateMenu,
 } from "~/features/menus/menus.use-mutations";
+import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { MONO_CELL } from "~/lib/classes";
 import { placeholders } from "~/lib/copy";
 import type { PermissionCode } from "~/lib/permission-catalog";
@@ -87,6 +88,8 @@ function menuTypeTone(type: MenuNode["type"]): "info" | "warning" | "neutral" {
 }
 
 function AdminMenusPage() {
+  const permissions = useResourcePermissions("menus");
+  const { canRead, canCreate, canUpdate, canDelete } = permissions;
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set());
@@ -102,13 +105,13 @@ function AdminMenusPage() {
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
-  const treeQuery = useMenuTree();
+  const treeQuery = useMenuTree(canRead);
   const createMut = useCreateMenu();
   const updateMut = useUpdateMenu();
   const deleteMut = useDeleteMenu();
   const bulkDeleteMut = useBulkDeleteMenus();
 
-  const tree = treeQuery.data ?? [];
+  const tree = canRead ? (treeQuery.data ?? []) : [];
 
   React.useEffect(() => {
     if (expanded.size > 0) return;
@@ -146,11 +149,13 @@ function AdminMenusPage() {
   };
 
   const handleStartCreateTop = () => {
+    if (!canCreate) return;
     setEditForm({ ...EMPTY_EDIT_FORM, type: "group", parentId: null });
     setEditing({ mode: "create", parentId: null, menu: null });
   };
 
   const handleStartCreateChild = (parent: MenuNode) => {
+    if (!canCreate) return;
     setEditForm({
       ...EMPTY_EDIT_FORM,
       type: "menu",
@@ -160,6 +165,7 @@ function AdminMenusPage() {
   };
 
   const handleStartEdit = (menu: MenuDto) => {
+    if (!canUpdate) return;
     setEditForm({
       parentId: menu.parentId,
       name: menu.name,
@@ -183,6 +189,7 @@ function AdminMenusPage() {
 
   const handleToggleStatus = React.useCallback(
     async (row: MenuRow) => {
+      if (!canUpdate) return;
       const next = row.node.status === "enabled" ? "disabled" : "enabled";
       try {
         await updateMut.mutateAsync({ id: row.node.id, status: next });
@@ -190,7 +197,7 @@ function AdminMenusPage() {
         // 错误提示由 useMutation errorMessage 暴露
       }
     },
-    [updateMut],
+    [canUpdate, updateMut],
   );
 
   const closeRowConfirms = React.useCallback(() => {
@@ -213,6 +220,7 @@ function AdminMenusPage() {
 
   const handleDeleteConfirm = React.useCallback(
     async (row: MenuRow) => {
+      if (!canDelete) return;
       try {
         await deleteMut.mutateAsync(row.node.id);
         setPopconfirmRowId(null);
@@ -220,10 +228,11 @@ function AdminMenusPage() {
         // 保留弹层让用户看到错误
       }
     },
-    [deleteMut],
+    [canDelete, deleteMut],
   );
 
   const handleBulkDelete = React.useCallback(async () => {
+    if (!canDelete) return;
     if (selectedKeys.length === 0) return;
     try {
       await bulkDeleteMut.mutateAsync(selectedKeys);
@@ -232,7 +241,7 @@ function AdminMenusPage() {
     } catch {
       // 错误由 useMutation 状态显示
     }
-  }, [bulkDeleteMut, selectedKeys]);
+  }, [bulkDeleteMut, canDelete, selectedKeys]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
@@ -411,6 +420,7 @@ function AdminMenusPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
+              disabled={!canUpdate}
               onClick={(e) => {
                 e.stopPropagation();
                 handleStartEdit(row.node);
@@ -428,7 +438,7 @@ function AdminMenusPage() {
                   e.stopPropagation();
                   void handleToggleStatus(row);
                 }}
-                disabled={updateMut.isPending}
+                disabled={!canUpdate || updateMut.isPending}
               >
                 启用
               </Button>
@@ -461,7 +471,7 @@ function AdminMenusPage() {
                     setMoreMenuRowId(null);
                     setDisablePopconfirmRowId(row.node.id);
                   }}
-                  disabled={updateMut.isPending}
+                  disabled={!canUpdate || updateMut.isPending}
                 >
                   禁用
                 </Button>
@@ -472,6 +482,7 @@ function AdminMenusPage() {
               variant="link"
               size="sm"
               className={TABLE_ACTION_CLASS}
+              disabled={!canCreate}
               onClick={(e) => {
                 e.stopPropagation();
                 handleStartCreateChild(row.node);
@@ -495,6 +506,7 @@ function AdminMenusPage() {
                   variant="link"
                   size="sm"
                   className={TABLE_ACTION_CLASS}
+                  disabled={!canDelete}
                   onClick={(e) => {
                     e.stopPropagation();
                     closeRowConfirms();
@@ -522,7 +534,7 @@ function AdminMenusPage() {
                 >
                   <DropdownMenuItem
                     variant="destructive"
-                    disabled={isProtected || deleteMut.isPending}
+                    disabled={isProtected || !canDelete || deleteMut.isPending}
                     onSelect={(e) => {
                       e.preventDefault();
                       setMoreMenuRowId(null);
@@ -607,7 +619,7 @@ function AdminMenusPage() {
         filterValues={draft}
         onFilterSubmit={handleFilterSubmit}
         onFilterReset={handleResetFilters}
-        filterLoading={treeQuery.isFetching}
+        filterLoading={permissions.isPending || treeQuery.isFetching}
         toolbarTitle="菜单列表"
         toolbarActions={
           <>
@@ -634,7 +646,7 @@ function AdminMenusPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkDeleteMut.isPending}
+                  disabled={!canDelete || bulkDeleteMut.isPending}
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
@@ -642,7 +654,7 @@ function AdminMenusPage() {
                 </Button>
               </Popconfirm>
             ) : null}
-            <Button type="button" size="sm" onClick={handleStartCreateTop}>
+            <Button type="button" size="sm" disabled={!canCreate} onClick={handleStartCreateTop}>
               <Plus className="size-3.5" aria-hidden />
               新建顶级菜单
             </Button>
@@ -657,13 +669,15 @@ function AdminMenusPage() {
           total: filteredRows.length,
           onPageChange: () => undefined,
           onPageSizeChange: () => undefined,
-          loading: treeQuery.isFetching,
-          emptyTitle: "暂无菜单",
-          error: treeQuery.isError
-            ? treeQuery.error instanceof Error
-              ? treeQuery.error.message
-              : "加载失败"
-            : undefined,
+          loading: permissions.isPending || treeQuery.isFetching,
+          emptyTitle: permissions.error || treeQuery.isError ? "无法加载列表" : "暂无菜单",
+          emptyDescription:
+            permissions.error ??
+            (treeQuery.isError
+              ? treeQuery.error instanceof Error
+                ? treeQuery.error.message
+                : "加载失败"
+              : undefined),
           rowSelection: {
             selectedKeys,
             onChange: setSelectedKeys,

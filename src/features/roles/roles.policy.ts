@@ -1,9 +1,17 @@
-import { isSystemAdmin } from "~/lib/authorization.server";
-import { Errors } from "~/lib/errors";
+import {
+  assertAssignablePermissionCodesService,
+  assertPermissionService,
+} from "~/features/permissions/permissions.service";
+import type { PermissionCode } from "~/lib/permission-catalog";
 import type { ServiceContext } from "~/lib/service-context";
 
-export async function assertCanManageRoles(ctx: ServiceContext): Promise<void> {
-  if (!isSystemAdmin(ctx)) {
-    throw Errors.forbidden("仅超级管理员可管理角色");
+export async function assertRoleOperation(
+  ctx: ServiceContext,
+  code: Extract<PermissionCode, `roles:${string}`>,
+  permissionCodes?: PermissionCode[],
+): Promise<void> {
+  await assertPermissionService(ctx, code);
+  if (permissionCodes !== undefined) {
+    await assertAssignablePermissionCodesService(ctx, permissionCodes);
   }
 }

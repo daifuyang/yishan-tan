@@ -18,30 +18,32 @@ export const menuQueryKey = {
   authorizedPaths: () => [...menuQueryKey.all, "authorized-paths"] as const,
 };
 
-export const menuTreeQueryOptions = () =>
+export const menuTreeQueryOptions = (enabled = true) =>
   queryOptions<MenuNode[]>({
     queryKey: menuQueryKey.tree(),
     queryFn: async () => getMenuTree(),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
+    enabled,
   });
 
-export function useMenuTree() {
-  return useQuery(menuTreeQueryOptions());
+export function useMenuTree(enabled = true) {
+  return useQuery(menuTreeQueryOptions(enabled));
 }
 
-export const menuListQueryOptions = (input: MenuListQuery) =>
+export const menuListQueryOptions = (input: MenuListQuery, enabled = true) =>
   queryOptions<{ items: MenuDto[]; total: number }>({
     queryKey: menuQueryKey.list(input),
     queryFn: async () => listMenus({ data: input }),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
+    enabled,
   });
 
-export function useMenusList(input: MenuListQuery) {
-  return useQuery(menuListQueryOptions(input));
+export function useMenusList(input: MenuListQuery, enabled = true) {
+  return useQuery(menuListQueryOptions(input, enabled));
 }
 
 export const authorizedMenuTreeQueryOptions = () =>

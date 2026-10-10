@@ -18,7 +18,9 @@ export function useUserFormOptions(enabled: boolean) {
   });
 }
 
-export function useResourcePermissions(resource: "departments" | "posts" | "dicts") {
+export type PermissionResource = "departments" | "posts" | "dicts" | "roles" | "menus";
+
+export function useResourcePermissions(resource: PermissionResource) {
   const query = useMyPermissions();
   const grants = query.data ?? [];
   const canRead = grants.includes(`${resource}:read`);

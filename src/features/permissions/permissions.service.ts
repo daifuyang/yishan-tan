@@ -37,6 +37,17 @@ export async function assertPermissionService(
     throw Errors.forbidden("没有该操作权限");
 }
 
+export async function assertAssignablePermissionCodesService(
+  ctx: ServiceContext,
+  permissionCodes: PermissionCode[],
+): Promise<void> {
+  if (isSystemAdmin(ctx) || permissionCodes.length === 0) return;
+  const allowed = new Set(await getUserPermissionsService(ctx));
+  if (permissionCodes.some((code) => !allowed.has(code))) {
+    throw Errors.forbidden("不能授予超出自身权限的操作权限");
+  }
+}
+
 export async function assertUserTargetService(ctx: ServiceContext, id: string): Promise<void> {
   const [target] = await getDb()
     .select({ id: schema.user.id, role: schema.user.role })
