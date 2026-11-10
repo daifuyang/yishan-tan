@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { sortOrderSchema } from "~/lib/list-sort";
+
 export const statusSchema = z.enum(["enabled", "disabled"]);
 
 export const createPostSchema = z.object({
@@ -25,8 +27,13 @@ export const postListQuerySchema = z.object({
   status: statusSchema.optional(),
   createdFrom: z.string().datetime().optional(),
   createdTo: z.string().datetime().optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按排序值升序。 */
+  sortBy: z.enum(["createdAt", "updatedAt", "name", "sort"]).optional(),
+  /** 排序方向；缺省升序。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type UpdatePostInput = z.infer<typeof updatePostSchema>;
 export type PostListQuery = z.infer<typeof postListQuerySchema>;
+export type PostSortBy = NonNullable<PostListQuery["sortBy"]>;

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { sortOrderSchema } from "~/lib/list-sort";
+
 export const attachmentCategorySchema = z.enum(["image", "video", "document", "audio", "other"]);
 
 export type AttachmentCategory = z.infer<typeof attachmentCategorySchema>;
@@ -16,9 +18,14 @@ export const attachmentListQuerySchema = z.object({
   storageId: z.string().uuid().optional(),
   createdFrom: z.string().trim().optional(),
   createdTo: z.string().trim().optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按创建时间倒序。 */
+  sortBy: z.enum(["createdAt", "updatedAt", "name", "size", "mime", "category"]).optional(),
+  /** 排序方向；缺省倒序。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export type AttachmentListQuery = z.infer<typeof attachmentListQuerySchema>;
+export type AttachmentSortBy = NonNullable<AttachmentListQuery["sortBy"]>;
 
 export const attachmentIdSchema = z.object({
   id: z.string().uuid(),

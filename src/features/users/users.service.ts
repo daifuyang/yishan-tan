@@ -1,11 +1,26 @@
 import { createHash, randomBytes } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
-import { type SQL, and, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import {
+  type AnyColumn,
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  or,
+  sql,
+} from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { auth } from "~/lib/auth.server";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
 import { assertNotSelfOrSystemAdmin } from "./users.policy";
+import type { UserSortBy } from "./users.schema";
 import type {
   AdminUserDto,
   ApiKeyDto,
@@ -21,6 +36,24 @@ import type {
   ResetUserPasswordService,
   UpdateUserService,
 } from "./users.types";
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const USER_SORT_COLUMNS: Record<UserSortBy, AnyColumn> = {
+  createdAt: schema.user.createdAt,
+  updatedAt: schema.user.updatedAt,
+  username: schema.user.username,
+  name: schema.user.name,
+};
+
+function userOrderBy(sortBy: UserSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const column = USER_SORT_COLUMNS[sortBy ?? "createdAt"] ?? USER_SORT_COLUMNS.createdAt;
+  return sortOrder === "asc" ? asc(column) : desc(column);
+}
 
 function toAdminUser(
   row: typeof schema.user.$inferSelect,
@@ -142,7 +175,7 @@ export const listUsersService: ListUsersService = async (input) => {
       .select()
       .from(schema.user)
       .where(and(...where))
-      .orderBy(desc(schema.user.createdAt))
+      .orderBy(userOrderBy(input.sortBy, input.sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb()
@@ -193,14 +226,17 @@ export const listUsersService: ListUsersService = async (input) => {
  * 返回 CSV 文本，前端用 Blob + a.download 触发下载。
  */
 export const exportUsersService = async (
-  input: Parameters<typeof buildUserListWhere>[0],
+  input: Parameters<typeof buildUserListWhere>[0] & {
+    sortBy?: UserSortBy;
+    sortOrder?: SortOrder;
+  },
 ): Promise<string> => {
   const where = await buildUserListWhere(input);
   const rows = await getDb()
     .select()
     .from(schema.user)
     .where(and(...where))
-    .orderBy(desc(schema.user.createdAt));
+    .orderBy(userOrderBy(input.sortBy, input.sortOrder));
   const ids = rows.map((r) => r.id);
   const lastLoginMap = await getLastLoginAtMap(ids);
   const headers = ["用户名", "姓名", "昵称", "邮箱", "手机号", "状态", "最后登录", "创建时间"];

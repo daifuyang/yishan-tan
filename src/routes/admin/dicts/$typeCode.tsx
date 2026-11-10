@@ -2,7 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -23,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDictDataList } from "~/features/dicts/dicts.queries";
-import { dictDataListQuerySchema } from "~/features/dicts/dicts.schema";
+import { type DictDataSortBy, dictDataListQuerySchema } from "~/features/dicts/dicts.schema";
 import type { DictDataDto } from "~/features/dicts/dicts.types";
 import {
   useBulkDeleteDictDatas,
@@ -68,10 +73,20 @@ function formatDateTime(iso: string): string {
 function AdminDictDataPage() {
   const navigate = useNavigate();
   const { typeCode } = Route.useParams();
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["label", "value", "extra", "status", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "sort", sortOrder: "asc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
   const [editing, setEditing] = React.useState<DictDataDto | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [editForm, setEditForm] = React.useState<EditDictDataFormValue>(EMPTY_DATA_FORM);
@@ -83,7 +98,12 @@ function AdminDictDataPage() {
 
   const permissions = useResourcePermissions("dicts");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
-  const query = dictDataListQuerySchema.parse(buildListQuery(typeCode, filters, page, pageSize));
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<DictDataSortBy>;
+  const onSortChange = listState.setSort;
+  const query = dictDataListQuerySchema.parse(
+    buildListQuery(typeCode, filters, page, pageSize, sort),
+  );
   const list = useDictDataList(query, canRead);
   const createMut = useCreateDictData();
   const updateMut = useUpdateDictData();
@@ -96,24 +116,22 @@ function AdminDictDataPage() {
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = React.useCallback(() => {
-    setFilters({ ...draft });
-    setPage(1);
+    listState.setFilters(draft);
     setSelectedKeys([]);
-  }, [draft]);
+  }, [draft, listState]);
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
+    listState.resetFilters();
     setSelectedKeys([]);
-  }, []);
+  }, [listState]);
 
   const handleBack = React.useCallback(() => {
     void navigate({ to: "/admin/dicts" });
@@ -183,29 +201,31 @@ function AdminDictDataPage() {
   const columns: ResourceColumn<DictDataDto>[] = [
     {
       key: "label",
+      sortKey: "label",
       header: "标签",
       width: "160px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-strong"
-          title={row.label}
-        >
+        <span className="text-[13px] text-text-strong" title={row.label}>
           {row.label}
         </span>
       ),
     },
     {
       key: "value",
+      sortKey: "value",
       header: "值",
       width: "160px",
+      ellipsis: true,
       cell: (row) => (
-        <code className="break-words whitespace-normal rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-text-soft">
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-text-soft">
           {row.value}
         </code>
       ),
     },
     {
       key: "sort",
+      sortKey: "sort",
       header: "排序",
       width: "70px",
       align: "center",
@@ -215,11 +235,9 @@ function AdminDictDataPage() {
       key: "extra",
       header: "描述",
       width: "240px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.extra ?? ""}
-        >
+        <span className="text-[13px] text-text-soft" title={row.extra ?? ""}>
           {row.extra ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -238,6 +256,7 @@ function AdminDictDataPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "170px",
       cell: (row) => (
@@ -444,7 +463,17 @@ function AdminDictDataPage() {
               <ArrowLeft className="size-3.5" aria-hidden />
               返回字典类型
             </Button>
-            {canDelete && selectedKeys.length > 0 ? (
+            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
+              <Plus className="size-3.5" aria-hidden />
+              新建字典数据
+            </Button>
+          </>
+        }
+        tableProps={{
+          settingsKey: `dicts-data-${typeCode}`,
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -471,33 +500,32 @@ function AdminDictDataPage() {
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  批量删除 ({selectedKeys.length})
+                  批量删除
                 </Button>
               </Popconfirm>
-            ) : null}
-            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
-              <Plus className="size-3.5" aria-hidden />
-              新建字典数据
-            </Button>
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<DictDataDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: (next) => {
-            setPage(next);
-            setSelectedKeys([]);
-          },
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-            setSelectedKeys([]);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              setSelectedKeys([]);
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyDescription: permissions.error ?? (list.isError ? list.error.message : undefined),
           emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无字典数据",
           error:
@@ -595,7 +623,13 @@ const EMPTY_DATA_FORM: CreateDictDataFormValue = {
   extra: "",
 };
 
-function buildListQuery(typeCode: string, filters: FilterState, page: number, pageSize: number) {
+function buildListQuery(
+  typeCode: string,
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<DictDataSortBy>,
+) {
   const trim = (v: string) => v.trim() || undefined;
   const label = trim(filters.label);
   const value = trim(filters.value);
@@ -615,6 +649,8 @@ function buildListQuery(typeCode: string, filters: FilterState, page: number, pa
     status,
     createdFrom,
     createdTo,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
   };
 }
 

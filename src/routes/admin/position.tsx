@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -29,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { usePostDepartmentOptions, usePostsList } from "~/features/posts/posts.queries";
-import { postListQuerySchema } from "~/features/posts/posts.schema";
+import { type PostSortBy, postListQuerySchema } from "~/features/posts/posts.schema";
 import type { PostDto } from "~/features/posts/posts.types";
 import {
   useBulkDeletePosts,
@@ -74,7 +79,7 @@ const EMPTY_EDIT_FORM: EditPostFormValue = {
   status: "enabled",
 };
 
-export const Route = createFileRoute("/admin/posts")({
+export const Route = createFileRoute("/admin/position")({
   component: AdminPostsPage,
 });
 
@@ -86,10 +91,24 @@ function formatDateTime(iso: string): string {
 }
 
 function AdminPostsPage() {
-  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["keyword", "departmentId", "sortMin", "status", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "sort", sortOrder: "asc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
+  // 筛选表单草稿：初值取自地址栏（刷新/分享链接后表单与列表一致）。
+  const [draft, setDraft] = React.useState<FilterState>(() => ({
+    ...DEFAULT_FILTERS,
+    ...listState.filters,
+  }));
 
   const [editing, setEditing] = React.useState<PostDto | null>(null);
   const [editForm, setEditForm] = React.useState<EditPostFormValue>(EMPTY_EDIT_FORM);
@@ -105,7 +124,10 @@ function AdminPostsPage() {
 
   const permissions = useResourcePermissions("posts");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
-  const list = usePostsListPage(filters, page, pageSize, canRead);
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。默认沿用列表原语义（排序值升序）。
+  const sort = listState.sort as ResourceSortState<PostSortBy>;
+  const onSortChange = listState.setSort;
+  const list = usePostsListPage(filters, page, pageSize, sort, canRead);
   const departments = usePostDepartmentOptions(canRead);
   const departmentItems = departments.data ?? [];
 
@@ -120,24 +142,22 @@ function AdminPostsPage() {
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters({ ...draft });
-    setPage(1);
+    listState.setFilters(draft);
     setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
+    listState.resetFilters();
     setSelectedKeys([]);
-  }, []);
+  }, [listState]);
 
   const handleStartEdit = (row: PostDto) => {
     setEditing(row);
@@ -232,32 +252,22 @@ function AdminPostsPage() {
   const columns: ResourceColumn<PostDto>[] = [
     {
       key: "name",
+      sortKey: "name",
       header: "名称",
       width: "180px",
-      cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-strong"
-          title={row.name}
-        >
-          {row.name}
-        </span>
-      ),
+      ellipsis: true,
+      cell: (row) => <span className="text-[13px] text-text-strong">{row.name}</span>,
     },
     {
       key: "departmentName",
       header: "部门",
       width: "200px",
-      cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.departmentName}
-        >
-          {row.departmentName}
-        </span>
-      ),
+      ellipsis: true,
+      cell: (row) => <span className="text-[13px] text-text-soft">{row.departmentName}</span>,
     },
     {
       key: "sort",
+      sortKey: "sort",
       header: "排序",
       width: "70px",
       align: "center",
@@ -284,6 +294,7 @@ function AdminPostsPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "170px",
       cell: (row) => (
@@ -548,8 +559,16 @@ function AdminPostsPage() {
         filterLoading={list.isFetching}
         toolbarTitle="岗位列表"
         toolbarActions={
-          <>
-            {canDelete && selectedKeys.length > 0 ? (
+          <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
+            <Plus className="size-3.5" aria-hidden />
+            新建岗位
+          </Button>
+        }
+        tableProps={{
+          settingsKey: "position",
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -576,33 +595,33 @@ function AdminPostsPage() {
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  批量删除 ({selectedKeys.length})
+                  批量删除
                 </Button>
               </Popconfirm>
-            ) : null}
-            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
-              <Plus className="size-3.5" aria-hidden />
-              新建岗位
-            </Button>
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<PostDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: (next) => {
-            setPage(next);
-            setSelectedKeys([]);
-          },
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-            setSelectedKeys([]);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage, nextPageSize) => {
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                setSelectedKeys([]);
+                return;
+              }
+              setPage(nextPage);
+              setSelectedKeys([]);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyDescription: permissions.error ?? (list.isError ? list.error.message : undefined),
           emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无岗位",
           error:
@@ -682,7 +701,12 @@ function AdminPostsPage() {
   );
 }
 
-function buildListQuery(filters: FilterState, page: number, pageSize: number) {
+function buildListQuery(
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<PostSortBy>,
+) {
   const trim = (v: string) => v.trim() || undefined;
   const sortMinNum = filters.sortMin.trim() === "" ? undefined : Number(filters.sortMin);
   const { createdFrom, createdTo } = normalizeDateRange({
@@ -698,13 +722,21 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     status: filters.status === "all" ? undefined : filters.status,
     createdFrom,
     createdTo,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
   });
 }
 
-function usePostsListPage(filters: FilterState, page: number, pageSize: number, enabled: boolean) {
+function usePostsListPage(
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<PostSortBy>,
+  enabled: boolean,
+) {
   const query = React.useMemo(
-    () => buildListQuery(filters, page, pageSize),
-    [filters, page, pageSize],
+    () => buildListQuery(filters, page, pageSize, sort),
+    [filters, page, pageSize, sort],
   );
   return usePostsList(query, enabled);
 }

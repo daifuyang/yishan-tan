@@ -3,7 +3,12 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireRequestContext } from "~/server/request-context";
 import { assertMenuOperation } from "./menus.policy";
-import { createMenuSchema, menuListQuerySchema, updateMenuSchema } from "./menus.schema";
+import {
+  createMenuSchema,
+  menuListQuerySchema,
+  menuTreeQuerySchema,
+  updateMenuSchema,
+} from "./menus.schema";
 import {
   createMenuService,
   deleteMenuService,
@@ -34,10 +39,12 @@ export const listMenus = createServerFn({ method: "GET" })
     return listMenusService(data);
   });
 
-export const getMenuTree = createServerFn({ method: "GET" }).handler(async () => {
-  await operationCtx("menus:read");
-  return getMenuTreeService();
-});
+export const getMenuTree = createServerFn({ method: "GET" })
+  .validator(menuTreeQuerySchema.default({}))
+  .handler(async ({ data }) => {
+    await operationCtx("menus:read");
+    return getMenuTreeService(data);
+  });
 
 export const getAuthorizedMenuTree = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await authedCtx();

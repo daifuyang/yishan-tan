@@ -9,7 +9,7 @@ import { requireRequestContext } from "~/server/request-context";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
 
-export const Route = createFileRoute("/api/v1/posts/$id")({
+export const Route = createFileRoute("/api/v1/position/$id")({
   server: {
     handlers: {
       PATCH: async ({ request, params }) => {

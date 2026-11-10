@@ -1,7 +1,9 @@
-import { type SQL, and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { type AnyColumn, type SQL, and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
+import type { PortalSortBy } from "./portals.schema";
 import type {
   CreatePortalService,
   DeletePortalService,
@@ -18,6 +20,32 @@ function normalizeOptionalString(value: string | null | undefined): string | nul
   if (value === undefined || value === null) return null;
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const PORTAL_SORT_COLUMNS: Record<PortalSortBy, AnyColumn> = {
+  name: schema.portal.name,
+  code: schema.portal.code,
+  domain: schema.portal.domain,
+  status: schema.portal.status,
+  isDefault: schema.portal.isDefault,
+  createdAt: schema.portal.createdAt,
+  updatedAt: schema.portal.updatedAt,
+};
+
+function portalOrderBy(sortBy: PortalSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const effectiveSortBy = sortBy ?? "isDefault";
+  const column = PORTAL_SORT_COLUMNS[effectiveSortBy] ?? PORTAL_SORT_COLUMNS.isDefault;
+  const primary = sortOrder === "asc" ? asc(column) : desc(column);
+  // 次级排序保持稳定：按默认门户排序时以名称升序兜底，其它列以默认门户优先。
+  const secondary =
+    effectiveSortBy === "isDefault" ? asc(schema.portal.name) : desc(schema.portal.isDefault);
+  return [primary, secondary];
 }
 
 export const __test__normalizeOptionalString = normalizeOptionalString;
@@ -78,6 +106,8 @@ export const listPortalsService: ListPortalsService = async ({
   status,
   createdFrom,
   createdTo,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [isNull(schema.portal.deletedAt)];
   if (typeof isDefault === "boolean") {
@@ -100,7 +130,7 @@ export const listPortalsService: ListPortalsService = async ({
       .select()
       .from(schema.portal)
       .where(and(...where))
-      .orderBy(desc(schema.portal.isDefault), asc(schema.portal.name))
+      .orderBy(...portalOrderBy(sortBy, sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb()

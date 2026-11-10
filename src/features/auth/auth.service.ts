@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { writeLoginLog } from "~/features/users/users.service";
 import { auth } from "~/lib/auth.server";
+import { clientIpFromHeaders } from "~/lib/client-ip";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
 import { enforceRateLimitOrThrow, rateLimit } from "~/lib/rate-limit.server";
@@ -20,12 +21,6 @@ function toPublicUser(row: typeof schema.user.$inferSelect) {
     displayName: row.displayName,
     role: row.role,
   };
-}
-
-function getClientIp(headers: Headers): string {
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
-  return headers.get("x-real-ip") ?? "unknown";
 }
 
 function isEmailLike(value: string): boolean {
@@ -60,7 +55,9 @@ export const createSessionService: CreateSessionService = async (
   { account, password },
   headers,
 ) => {
-  const clientIp = getClientIp(headers);
+  // 客户端 IP 统一走 ~/lib/client-ip：只信任代理写入的头（x-real-ip / XFF 最后一跳），
+  // 并剥离端口。识别不到时用 "unknown" 占位——限流退化为按账号计，不共用伪造 IP 桶。
+  const clientIp = clientIpFromHeaders(headers) ?? "unknown";
   const rl = await rateLimit({
     bucket: "auth:signin",
     key: `${account.toLowerCase()}:${clientIp}`,

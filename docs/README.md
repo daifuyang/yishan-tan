@@ -26,6 +26,7 @@
 | [`plans/组件架构整改建议.md`](./plans/组件架构整改建议.md) | 组件归属、页面拆分和复用建议 |
 | [`history/SYSTEM_OPTIMIZATION_REVIEW.md`](./history/SYSTEM_OPTIMIZATION_REVIEW.md) | 2026-07-10 系统评估历史快照 |
 | [`references/YISHAN_ADMIN_ROUTE_ALIGNMENT.md`](./references/YISHAN_ADMIN_ROUTE_ALIGNMENT.md) | 新旧后台页面的字段与行为对照 |
+| [`references/EDGEONE_DEPLOYMENT_POC.md`](./references/EDGEONE_DEPLOYMENT_POC.md) | 2026-11-09 EdgeOne 部署调研、线上实测与适配器构建 PoC |
 
 ## 与项目其它文档的关系
 

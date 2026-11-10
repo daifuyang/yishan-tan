@@ -114,7 +114,7 @@ function printAuthorizationBanner(roleId: string, menuCount: number) {
  *   - 用户管理            → /admin/users
  *   - 角色管理            → /admin/roles
  *   - 部门管理            → /admin/departments
- *   - 岗位管理            → /admin/posts
+ *   - 岗位管理            → /admin/position
  *   - 菜单管理            → /admin/menus
  *   - 字典管理            → /admin/dicts
  *   - 站点配置            → /admin/settings         [合并自原「系统设置」]
@@ -184,7 +184,7 @@ const MENU_SEED: readonly MenuSeedItem[] = [
     code: "posts",
     name: "岗位管理",
     parentCode: "system",
-    path: "/admin/posts",
+    path: "/admin/position",
     icon: "Briefcase",
     type: "menu",
     sort: 3,
@@ -268,17 +268,32 @@ async function ensureMenuItem(item: MenuSeedItem, parentId: string | null): Prom
   const nameMatch = eq(menu.name, item.name);
   const parentMatch = parentId === null ? isNull(menu.parentId) : eq(menu.parentId, parentId);
   const existing = await db
-    .select({ id: menu.id, icon: menu.icon })
+    .select({
+      id: menu.id,
+      icon: menu.icon,
+      path: menu.path,
+      type: menu.type,
+      sort: menu.sort,
+    })
     .from(menu)
     .where(and(nameMatch, parentMatch))
     .limit(1);
   if (existing[0]) {
-    // 已存在行：若 icon 与 seed 不一致则就地更新（idempotent 升级）
-    if (existing[0].icon !== item.icon) {
-      await db
-        .update(menu)
-        .set({ icon: item.icon, sort: item.sort })
-        .where(eq(menu.id, existing[0].id));
+    // 已存在行：与 seed 不一致的字段就地更新（idempotent 升级）。
+    // path 必须一起比对：菜单对应的路由改名/搬家后，库里残留旧 path 会让侧边栏
+    // 跳到已删除的路由（前端 404），而 seed 反复重跑也不会纠正它。
+    const patch: {
+      icon?: string;
+      path?: string | null;
+      type?: "group" | "menu" | "action";
+      sort?: number;
+    } = {};
+    if (existing[0].icon !== item.icon) patch.icon = item.icon;
+    if (existing[0].path !== item.path) patch.path = item.path;
+    if (existing[0].type !== item.type) patch.type = item.type;
+    if (existing[0].sort !== item.sort) patch.sort = item.sort;
+    if (Object.keys(patch).length > 0) {
+      await db.update(menu).set(patch).where(eq(menu.id, existing[0].id));
     }
     return existing[0].id;
   }

@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Check, ChevronDown, Copy, Download, Plus, ShieldOff, Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -49,7 +54,7 @@ import { useCurrentUser } from "~/features/auth/auth.queries";
 import type { DepartmentNode } from "~/features/departments/departments.types";
 import { useMyPermissions, useUserFormOptions } from "~/features/permissions/permissions.queries";
 import { useUsersList } from "~/features/users/users.queries";
-import type { UserListQuery } from "~/features/users/users.schema";
+import type { UserListQuery, UserSortBy } from "~/features/users/users.schema";
 import type { AdminUserDto } from "~/features/users/users.types";
 import {
   useBulkDeleteUsers,
@@ -94,11 +99,18 @@ export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
 });
 
-function toQuery(state: FilterState, page: number, pageSize: number): UserListQuery {
+function toQuery(
+  state: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<UserSortBy>,
+): UserListQuery {
   const trim = (v: string) => v.trim() || undefined;
   return {
     page,
     pageSize,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
     username: trim(state.username),
     name: trim(state.name),
     displayName: trim(state.displayName),
@@ -116,10 +128,20 @@ function formatDateTime(iso: string): string {
 }
 
 function AdminUsersPage() {
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["username", "name", "displayName", "email", "phone", "status"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "createdAt", sortOrder: "desc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
   const [editing, setEditing] = React.useState<AdminUserDto | null>(null);
   const [editForm, setEditForm] = React.useState<EditUserFormValue>(EMPTY_EDIT_FORM);
   const [creating, setCreating] = React.useState(false);
@@ -135,7 +157,10 @@ function AdminUsersPage() {
   } | null>(null);
   const [resetPasswordCopied, setResetPasswordCopied] = React.useState(false);
 
-  const query = toQuery(filters, page, pageSize);
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<UserSortBy>;
+  const onSortChange = listState.setSort;
+  const query = toQuery(filters, page, pageSize, sort);
   const { data: currentUser } = useCurrentUser();
   const permissions = useMyPermissions();
   const grants = permissions.data ?? [];
@@ -175,7 +200,7 @@ function AdminUsersPage() {
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
+  }, [page, totalPages, total, setPage]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: page/size/filter used only as trigger for clearing selection
   React.useEffect(() => {
@@ -197,16 +222,14 @@ function AdminUsersPage() {
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
-    setPage(1);
+    listState.setFilters(draft);
     setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
-  }, []);
+    listState.resetFilters();
+  }, [listState]);
 
   const handleStartEdit = (row: AdminUserDto) => {
     setEditing(row);
@@ -338,6 +361,7 @@ function AdminUsersPage() {
   const columns: ResourceColumn<AdminUserDto>[] = [
     {
       key: "username",
+      sortKey: "username",
       header: "用户名",
       width: "140px",
       cell: (row) => (
@@ -351,6 +375,7 @@ function AdminUsersPage() {
     },
     {
       key: "name",
+      sortKey: "name",
       header: "姓名",
       width: "120px",
       cell: (row) => (
@@ -426,6 +451,7 @@ function AdminUsersPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "170px",
       cell: (row) => (
@@ -720,7 +746,36 @@ function AdminUsersPage() {
         toolbarTitle="用户列表"
         toolbarActions={
           <>
-            {selectedKeys.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canExport || exportMut.isPending}
+              onClick={() => void handleExport()}
+            >
+              <Download className="size-3.5" aria-hidden />
+              {exportMut.isPending ? "导出中…" : "导出"}
+            </Button>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
+                    <Plus className="size-3.5" aria-hidden />
+                    新建
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>需要新增用户权限</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        }
+        tableProps={{
+          settingsKey: "users",
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <>
                 <Button
                   type="button"
@@ -730,7 +785,7 @@ function AdminUsersPage() {
                   onClick={() => void handleBulkDisable()}
                 >
                   <ShieldOff className="size-3.5" aria-hidden />
-                  批量停用 ({selectedKeys.length})
+                  批量停用
                 </Button>
                 <Popconfirm
                   open={bulkDeletePopconfirmOpen}
@@ -758,49 +813,31 @@ function AdminUsersPage() {
                     onClick={() => setBulkDeletePopconfirmOpen(true)}
                   >
                     <Trash2 className="size-3.5" aria-hidden />
-                    批量删除 ({selectedKeys.length})
+                    批量删除
                   </Button>
                 </Popconfirm>
               </>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!canExport || exportMut.isPending}
-              onClick={() => void handleExport()}
-            >
-              <Download className="size-3.5" aria-hidden />
-              {exportMut.isPending ? "导出中…" : "导出"}
-            </Button>
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
-                    <Plus className="size-3.5" aria-hidden />
-                    新建
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>需要新增用户权限</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<AdminUserDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
           emptyTitle: "暂无数据",
           error: permissions.isError
             ? "读取权限失败，请刷新重试"

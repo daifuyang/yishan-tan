@@ -33,6 +33,25 @@ export function fromIso(iso: string): Date | null {
   return new Date(Date.UTC(y, m - 1, d));
 }
 
+/**
+ * 今天的日历日期(按浏览器本地时区)。
+ *
+ * 不能用 `toIso(new Date())`:toIso 取的是 UTC 日期,在 UTC+8 这类时区里,
+ * 本地 00:00~08:00 会被算成前一天,导致「今天」差一天。
+ *
+ * 口径说明:组件里的值是**不含时区的日历日期**(`YYYY-MM-DD`),
+ * 内部用「UTC 零点」承载它只是为了避开夏令时/时区漂移,
+ * 并不代表时刻。因此「今天」必须按用户本地日历取,
+ * 其余地方(网格、格式化)继续用 UTC 口径即可保持自洽。
+ */
+export function todayIso(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function addMonths(d: Date, n: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));
 }

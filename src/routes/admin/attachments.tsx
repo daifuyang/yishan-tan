@@ -12,7 +12,12 @@ import {
 import * as React from "react";
 
 import { UploadAttachment } from "@/components/admin/attachments/upload-attachment";
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -35,7 +40,10 @@ import {
   useAttachmentCategories,
   useAttachmentsList,
 } from "~/features/attachments/attachments.queries";
-import type { AttachmentCategory } from "~/features/attachments/attachments.schema";
+import type {
+  AttachmentCategory,
+  AttachmentSortBy,
+} from "~/features/attachments/attachments.schema";
 import type { AttachmentDto } from "~/features/attachments/attachments.types";
 import {
   useBulkDeleteAttachments,
@@ -103,11 +111,18 @@ function formatDateTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildListQuery(filters: FilterState, page: number, pageSize: number) {
+function buildListQuery(
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<AttachmentSortBy>,
+) {
   const trim = (v: string) => v.trim() || undefined;
   return {
     page,
     pageSize,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
     keyword: trim(filters.keyword),
     mime: trim(filters.mime),
     category: filters.category === "all" ? undefined : filters.category,
@@ -155,16 +170,30 @@ function AttachmentCategoryBadge({ category }: { category: AttachmentCategory })
 }
 
 function AdminAttachmentsPage() {
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["keyword", "mime", "category", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 20,
+    defaultSort: { sortKey: "createdAt", sortOrder: "desc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(20);
   const [popconfirmRowId, setPopconfirmRowId] = React.useState<string | null>(null);
   const [copyRowId, setCopyRowId] = React.useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
-  const query = buildListQuery(filters, page, pageSize);
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<AttachmentSortBy>;
+  const onSortChange = listState.setSort;
+
+  const query = buildListQuery(filters, page, pageSize, sort);
   const permissions = useResourcePermissions("attachments");
   const { canRead, canCreate, canDelete } = permissions;
   const list = useAttachmentsList(query, canRead);
@@ -176,39 +205,33 @@ function AdminAttachmentsPage() {
   const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const resetPageOnFilterChange = React.useCallback(() => {
-    setPage(1);
-  }, []);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
+  // 地址栏里的筛选条件回填到查询表单（提交 / 重置 / 分享链接都会走到这里）。
   React.useEffect(() => {
-    resetPageOnFilterChange();
-  }, [
-    draft.keyword,
-    draft.mime,
-    draft.category,
-    draft.createdFrom,
-    draft.createdTo,
-    resetPageOnFilterChange,
-  ]);
+    setDraft({
+      keyword: filters.keyword,
+      mime: filters.mime,
+      category: filters.category,
+      createdFrom: filters.createdFrom,
+      createdTo: filters.createdTo,
+    });
+  }, [filters.keyword, filters.mime, filters.category, filters.createdFrom, filters.createdTo]);
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
+    listState.setFilters(draft);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
-  }, []);
+    listState.resetFilters();
+  }, [listState]);
 
   const handleDeleteConfirm = React.useCallback(
     async (row: AttachmentDto) => {
@@ -280,14 +303,13 @@ function AdminAttachmentsPage() {
     },
     {
       key: "name",
+      sortKey: "name",
       header: "文件名",
       width: "240px",
+      ellipsis: true,
       cell: (row) => (
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            className="break-words whitespace-normal text-[13px] text-text-strong"
-            title={row.name}
-          >
+          <span className="min-w-0 flex-1 truncate text-[13px] text-text-strong" title={row.name}>
             {row.name}
           </span>
           <Badge variant="outline" className={cn("shrink-0 px-1.5", MONO_CHIP)} title={row.mime}>
@@ -298,12 +320,14 @@ function AdminAttachmentsPage() {
     },
     {
       key: "category",
+      sortKey: "category",
       header: "分类",
       width: "100px",
       cell: (row) => <AttachmentCategoryBadge category={row.category} />,
     },
     {
       key: "size",
+      sortKey: "size",
       header: "大小",
       width: "100px",
       align: "right",
@@ -315,11 +339,9 @@ function AdminAttachmentsPage() {
       key: "storage",
       header: "存储驱动",
       width: "120px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.storageName ?? "--"}
-        >
+        <span className="text-[13px] text-text-soft">
           {row.storageName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -328,17 +350,16 @@ function AdminAttachmentsPage() {
       key: "uploader",
       header: "上传者",
       width: "100px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.uploaderName ?? "--"}
-        >
+        <span className="text-[13px] text-text-soft">
           {row.uploaderName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "上传时间",
       width: "170px",
       cell: (row) => (
@@ -487,8 +508,18 @@ function AdminAttachmentsPage() {
         filterLoading={permissions.isPending || list.isFetching}
         toolbarTitle="媒体列表"
         toolbarActions={
-          <>
-            {selectedKeys.length > 0 ? (
+          <UploadAttachment
+            disabled={!canCreate}
+            onUploaded={() => {
+              void list.refetch();
+            }}
+          />
+        }
+        tableProps={{
+          settingsKey: "attachments",
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -515,31 +546,31 @@ function AdminAttachmentsPage() {
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  批量删除 ({selectedKeys.length})
+                  批量删除
                 </Button>
               </Popconfirm>
-            ) : null}
-            <UploadAttachment
-              disabled={!canCreate}
-              onUploaded={() => {
-                void list.refetch();
-              }}
-            />
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<AttachmentDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyTitle: "暂无附件",
           error:
             permissions.error ??

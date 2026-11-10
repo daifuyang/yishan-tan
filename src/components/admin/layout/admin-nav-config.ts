@@ -122,7 +122,7 @@ export const FALLBACK_NAV_ITEMS = [
     id: "fallback-posts",
     parentId: "fallback-system",
     name: "岗位管理",
-    path: "/admin/posts",
+    path: "/admin/position",
     component: null,
     icon: "Briefcase",
     type: "menu",

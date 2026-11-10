@@ -1,3 +1,4 @@
+import "./filter-bar.css";
 import { ChevronDown, Loader2 } from "lucide-react";
 import * as React from "react";
 
@@ -29,7 +30,14 @@ type FilterBarProps = {
   expandLabel?: string;
   collapseLabel?: string;
   actions?: React.ReactNode;
+  /** 筛选区列数，默认 3（后台统一口径，见 docs/admin-list-standard.md）。 */
   columns?: number;
+  /** 自适应列宽：按容器宽度自动决定每行放几个字段。 */
+  adaptive?: boolean;
+  /** 折叠时展示的字段数量，默认「列数 - 1」（最后一格留给操作区）。 */
+  collapsedFieldCount?: number;
+  /** 响应式：按容器宽度切换 1 / 2 / N 列，默认开启。 */
+  responsive?: boolean;
   collapsible?: boolean;
   defaultCollapsed?: boolean;
   loading?: boolean;
@@ -49,6 +57,9 @@ export function FilterBar({
   collapseLabel = "收起",
   actions,
   columns = 3,
+  adaptive = false,
+  collapsedFieldCount,
+  responsive = true,
   collapsible = true,
   defaultCollapsed = true,
   loading,
@@ -81,15 +92,37 @@ export function FilterBar({
   // 参考 antd ProTable QueryFilter：末尾一格留给操作区，折叠时只展示第一行字段
   const items = flattenChildren(children);
   const cols = Math.max(1, columns);
-  const canCollapse = collapsible && items.length > cols - 1;
-  const visibleItems = canCollapse && collapsed ? items.slice(0, cols - 1) : items;
+  const visibleCount = collapsedFieldCount ?? Math.max(1, cols - 1);
+  const canCollapse = collapsible && items.length > visibleCount;
+  const visibleItems = canCollapse && collapsed ? items.slice(0, visibleCount) : items;
+
+  // 自适应模式自己用 auto-fit 排版，与容器查询的定列模式互斥。
+  const useContainerQuery = responsive && !adaptive;
 
   return (
-    <form data-slot="filter-bar" onSubmit={handleSubmit} className={className}>
+    <form
+      data-slot="filter-bar"
+      data-responsive={useContainerQuery}
+      onSubmit={handleSubmit}
+      className={className}
+    >
       <div
         data-slot="filter-grid"
-        className="grid"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: "16px 24px" }}
+        className={cn(
+          "grid gap-x-6 gap-y-4",
+          adaptive &&
+            "grid-cols-[repeat(auto-fit,minmax(min(100%,max(220px,calc((100%_-_48px)/var(--filter-columns)))),1fr))]",
+        )}
+        style={
+          adaptive
+            ? ({ "--filter-columns": cols } as React.CSSProperties)
+            : useContainerQuery
+              ? ({
+                  "--filter-columns": cols,
+                  "--filter-tablet-columns": Math.min(2, cols),
+                } as React.CSSProperties)
+              : { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }
+        }
       >
         {visibleItems.map((child, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: filter items are static in order
@@ -97,8 +130,11 @@ export function FilterBar({
         ))}
         <div
           data-slot="filter-actions"
-          className="flex items-center justify-end gap-2"
-          style={{ gridColumnStart: cols }}
+          className={cn(
+            "flex flex-wrap items-center justify-end gap-2",
+            adaptive && "col-span-full",
+          )}
+          style={useContainerQuery || adaptive ? undefined : { gridColumnStart: cols }}
         >
           {actions}
           <Button

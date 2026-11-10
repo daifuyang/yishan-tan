@@ -1,7 +1,12 @@
 import { z } from "zod";
 
+import {
+  GENERIC_PHONE_MAX_LENGTH,
+  GENERIC_PHONE_MESSAGE,
+  GENERIC_PHONE_PATTERN,
+} from "~/lib/phone";
+
 const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,30}$/;
-const PHONE_PATTERN = /^\+?\d{6,20}$/;
 
 export const accountSchema = z
   .string()
@@ -25,8 +30,8 @@ export const createSessionSchema = z.object({
 export const phoneSchema = z
   .string()
   .trim()
-  .max(20, "手机号过长")
-  .regex(PHONE_PATTERN, "手机号格式不正确")
+  .max(GENERIC_PHONE_MAX_LENGTH, "手机号过长")
+  .regex(GENERIC_PHONE_PATTERN, GENERIC_PHONE_MESSAGE)
   .optional()
   .or(z.literal("").transform(() => undefined));
 

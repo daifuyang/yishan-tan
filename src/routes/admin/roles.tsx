@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -38,7 +43,11 @@ import {
 import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { getRole } from "~/features/roles/roles.actions";
 import { useAssignableMenus, useRolesList } from "~/features/roles/roles.queries";
-import { type DataScope, roleListQuerySchema } from "~/features/roles/roles.schema";
+import {
+  type DataScope,
+  type RoleSortBy,
+  roleListQuerySchema,
+} from "~/features/roles/roles.schema";
 import type { RoleListItemDto } from "~/features/roles/roles.types";
 import {
   useBulkDeleteRoles,
@@ -99,12 +108,22 @@ function AdminRolesPage() {
   const permissions = useResourcePermissions("roles");
   const menuPermissions = useResourcePermissions("menus");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["name", "description", "status", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "createdAt", sortOrder: "desc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
   const [detailError, setDetailError] = React.useState<string | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
   const [editing, setEditing] = React.useState<RoleListItemDto | null>(null);
   const [editForm, setEditForm] = React.useState<EditRoleFormValue>(EMPTY_EDIT_FORM);
   const [creating, setCreating] = React.useState(false);
@@ -115,7 +134,10 @@ function AdminRolesPage() {
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
-  const query = buildListQuery(filters, page, pageSize);
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<RoleSortBy>;
+  const onSortChange = listState.setSort;
+  const query = buildListQuery(filters, page, pageSize, sort);
   const list = useRolesList(query, canRead);
   const createMut = useCreateRole();
   const updateMut = useUpdateRole();
@@ -134,25 +156,21 @@ function AdminRolesPage() {
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
-    setPage(1);
-    setSelectedKeys([]);
-    setPage(1);
+    listState.setFilters(draft);
     setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
-  }, []);
+    listState.resetFilters();
+  }, [listState]);
 
   const handleStartEdit = async (row: RoleListItemDto) => {
     if (!canUpdate) return;
@@ -252,13 +270,12 @@ function AdminRolesPage() {
   const columns: ResourceColumn<RoleListItemDto>[] = [
     {
       key: "name",
+      sortKey: "name",
       header: "角色名称",
       width: "140px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-strong"
-          title={row.name}
-        >
+        <span className="text-[13px] text-text-strong" title={row.name}>
           {row.name}
         </span>
       ),
@@ -267,11 +284,9 @@ function AdminRolesPage() {
       key: "description",
       header: "角色描述",
       width: "220px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.description ?? ""}
-        >
+        <span className="text-[13px] text-text-soft" title={row.description ?? ""}>
           {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -298,6 +313,7 @@ function AdminRolesPage() {
     },
     {
       key: "status",
+      sortKey: "status",
       header: "状态",
       width: "100px",
       cell: (row) => (
@@ -310,6 +326,7 @@ function AdminRolesPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "180px",
       cell: (row) => (
@@ -318,6 +335,7 @@ function AdminRolesPage() {
     },
     {
       key: "updatedAt",
+      sortKey: "updatedAt",
       header: "更新时间",
       width: "180px",
       cell: (row) => (
@@ -553,8 +571,16 @@ function AdminRolesPage() {
         filterLoading={permissions.isPending || list.isFetching}
         toolbarTitle="角色列表"
         toolbarActions={
-          <>
-            {selectedKeys.length > 0 ? (
+          <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
+            <Plus className="size-3.5" aria-hidden />
+            新建
+          </Button>
+        }
+        tableProps={{
+          settingsKey: "roles",
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -581,29 +607,31 @@ function AdminRolesPage() {
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  批量删除 ({selectedKeys.length})
+                  批量删除
                 </Button>
               </Popconfirm>
-            ) : null}
-            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
-              <Plus className="size-3.5" aria-hidden />
-              新建
-            </Button>
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<RoleListItemDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无角色",
           emptyDescription:
             permissions.error ??
@@ -709,7 +737,12 @@ const EMPTY_CREATE_FORM: CreateRoleFormValue = {
   permissionCodes: [],
 };
 
-function buildListQuery(filters: FilterState, page: number, pageSize: number) {
+function buildListQuery(
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<RoleSortBy>,
+) {
   const trim = (v: string) => v.trim() || undefined;
   const name = trim(filters.name);
   const description = trim(filters.description);
@@ -726,6 +759,8 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     status,
     createdFrom,
     createdTo,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
   });
 }
 

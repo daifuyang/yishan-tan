@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { sortOrderSchema } from "~/lib/list-sort";
+
 export const statusSchema = z.enum(["enabled", "disabled"]);
 
 export const portalThemeModeSchema = z.enum(["light", "dark"]);
@@ -82,8 +84,15 @@ export const portalListQuerySchema = z.object({
   status: statusSchema.optional(),
   createdFrom: z.string().trim().optional(),
   createdTo: z.string().trim().optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按默认门户优先、名称升序。 */
+  sortBy: z
+    .enum(["name", "code", "domain", "status", "isDefault", "createdAt", "updatedAt"])
+    .optional(),
+  /** 排序方向；缺省倒序。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export type CreatePortalInput = z.infer<typeof createPortalSchema>;
 export type UpdatePortalInput = z.infer<typeof updatePortalSchema>;
 export type PortalListQuery = z.infer<typeof portalListQuerySchema>;
+export type PortalSortBy = NonNullable<PortalListQuery["sortBy"]>;

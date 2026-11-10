@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -29,7 +34,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMenuTree } from "~/features/menus/menus.queries";
-import type { CreateMenuInput, UpdateMenuInput } from "~/features/menus/menus.schema";
+import type {
+  CreateMenuInput,
+  MenuSortBy,
+  MenuTreeQuery,
+  UpdateMenuInput,
+} from "~/features/menus/menus.schema";
 import type { MenuDto, MenuNode } from "~/features/menus/menus.types";
 import {
   useBulkDeleteMenus,
@@ -87,11 +97,41 @@ function menuTypeTone(type: MenuNode["type"]): "info" | "warning" | "neutral" {
   return "neutral";
 }
 
+/** 把表格排序状态转成服务端排序参数。 */
+function toQuery(sort: ResourceSortState<MenuSortBy>): MenuTreeQuery {
+  return {
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
+  };
+}
+
 function AdminMenusPage() {
   const permissions = useResourcePermissions("menus");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
-  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
+  // 筛选与排序与地址栏同步：刷新页面、分享链接都能回到同一份视图。
+  // 菜单是树形表（拉全树 + 前端过滤 + 前端分页），页码不进地址栏。
+  const listState = useListUrlState({
+    filterKeys: ["keyword", "type", "status"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultSort: { sortKey: "sort", sortOrder: "asc" },
+    // 树形列表：分页在客户端做，地址栏只保留筛选与排序。
+    paginated: false,
+  });
+  const filters = listState.filters as FilterState;
+  // 筛选表单草稿：初值取自地址栏（刷新/分享链接后表单与列表一致）。
+  const [draft, setDraft] = React.useState<FilterState>(() => ({
+    ...DEFAULT_FILTERS,
+    ...(listState.filters as FilterState),
+  }));
+  // 地址栏里的筛选条件回填到查询表单（前进 / 后退都会走到这里）。
+  React.useEffect(() => {
+    setDraft({
+      keyword: filters.keyword,
+      type: filters.type,
+      status: filters.status,
+    });
+  }, [filters.keyword, filters.type, filters.status]);
+
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set());
   const [editing, setEditing] = React.useState<{
     mode: "create" | "edit";
@@ -105,7 +145,12 @@ function AdminMenusPage() {
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [bulkDeletePopconfirmOpen, setBulkDeletePopconfirmOpen] = React.useState(false);
 
-  const treeQuery = useMenuTree(canRead);
+  // 排序：服务端排序（菜单树整体按所选列排序），状态同步到地址栏。
+  const sort = listState.sort as ResourceSortState<MenuSortBy>;
+  const onSortChange = listState.setSort;
+  const sortQuery = React.useMemo(() => toQuery(sort), [sort]);
+
+  const treeQuery = useMenuTree(sortQuery, canRead);
   const createMut = useCreateMenu();
   const updateMut = useUpdateMenu();
   const deleteMut = useDeleteMenu();
@@ -248,13 +293,13 @@ function AdminMenusPage() {
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
+    listState.setFilters(draft);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-  }, []);
+    listState.resetFilters();
+  }, [listState]);
 
   const handleEditSubmit = async () => {
     if (!editing) return;
@@ -288,16 +333,15 @@ function AdminMenusPage() {
       key: "name",
       header: "名称",
       width: "280px",
+      sortKey: "name",
+      ellipsis: true,
       cell: (row) => {
         const Icon = resolveMenuIcon(row.node.icon);
         const indentPx = row.depth * 24;
         const hasChildren = row.node.children.length > 0;
         const isExpanded = expanded.has(row.node.id);
         return (
-          <div
-            className="flex items-center gap-2 whitespace-nowrap"
-            style={{ paddingLeft: indentPx }}
-          >
+          <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: indentPx }}>
             {hasChildren ? (
               <button
                 type="button"
@@ -319,10 +363,7 @@ function AdminMenusPage() {
               <span aria-hidden className="inline-block h-5 w-5 shrink-0" />
             )}
             <Icon className="size-3.5 shrink-0 text-text-soft" aria-hidden />
-            <span
-              className="break-words whitespace-normal text-[13px] text-text-strong"
-              title={row.node.name}
-            >
+            <span className="min-w-0 truncate text-[13px] text-text-strong" title={row.node.name}>
               {row.node.name}
             </span>
           </div>
@@ -345,6 +386,8 @@ function AdminMenusPage() {
       key: "path",
       header: "路径",
       width: "220px",
+      sortKey: "path",
+      ellipsis: true,
       cell: (row) =>
         row.node.path ? (
           <span className={MONO_CELL} title={row.node.path}>
@@ -358,6 +401,7 @@ function AdminMenusPage() {
       key: "permission",
       header: "权限标识",
       width: "140px",
+      ellipsis: true,
       cell: (row) =>
         row.node.type === "group" ? (
           <span className="text-[13px] text-text-mute">--</span>
@@ -374,6 +418,7 @@ function AdminMenusPage() {
       header: "排序",
       width: "70px",
       align: "center",
+      sortKey: "sort",
       cell: (row) => <span className="text-[13px] text-text-soft">{row.node.sort}</span>,
     },
     {
@@ -392,6 +437,7 @@ function AdminMenusPage() {
       key: "createdAt",
       header: "创建时间",
       width: "170px",
+      sortKey: "createdAt",
       cell: (row) => (
         <span className="text-[13px] text-text-soft">{formatDateTime(row.node.createdAt)}</span>
       ),
@@ -400,6 +446,7 @@ function AdminMenusPage() {
       key: "updatedAt",
       header: "更新时间",
       width: "170px",
+      sortKey: "updatedAt",
       cell: (row) => (
         <span className="text-[13px] text-text-soft">{formatDateTime(row.node.updatedAt)}</span>
       ),
@@ -622,8 +669,16 @@ function AdminMenusPage() {
         filterLoading={permissions.isPending || treeQuery.isFetching}
         toolbarTitle="菜单列表"
         toolbarActions={
-          <>
-            {selectedKeys.length > 0 ? (
+          <Button type="button" size="sm" disabled={!canCreate} onClick={handleStartCreateTop}>
+            <Plus className="size-3.5" aria-hidden />
+            新建顶级菜单
+          </Button>
+        }
+        tableProps={{
+          settingsKey: "menus",
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -650,25 +705,21 @@ function AdminMenusPage() {
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  批量删除 ({selectedKeys.length})
+                  批量删除
                 </Button>
               </Popconfirm>
-            ) : null}
-            <Button type="button" size="sm" disabled={!canCreate} onClick={handleStartCreateTop}>
-              <Plus className="size-3.5" aria-hidden />
-              新建顶级菜单
-            </Button>
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<MenuRow>[],
           data: filteredRows,
           rowKey: (row) => row.node.id,
-          page: 1,
-          pageSize: filteredRows.length || 1,
-          total: filteredRows.length,
-          onPageChange: () => undefined,
-          onPageSizeChange: () => undefined,
+          pagination: {
+            current: 1,
+            pageSize: filteredRows.length || 1,
+            total: filteredRows.length,
+            onChange: () => undefined,
+            showSizeChanger: true,
+          },
           loading: permissions.isPending || treeQuery.isFetching,
           emptyTitle: permissions.error || treeQuery.isError ? "无法加载列表" : "暂无菜单",
           emptyDescription:
@@ -682,6 +733,8 @@ function AdminMenusPage() {
             selectedKeys,
             onChange: setSelectedKeys,
           },
+          sort,
+          onSortChange,
         }}
       />
 

@@ -1,10 +1,25 @@
-import { type SQL, and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
+import {
+  type AnyColumn,
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  isNull,
+  like,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import * as schema from "~/../db/schema";
 import { isSystemAdmin } from "~/lib/authorization.server";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
 import { isPermissionCode } from "~/lib/permission-catalog";
+import type { RoleSortBy } from "./roles.schema";
 import type {
   CreateRoleService,
   DeleteRoleService,
@@ -17,6 +32,24 @@ import type {
 
 const userCreator = alias(schema.user, "user_creator");
 const userUpdater = alias(schema.user, "user_updater");
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const ROLE_SORT_COLUMNS: Record<RoleSortBy, AnyColumn> = {
+  createdAt: schema.role.createdAt,
+  updatedAt: schema.role.updatedAt,
+  name: schema.role.name,
+  status: schema.role.status,
+};
+
+function roleOrderBy(sortBy: RoleSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const column = ROLE_SORT_COLUMNS[sortBy ?? "createdAt"] ?? ROLE_SORT_COLUMNS.createdAt;
+  return sortOrder === "asc" ? asc(column) : desc(column);
+}
 
 type RoleRow = typeof schema.role.$inferSelect & {
   creator?: { username: string } | null;
@@ -75,6 +108,8 @@ export const listRolesService: ListRolesService = async ({
   status,
   createdFrom,
   createdTo,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [isNull(schema.role.deletedAt)];
   if (status) where.push(eq(schema.role.status, status));
@@ -108,7 +143,7 @@ export const listRolesService: ListRolesService = async ({
       .from(schema.role)
       .leftJoin(userCreator, eq(userCreator.id, schema.role.creatorId))
       .where(and(...where))
-      .orderBy(desc(schema.role.createdAt))
+      .orderBy(roleOrderBy(sortBy, sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb()

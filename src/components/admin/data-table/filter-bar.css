@@ -1,0 +1,59 @@
+/* 搜索表单独立作用域：不影响编辑弹窗和其他表单。 */
+[data-slot="filter-bar"] {
+  container-type: inline-size;
+}
+
+[data-slot="filter-bar"]
+  :is(
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="date-range-picker"],
+    [data-slot="date-picker"],
+    [role="combobox"]
+  ) {
+  background-color: var(--color-muted);
+  border-color: transparent;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+[data-slot="filter-bar"]
+  :is(
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="date-range-picker"],
+    [data-slot="date-picker"],
+    [role="combobox"]
+  ):is(:focus, :focus-visible, :focus-within, [data-state="open"]) {
+  background-color: var(--color-background);
+  border-color: var(--color-brand-500);
+  box-shadow: none;
+  outline: none;
+}
+
+/* 窄屏：单列，操作区独占一行。 */
+[data-slot="filter-bar"][data-responsive="true"] > [data-slot="filter-grid"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-slot="filter-bar"][data-responsive="true"] [data-slot="filter-actions"] {
+  grid-column: 1 / -1;
+}
+
+/* 平板：两列，操作区落在最后一列。 */
+@container (min-width: 640px) {
+  [data-slot="filter-bar"][data-responsive="true"] > [data-slot="filter-grid"] {
+    grid-template-columns: repeat(var(--filter-tablet-columns), minmax(0, 1fr));
+  }
+
+  [data-slot="filter-bar"][data-responsive="true"] [data-slot="filter-actions"] {
+    grid-column: -2 / -1;
+  }
+}
+
+/* 桌面：按 filterColumns 指定的列数铺满。 */
+@container (min-width: 1040px) {
+  [data-slot="filter-bar"][data-responsive="true"] > [data-slot="filter-grid"] {
+    grid-template-columns: repeat(var(--filter-columns), minmax(0, 1fr));
+  }
+}

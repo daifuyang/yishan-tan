@@ -1,7 +1,7 @@
 import type { DbRole } from "~/../db/schema";
 import type { PermissionCode } from "~/lib/permission-catalog";
 
-import type { DataScope } from "./roles.schema";
+import type { DataScope, RoleSortBy } from "./roles.schema";
 
 export type RoleDto = {
   id: string;
@@ -50,6 +50,8 @@ export type ListRolesService = (input: {
   status?: "enabled" | "disabled";
   createdFrom?: string;
   createdTo?: string;
+  sortBy?: RoleSortBy;
+  sortOrder?: "asc" | "desc";
 }) => Promise<{ items: RoleListItemDto[]; total: number }>;
 
 export type GetRoleService = (input: { id: string }) => Promise<RoleDetailDto | null>;

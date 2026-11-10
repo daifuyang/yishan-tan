@@ -1,5 +1,5 @@
 /**
- * /api/v1/posts —— 岗位管理（操作权限）。
+ * /api/v1/position —— 岗位管理（操作权限）。
  */
 import { z } from "zod";
 import {
@@ -15,7 +15,7 @@ const idParamSchema = z.object({ id: z.string().uuid() }).openapi("IdParamUuid")
 
 registry.registerPath({
   method: "get",
-  path: "/api/v1/posts",
+  path: "/api/v1/position",
   operationId: "listPosts",
   summary: "分页列出岗位（posts:read）",
   tags: ["posts"],
@@ -35,7 +35,7 @@ registry.registerPath({
 
 registry.registerPath({
   method: "post",
-  path: "/api/v1/posts",
+  path: "/api/v1/position",
   operationId: "createPost",
   summary: "创建岗位（posts:create）",
   tags: ["posts"],
@@ -51,7 +51,7 @@ registry.registerPath({
 
 registry.registerPath({
   method: "patch",
-  path: "/api/v1/posts/{id}",
+  path: "/api/v1/position/{id}",
   operationId: "updatePost",
   summary: "更新岗位（posts:update）",
   tags: ["posts"],
@@ -70,7 +70,7 @@ registry.registerPath({
 
 registry.registerPath({
   method: "delete",
-  path: "/api/v1/posts/{id}",
+  path: "/api/v1/position/{id}",
   operationId: "deletePost",
   summary: "删除岗位（posts:delete）",
   tags: ["posts"],

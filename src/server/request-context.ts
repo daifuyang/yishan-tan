@@ -1,6 +1,10 @@
 import { auth } from "~/lib/auth.server";
 import { Errors } from "~/lib/errors";
+import { assertSameOriginRequest } from "~/lib/same-origin.server";
 import type { ServiceContext } from "~/lib/service-context";
+
+/** 会改变状态的请求方法：这些方法必须过同源校验（CSRF 防护）。 */
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /**
  * 把请求头解析为 ServiceContext。
@@ -14,6 +18,11 @@ function toHeaders(input: Headers | Request): Headers {
 
 export async function contextFromRequest(input: Headers | Request): Promise<ServiceContext | null> {
   const headers = toHeaders(input);
+  // 写操作统一做同源校验：cookie 会话能被跨站请求带上，必须确认来源是本站。
+  // 只带 x-api-key 的服务端客户端不带 Origin，不受影响。
+  if (input instanceof Request && MUTATING_METHODS.has(input.method.toUpperCase())) {
+    assertSameOriginRequest(input);
+  }
   const session = await auth.api.getSession({ headers });
   if (session?.user?.id) {
     const role =

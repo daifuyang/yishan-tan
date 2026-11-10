@@ -6,7 +6,10 @@ import {
   getDepartmentTree,
   listDepartments,
 } from "~/features/departments/departments.actions";
-import type { DepartmentListQuery } from "~/features/departments/departments.schema";
+import type {
+  DepartmentListQuery,
+  DepartmentTreeQuery,
+} from "~/features/departments/departments.schema";
 import type { DepartmentDto, DepartmentNode } from "~/features/departments/departments.types";
 
 export const departmentsQueryKey = {
@@ -31,17 +34,17 @@ export function useDepartmentsList(input: DepartmentListQuery) {
   return useQuery(departmentsListQueryOptions(input));
 }
 
-export const departmentTreeQueryOptions = () =>
+export const departmentTreeQueryOptions = (input: DepartmentTreeQuery = {}) =>
   queryOptions<DepartmentNode[]>({
-    queryKey: departmentsQueryKey.tree(),
-    queryFn: async () => getDepartmentTree(),
+    queryKey: [...departmentsQueryKey.tree(), input],
+    queryFn: async () => getDepartmentTree({ data: input }),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
-export function useDepartmentTree(enabled = true) {
-  return useQuery({ ...departmentTreeQueryOptions(), enabled });
+export function useDepartmentTree(enabled = true, input: DepartmentTreeQuery = {}) {
+  return useQuery({ ...departmentTreeQueryOptions(input), enabled });
 }
 
 export const departmentDetailQueryOptions = (id: string) =>

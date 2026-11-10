@@ -5,8 +5,8 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { placeholders } from "@/lib/copy";
-import { cn } from "@/lib/utils";
+import { placeholders } from "~/lib/copy";
+import { cn } from "~/lib/utils";
 
 import {
   HEADER_FORMAT,
@@ -15,6 +15,7 @@ import {
   fromIso,
   getMonthGrid,
   toIso,
+  todayIso,
 } from "./date-picker-utils";
 
 export type DateRange = { start: string | null; end: string | null };
@@ -34,10 +35,6 @@ export type DateRangePickerProps = {
   className?: string;
 };
 
-function todayIso(): string {
-  return toIso(new Date());
-}
-
 function DateRangePicker({
   value,
   onChange,
@@ -51,6 +48,8 @@ function DateRangePicker({
   const [open, setOpen] = React.useState(false);
   // 用户已选了开始日期但还没选结束;重新打开时保留(不会丢)
   const [pendingStart, setPendingStart] = React.useState<string | null>(null);
+  // 悬停日期:用于预览「开始 → 悬停」的候选区间(antd RangePicker 的悬停预览)
+  const [hovered, setHovered] = React.useState<string | null>(null);
   // 左月视图;首次打开锚定到 start / pendingStart / 今天
   const [leftMonth, setLeftMonth] = React.useState<Date>(() => {
     const anchor = value.start ?? pendingStart ?? todayIso();
@@ -66,12 +65,14 @@ function DateRangePicker({
   const handleDayClick = (iso: string) => {
     if (!pendingStart) {
       setPendingStart(iso);
+      setHovered(null);
       return;
     }
     // 第二次点 — commit;end < start 自动 swap;同日点保留为单日区间
     const [s, e] = pendingStart <= iso ? [pendingStart, iso] : [iso, pendingStart];
     onChange({ start: s, end: e });
     setPendingStart(null);
+    setHovered(null);
     setOpen(false);
   };
 
@@ -148,6 +149,17 @@ function DateRangePicker({
               value.end > value.start &&
               iso > value.start &&
               iso < value.end;
+            // 悬停预览:已选开始日期后,悬停日期作为候选结束日期(antd 行为)
+            const previewStart =
+              pendingStart && hovered ? (pendingStart <= hovered ? pendingStart : hovered) : null;
+            const previewEnd =
+              pendingStart && hovered ? (pendingStart <= hovered ? hovered : pendingStart) : null;
+            const isPreview =
+              previewStart !== null &&
+              previewEnd !== null &&
+              iso > previewStart &&
+              iso < previewEnd;
+            const isPreviewEnd = !!pendingStart && iso === hovered;
             const isToday = iso === today;
             const isEndpoint = isStart || isEnd || isPendingStart;
             return (
@@ -158,13 +170,18 @@ function DateRangePicker({
                 aria-pressed={isEndpoint}
                 aria-current={isToday ? "date" : undefined}
                 onClick={() => handleDayClick(iso)}
+                onMouseEnter={() => setHovered(iso)}
+                onMouseLeave={() => setHovered((prev) => (prev === iso ? null : prev))}
                 className={cn(
                   "mx-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-[12.5px]",
                   inMonth ? "text-text-strong" : "text-text-mute/50",
                   isEndpoint && "bg-brand-500 text-white hover:bg-brand-600",
-                  isInRange && "bg-brand-50 text-text-strong",
+                  (isInRange || isPreview) && "bg-brand-50 text-text-strong",
+                  isPreviewEnd &&
+                    !isEndpoint &&
+                    "bg-brand-100 text-brand-600 ring-1 ring-brand-500/50",
                   !isEndpoint && isToday && "ring-1 ring-brand-500/60",
-                  !isEndpoint && !isInRange && inMonth && "hover:bg-line-soft",
+                  !isEndpoint && !isInRange && !isPreview && inMonth && "hover:bg-line-soft",
                 )}
               >
                 {d.getUTCDate()}

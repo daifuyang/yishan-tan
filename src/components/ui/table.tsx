@@ -28,7 +28,12 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
+      className={cn(
+        // 末行不再画底线：表格底部交给外层容器 / 分页区收口，
+        // 避免与分页区分隔线叠成"双横线"。
+        "[&_tr:last-child]:border-0 [&_tr:last-child>td]:border-b-0",
+        className,
+      )}
       {...props}
     />
   );
@@ -65,7 +70,8 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 bg-table-header-bg px-3 text-left align-middle text-[13px] font-medium leading-[1.5] text-text-strong whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        // Ant Design Table 表头口径：48px 高、14px、字重 500、左对齐。
+        "h-12 bg-table-header-bg px-3 text-left align-middle text-[14px] font-medium leading-[1.5] text-text-strong whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}

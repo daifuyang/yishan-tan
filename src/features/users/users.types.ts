@@ -54,6 +54,8 @@ export type ListUsersService = (input: {
   systemRole?: "admin" | "member";
   roleId?: string;
   deptId?: string;
+  sortBy?: "createdAt" | "updatedAt" | "username" | "name";
+  sortOrder?: "asc" | "desc";
 }) => Promise<{ items: AdminUserDto[]; total: number }>;
 
 export type GetUserService = (id: string) => Promise<AdminUserDto | null>;

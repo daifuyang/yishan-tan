@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { sortOrderSchema } from "~/lib/list-sort";
+
 export const statusSchema = z.enum(["enabled", "disabled"]);
 
 export const createDictTypeSchema = z.object({
@@ -29,6 +31,10 @@ export const dictTypeListQuerySchema = z.object({
   createdFrom: z.string().datetime().optional(),
   createdTo: z.string().datetime().optional(),
   status: statusSchema.optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按创建时间正序。 */
+  sortBy: z.enum(["createdAt", "updatedAt", "name", "code"]).optional(),
+  /** 排序方向；缺省沿用列表默认顺序（正序）。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export const createDictDataSchema = z.object({
@@ -59,11 +65,17 @@ export const dictDataListQuerySchema = z.object({
   createdTo: z.string().datetime().optional(),
   typeCode: z.string().optional(),
   status: statusSchema.optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按 sort 正序。 */
+  sortBy: z.enum(["createdAt", "updatedAt", "label", "value", "sort"]).optional(),
+  /** 排序方向；缺省沿用列表默认顺序（正序）。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export type CreateDictTypeInput = z.infer<typeof createDictTypeSchema>;
 export type UpdateDictTypeInput = z.infer<typeof updateDictTypeSchema>;
 export type DictTypeListQuery = z.infer<typeof dictTypeListQuerySchema>;
+export type DictTypeSortBy = NonNullable<DictTypeListQuery["sortBy"]>;
 export type CreateDictDataInput = z.infer<typeof createDictDataSchema>;
 export type UpdateDictDataInput = z.infer<typeof updateDictDataSchema>;
 export type DictDataListQuery = z.infer<typeof dictDataListQuerySchema>;
+export type DictDataSortBy = NonNullable<DictDataListQuery["sortBy"]>;

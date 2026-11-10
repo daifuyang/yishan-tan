@@ -19,7 +19,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminStoragesRouteImport } from './routes/admin/storages'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRolesRouteImport } from './routes/admin/roles'
-import { Route as AdminPostsRouteImport } from './routes/admin/posts'
+import { Route as AdminPositionRouteImport } from './routes/admin/position'
 import { Route as AdminPortalsRouteImport } from './routes/admin/portals'
 import { Route as AdminMenusRouteImport } from './routes/admin/menus'
 import { Route as AdminLoginLogsRouteImport } from './routes/admin/login-logs'
@@ -28,7 +28,7 @@ import { Route as AdminDepartmentsRouteImport } from './routes/admin/departments
 import { Route as AdminAttachmentsRouteImport } from './routes/admin/attachments'
 import { Route as ApiV1UsersRouteImport } from './routes/api/v1/users'
 import { Route as ApiV1SessionsRouteImport } from './routes/api/v1/sessions'
-import { Route as ApiV1PostsRouteImport } from './routes/api/v1/posts'
+import { Route as ApiV1PositionRouteImport } from './routes/api/v1/position'
 import { Route as ApiV1MenusRouteImport } from './routes/api/v1/menus'
 import { Route as ApiV1DictsDataRouteImport } from './routes/api/v1/dicts-data'
 import { Route as ApiV1DictTypesRouteImport } from './routes/api/v1/dict-types'
@@ -46,7 +46,7 @@ import { Route as ApiV1SystemOptionsBatchRouteImport } from './routes/api/v1/sys
 import { Route as ApiV1SystemOptionsKeyRouteImport } from './routes/api/v1/system-options/$key'
 import { Route as ApiV1StoragesIdRouteImport } from './routes/api/v1/storages/$id'
 import { Route as ApiV1RolesIdRouteImport } from './routes/api/v1/roles/$id'
-import { Route as ApiV1PostsIdRouteImport } from './routes/api/v1/posts/$id'
+import { Route as ApiV1PositionIdRouteImport } from './routes/api/v1/position/$id'
 import { Route as ApiV1MenusIdRouteImport } from './routes/api/v1/menus/$id'
 import { Route as ApiV1DictsDataIdRouteImport } from './routes/api/v1/dicts-data/$id'
 import { Route as ApiV1DictTypesIdRouteImport } from './routes/api/v1/dict-types/$id'
@@ -105,9 +105,9 @@ const AdminRolesRoute = AdminRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminPostsRoute = AdminPostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
+const AdminPositionRoute = AdminPositionRouteImport.update({
+  id: '/position',
+  path: '/position',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPortalsRoute = AdminPortalsRouteImport.update({
@@ -150,9 +150,9 @@ const ApiV1SessionsRoute = ApiV1SessionsRouteImport.update({
   path: '/api/v1/sessions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1PostsRoute = ApiV1PostsRouteImport.update({
-  id: '/api/v1/posts',
-  path: '/api/v1/posts',
+const ApiV1PositionRoute = ApiV1PositionRouteImport.update({
+  id: '/api/v1/position',
+  path: '/api/v1/position',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1MenusRoute = ApiV1MenusRouteImport.update({
@@ -240,10 +240,10 @@ const ApiV1RolesIdRoute = ApiV1RolesIdRouteImport.update({
   path: '/api/v1/roles/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1PostsIdRoute = ApiV1PostsIdRouteImport.update({
+const ApiV1PositionIdRoute = ApiV1PositionIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => ApiV1PostsRoute,
+  getParentRoute: () => ApiV1PositionRoute,
 } as any)
 const ApiV1MenusIdRoute = ApiV1MenusIdRouteImport.update({
   id: '/$id',
@@ -291,7 +291,7 @@ export interface FileRoutesByFullPath {
   '/admin/login-logs': typeof AdminLoginLogsRoute
   '/admin/menus': typeof AdminMenusRoute
   '/admin/portals': typeof AdminPortalsRoute
-  '/admin/posts': typeof AdminPostsRoute
+  '/admin/position': typeof AdminPositionRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/storages': typeof AdminStoragesRoute
@@ -305,7 +305,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
   '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
   '/api/v1/menus': typeof ApiV1MenusRouteWithChildren
-  '/api/v1/posts': typeof ApiV1PostsRouteWithChildren
+  '/api/v1/position': typeof ApiV1PositionRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
   '/api/v1/users': typeof ApiV1UsersRouteWithChildren
   '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
@@ -313,7 +313,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/dict-types/$id': typeof ApiV1DictTypesIdRoute
   '/api/v1/dicts-data/$id': typeof ApiV1DictsDataIdRoute
   '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
-  '/api/v1/posts/$id': typeof ApiV1PostsIdRoute
+  '/api/v1/position/$id': typeof ApiV1PositionIdRoute
   '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
   '/api/v1/storages/$id': typeof ApiV1StoragesIdRouteWithChildren
   '/api/v1/system-options/$key': typeof ApiV1SystemOptionsKeyRoute
@@ -337,7 +337,7 @@ export interface FileRoutesByTo {
   '/admin/login-logs': typeof AdminLoginLogsRoute
   '/admin/menus': typeof AdminMenusRoute
   '/admin/portals': typeof AdminPortalsRoute
-  '/admin/posts': typeof AdminPostsRoute
+  '/admin/position': typeof AdminPositionRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/storages': typeof AdminStoragesRoute
@@ -351,14 +351,14 @@ export interface FileRoutesByTo {
   '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
   '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
   '/api/v1/menus': typeof ApiV1MenusRouteWithChildren
-  '/api/v1/posts': typeof ApiV1PostsRouteWithChildren
+  '/api/v1/position': typeof ApiV1PositionRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
   '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
   '/api/v1/departments/$id': typeof ApiV1DepartmentsIdRoute
   '/api/v1/dict-types/$id': typeof ApiV1DictTypesIdRoute
   '/api/v1/dicts-data/$id': typeof ApiV1DictsDataIdRoute
   '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
-  '/api/v1/posts/$id': typeof ApiV1PostsIdRoute
+  '/api/v1/position/$id': typeof ApiV1PositionIdRoute
   '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
   '/api/v1/storages/$id': typeof ApiV1StoragesIdRouteWithChildren
   '/api/v1/system-options/$key': typeof ApiV1SystemOptionsKeyRoute
@@ -384,7 +384,7 @@ export interface FileRoutesById {
   '/admin/login-logs': typeof AdminLoginLogsRoute
   '/admin/menus': typeof AdminMenusRoute
   '/admin/portals': typeof AdminPortalsRoute
-  '/admin/posts': typeof AdminPostsRoute
+  '/admin/position': typeof AdminPositionRoute
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/storages': typeof AdminStoragesRoute
@@ -398,7 +398,7 @@ export interface FileRoutesById {
   '/api/v1/dict-types': typeof ApiV1DictTypesRouteWithChildren
   '/api/v1/dicts-data': typeof ApiV1DictsDataRouteWithChildren
   '/api/v1/menus': typeof ApiV1MenusRouteWithChildren
-  '/api/v1/posts': typeof ApiV1PostsRouteWithChildren
+  '/api/v1/position': typeof ApiV1PositionRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
   '/api/v1/users': typeof ApiV1UsersRouteWithChildren
   '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
@@ -406,7 +406,7 @@ export interface FileRoutesById {
   '/api/v1/dict-types/$id': typeof ApiV1DictTypesIdRoute
   '/api/v1/dicts-data/$id': typeof ApiV1DictsDataIdRoute
   '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
-  '/api/v1/posts/$id': typeof ApiV1PostsIdRoute
+  '/api/v1/position/$id': typeof ApiV1PositionIdRoute
   '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
   '/api/v1/storages/$id': typeof ApiV1StoragesIdRouteWithChildren
   '/api/v1/system-options/$key': typeof ApiV1SystemOptionsKeyRoute
@@ -433,7 +433,7 @@ export interface FileRouteTypes {
     | '/admin/login-logs'
     | '/admin/menus'
     | '/admin/portals'
-    | '/admin/posts'
+    | '/admin/position'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/storages'
@@ -447,7 +447,7 @@ export interface FileRouteTypes {
     | '/api/v1/dict-types'
     | '/api/v1/dicts-data'
     | '/api/v1/menus'
-    | '/api/v1/posts'
+    | '/api/v1/position'
     | '/api/v1/sessions'
     | '/api/v1/users'
     | '/api/v1/api-keys/$id'
@@ -455,7 +455,7 @@ export interface FileRouteTypes {
     | '/api/v1/dict-types/$id'
     | '/api/v1/dicts-data/$id'
     | '/api/v1/menus/$id'
-    | '/api/v1/posts/$id'
+    | '/api/v1/position/$id'
     | '/api/v1/roles/$id'
     | '/api/v1/storages/$id'
     | '/api/v1/system-options/$key'
@@ -479,7 +479,7 @@ export interface FileRouteTypes {
     | '/admin/login-logs'
     | '/admin/menus'
     | '/admin/portals'
-    | '/admin/posts'
+    | '/admin/position'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/storages'
@@ -493,14 +493,14 @@ export interface FileRouteTypes {
     | '/api/v1/dict-types'
     | '/api/v1/dicts-data'
     | '/api/v1/menus'
-    | '/api/v1/posts'
+    | '/api/v1/position'
     | '/api/v1/sessions'
     | '/api/v1/api-keys/$id'
     | '/api/v1/departments/$id'
     | '/api/v1/dict-types/$id'
     | '/api/v1/dicts-data/$id'
     | '/api/v1/menus/$id'
-    | '/api/v1/posts/$id'
+    | '/api/v1/position/$id'
     | '/api/v1/roles/$id'
     | '/api/v1/storages/$id'
     | '/api/v1/system-options/$key'
@@ -525,7 +525,7 @@ export interface FileRouteTypes {
     | '/admin/login-logs'
     | '/admin/menus'
     | '/admin/portals'
-    | '/admin/posts'
+    | '/admin/position'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/storages'
@@ -539,7 +539,7 @@ export interface FileRouteTypes {
     | '/api/v1/dict-types'
     | '/api/v1/dicts-data'
     | '/api/v1/menus'
-    | '/api/v1/posts'
+    | '/api/v1/position'
     | '/api/v1/sessions'
     | '/api/v1/users'
     | '/api/v1/api-keys/$id'
@@ -547,7 +547,7 @@ export interface FileRouteTypes {
     | '/api/v1/dict-types/$id'
     | '/api/v1/dicts-data/$id'
     | '/api/v1/menus/$id'
-    | '/api/v1/posts/$id'
+    | '/api/v1/position/$id'
     | '/api/v1/roles/$id'
     | '/api/v1/storages/$id'
     | '/api/v1/system-options/$key'
@@ -574,7 +574,7 @@ export interface RootRouteChildren {
   ApiV1DictTypesRoute: typeof ApiV1DictTypesRouteWithChildren
   ApiV1DictsDataRoute: typeof ApiV1DictsDataRouteWithChildren
   ApiV1MenusRoute: typeof ApiV1MenusRouteWithChildren
-  ApiV1PostsRoute: typeof ApiV1PostsRouteWithChildren
+  ApiV1PositionRoute: typeof ApiV1PositionRouteWithChildren
   ApiV1SessionsRoute: typeof ApiV1SessionsRoute
   ApiV1UsersRoute: typeof ApiV1UsersRouteWithChildren
   ApiV1ApiKeysIdRoute: typeof ApiV1ApiKeysIdRoute
@@ -660,11 +660,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRolesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/posts': {
-      id: '/admin/posts'
-      path: '/posts'
-      fullPath: '/admin/posts'
-      preLoaderRoute: typeof AdminPostsRouteImport
+    '/admin/position': {
+      id: '/admin/position'
+      path: '/position'
+      fullPath: '/admin/position'
+      preLoaderRoute: typeof AdminPositionRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/portals': {
@@ -723,11 +723,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1SessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/v1/posts': {
-      id: '/api/v1/posts'
-      path: '/api/v1/posts'
-      fullPath: '/api/v1/posts'
-      preLoaderRoute: typeof ApiV1PostsRouteImport
+    '/api/v1/position': {
+      id: '/api/v1/position'
+      path: '/api/v1/position'
+      fullPath: '/api/v1/position'
+      preLoaderRoute: typeof ApiV1PositionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/menus': {
@@ -849,12 +849,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1RolesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/v1/posts/$id': {
-      id: '/api/v1/posts/$id'
+    '/api/v1/position/$id': {
+      id: '/api/v1/position/$id'
       path: '/$id'
-      fullPath: '/api/v1/posts/$id'
-      preLoaderRoute: typeof ApiV1PostsIdRouteImport
-      parentRoute: typeof ApiV1PostsRoute
+      fullPath: '/api/v1/position/$id'
+      preLoaderRoute: typeof ApiV1PositionIdRouteImport
+      parentRoute: typeof ApiV1PositionRoute
     }
     '/api/v1/menus/$id': {
       id: '/api/v1/menus/$id'
@@ -927,7 +927,7 @@ interface AdminRouteRouteChildren {
   AdminLoginLogsRoute: typeof AdminLoginLogsRoute
   AdminMenusRoute: typeof AdminMenusRoute
   AdminPortalsRoute: typeof AdminPortalsRoute
-  AdminPostsRoute: typeof AdminPostsRoute
+  AdminPositionRoute: typeof AdminPositionRoute
   AdminRolesRoute: typeof AdminRolesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStoragesRoute: typeof AdminStoragesRoute
@@ -942,7 +942,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminLoginLogsRoute: AdminLoginLogsRoute,
   AdminMenusRoute: AdminMenusRoute,
   AdminPortalsRoute: AdminPortalsRoute,
-  AdminPostsRoute: AdminPostsRoute,
+  AdminPositionRoute: AdminPositionRoute,
   AdminRolesRoute: AdminRolesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStoragesRoute: AdminStoragesRoute,
@@ -1001,16 +1001,16 @@ const ApiV1MenusRouteWithChildren = ApiV1MenusRoute._addFileChildren(
   ApiV1MenusRouteChildren,
 )
 
-interface ApiV1PostsRouteChildren {
-  ApiV1PostsIdRoute: typeof ApiV1PostsIdRoute
+interface ApiV1PositionRouteChildren {
+  ApiV1PositionIdRoute: typeof ApiV1PositionIdRoute
 }
 
-const ApiV1PostsRouteChildren: ApiV1PostsRouteChildren = {
-  ApiV1PostsIdRoute: ApiV1PostsIdRoute,
+const ApiV1PositionRouteChildren: ApiV1PositionRouteChildren = {
+  ApiV1PositionIdRoute: ApiV1PositionIdRoute,
 }
 
-const ApiV1PostsRouteWithChildren = ApiV1PostsRoute._addFileChildren(
-  ApiV1PostsRouteChildren,
+const ApiV1PositionRouteWithChildren = ApiV1PositionRoute._addFileChildren(
+  ApiV1PositionRouteChildren,
 )
 
 interface ApiV1UsersMeRouteChildren {
@@ -1064,7 +1064,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1DictTypesRoute: ApiV1DictTypesRouteWithChildren,
   ApiV1DictsDataRoute: ApiV1DictsDataRouteWithChildren,
   ApiV1MenusRoute: ApiV1MenusRouteWithChildren,
-  ApiV1PostsRoute: ApiV1PostsRouteWithChildren,
+  ApiV1PositionRoute: ApiV1PositionRouteWithChildren,
   ApiV1SessionsRoute: ApiV1SessionsRoute,
   ApiV1UsersRoute: ApiV1UsersRouteWithChildren,
   ApiV1ApiKeysIdRoute: ApiV1ApiKeysIdRoute,

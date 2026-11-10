@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { sortOrderSchema } from "~/lib/list-sort";
+
 export const statusSchema = z.enum(["enabled", "disabled"]);
 
 export const storageDriverSchema = z.enum([
@@ -129,8 +131,13 @@ export const storageListQuerySchema = z.object({
   status: statusSchema.optional(),
   createdFrom: z.string().trim().optional(),
   createdTo: z.string().trim().optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按创建时间倒序。 */
+  sortBy: z.enum(["createdAt", "updatedAt", "name", "driver", "status"]).optional(),
+  /** 排序方向；缺省倒序。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export type CreateStorageInput = z.infer<typeof createStorageSchema>;
 export type UpdateStorageInput = z.infer<typeof updateStorageSchema>;
 export type StorageListQuery = z.infer<typeof storageListQuerySchema>;
+export type StorageSortBy = NonNullable<StorageListQuery["sortBy"]>;

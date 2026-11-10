@@ -33,6 +33,8 @@ export type ListPortalsService = (input: {
   status?: PortalStatus;
   createdFrom?: string;
   createdTo?: string;
+  sortBy?: "name" | "code" | "domain" | "status" | "isDefault" | "createdAt" | "updatedAt";
+  sortOrder?: "asc" | "desc";
 }) => Promise<{ items: PortalDto[]; total: number }>;
 
 export type GetPortalService = (id: string) => Promise<PortalDto | null>;

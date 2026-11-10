@@ -9,14 +9,13 @@ import { z } from "zod";
 import { createSession } from "~/features/auth/auth.actions";
 import { currentUserQueryKey } from "~/features/auth/auth.queries";
 import { createSessionSchema } from "~/features/auth/auth.schema";
+import { sanitizeAdminNext } from "~/lib/redirect";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const BRAND_NAME = "Yishan Tan";
 const BRAND_TAGLINE = "AI 友好框架，快速搭建属于你的专属系统。";
-const SAFE_REDIRECT_PREFIX = "/";
-const SAFE_REDIRECT_BLOCK_PATTERNS = [/^\/login(\/|$)/, /\/\/+/];
 
 const BRAND_FEATURES = ["统一认证", "权限管控", "OpenAPI"] as const;
 const FOOTER_LINKS = ["帮助中心", "隐私政策", "服务条款"] as const;
@@ -46,7 +45,12 @@ function LoginPage() {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = React.useState(false);
 
-  const safeRedirect = React.useMemo(() => sanitizeRedirect(redirectTo), [redirectTo]);
+  // 回跳地址先过白名单（只允许 /admin 下的站内相对路径），再只取路径部分：
+  // query / hash 由目标路由自己的 search 校验负责，不在这里透传。
+  const safeRedirect = React.useMemo(
+    () => sanitizeAdminNext(redirectTo, currentOrigin()).split(/[?#]/)[0] as "/admin",
+    [redirectTo],
+  );
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(createSessionSchema),
@@ -258,10 +262,10 @@ function FieldError({ message }: { message?: string }) {
   return <p className="text-xs text-destructive">{message}</p>;
 }
 
-function sanitizeRedirect(input: string | undefined): "/admin" {
-  const fallback = "/admin" as const;
-  if (!input) return fallback;
-  if (!input.startsWith(SAFE_REDIRECT_PREFIX)) return fallback;
-  if (SAFE_REDIRECT_BLOCK_PATTERNS.some((re) => re.test(input))) return fallback;
-  return input as "/admin";
+/**
+ * 当前站点的 origin：用于把「同源绝对 URL」的回跳地址归一成站内相对路径。
+ * SSR 阶段没有 window，返回 undefined —— 此时一律按站内相对路径处理。
+ */
+function currentOrigin(): string | undefined {
+  return typeof window === "undefined" ? undefined : window.location.origin;
 }

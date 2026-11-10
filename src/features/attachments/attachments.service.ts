@@ -1,10 +1,24 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
-import { type SQL, and, desc, eq, gte, isNull, like, lte, sql } from "drizzle-orm";
+import {
+  type AnyColumn,
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  isNull,
+  like,
+  lte,
+  sql,
+} from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
+import type { AttachmentSortBy } from "./attachments.schema";
 import type {
   AttachmentDto,
   CreateAttachmentService,
@@ -14,6 +28,27 @@ import type {
 } from "./attachments.types";
 
 type AttachmentRow = typeof schema.attachment.$inferSelect;
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const ATTACHMENT_SORT_COLUMNS: Record<AttachmentSortBy, AnyColumn> = {
+  createdAt: schema.attachment.createdAt,
+  updatedAt: schema.attachment.updatedAt,
+  name: schema.attachment.name,
+  size: schema.attachment.size,
+  mime: schema.attachment.mime,
+  category: schema.attachment.category,
+};
+
+function attachmentOrderBy(sortBy: AttachmentSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const column =
+    ATTACHMENT_SORT_COLUMNS[sortBy ?? "createdAt"] ?? ATTACHMENT_SORT_COLUMNS.createdAt;
+  return sortOrder === "asc" ? asc(column) : desc(column);
+}
 
 function toDto(
   row: AttachmentRow,
@@ -105,6 +140,8 @@ export const listAttachmentsService: ListAttachmentsService = async ({
   storageId,
   createdFrom,
   createdTo,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [];
   if (keyword) {
@@ -134,7 +171,7 @@ export const listAttachmentsService: ListAttachmentsService = async ({
       .select()
       .from(schema.attachment)
       .where(baseWhere)
-      .orderBy(desc(schema.attachment.createdAt))
+      .orderBy(attachmentOrderBy(sortBy, sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb().select({ count: sql<number>`count(*)::int` }).from(schema.attachment).where(baseWhere),

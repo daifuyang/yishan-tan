@@ -448,78 +448,6 @@ function CollapsedMenuNode({
   );
 }
 
-type AdminBreadcrumbProps = {
-  path: string;
-};
-
-export function AdminBreadcrumb({ path }: AdminBreadcrumbProps) {
-  const { data, isLoading } = useAuthorizedMenuTree();
-  const tree: readonly MenuNode[] = data ?? FALLBACK_NAV_ITEMS;
-  const items = React.useMemo(() => buildBreadcrumb(tree, path), [tree, path]);
-
-  if (isLoading && items.length === 0) {
-    return <span className="text-sm text-text-mute">加载中…</span>;
-  }
-
-  return (
-    <nav aria-label="面包屑" className="flex items-center gap-1.5 text-sm">
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1;
-        const Icon = resolveMenuIcon(item.iconName);
-        return (
-          <React.Fragment key={`${item.title}-${index}`}>
-            {index > 0 ? <ChevronRight className="size-3.5 text-text-mute" aria-hidden /> : null}
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 truncate transition-colors",
-                isLast ? "font-medium text-text-strong" : "text-text-soft hover:text-brand-700",
-              )}
-            >
-              <Icon className="size-4 shrink-0 text-current" aria-hidden />
-              <span className="truncate">{item.title}</span>
-            </span>
-          </React.Fragment>
-        );
-      })}
-    </nav>
-  );
-}
-
-type Crumb = { title: string; iconName: string | null };
-
-function buildBreadcrumb(tree: readonly MenuNode[], path: string): Crumb[] {
-  const out: Crumb[] = [];
-
-  function search(nodes: readonly MenuNode[], trail: Crumb[]): boolean {
-    for (const node of nodes) {
-      if (isMenuLeaf(node)) {
-        if (node.path && isPathActive(path, node.path)) {
-          // 命中：trail 里是各层 group 的标题，追加当前 leaf 标题
-          out.push({ title: "首页", iconName: "Home" });
-          for (const t of trail) out.push(t);
-          out.push({ title: node.name, iconName: node.icon });
-          return true;
-        }
-        continue;
-      }
-      // group 节点：把 group 自己压栈再递归
-      trail.push({ title: node.name, iconName: node.icon });
-      if (search(node.children, trail)) return true;
-      trail.pop();
-    }
-    return false;
-  }
-
-  search(tree, []);
-
-  if (out.length === 0) {
-    // 没命中任何叶子（path 不在菜单里）→ 至少显示首页
-    return [{ title: "首页", iconName: "Home" }];
-  }
-
-  return out;
-}
-
 export { ADMIN_PROFILE_PATH };
 
 /**
@@ -527,5 +455,4 @@ export { ADMIN_PROFILE_PATH };
  */
 export const __testing = {
   flattenLeaves,
-  buildBreadcrumb,
 };

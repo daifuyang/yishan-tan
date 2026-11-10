@@ -2,7 +2,12 @@ import { Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/rea
 import { ChevronDown, Plus, Settings2, Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -29,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDictTypesList } from "~/features/dicts/dicts.queries";
-import { dictTypeListQuerySchema } from "~/features/dicts/dicts.schema";
+import { type DictTypeSortBy, dictTypeListQuerySchema } from "~/features/dicts/dicts.schema";
 import type { DictTypeListItemDto } from "~/features/dicts/dicts.types";
 import {
   useBulkDeleteDictTypes,
@@ -80,10 +85,20 @@ function AdminDictsRoute() {
 
 function AdminDictsPage() {
   const navigate = useNavigate();
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["name", "code", "description", "status", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "createdAt", sortOrder: "asc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
   const [editing, setEditing] = React.useState<DictTypeListItemDto | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [editForm, setEditForm] = React.useState<EditDictTypeFormValue>(EMPTY_TYPE_FORM);
@@ -96,7 +111,10 @@ function AdminDictsPage() {
 
   const permissions = useResourcePermissions("dicts");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
-  const query = dictTypeListQuerySchema.parse(buildListQuery(filters, page, pageSize));
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<DictTypeSortBy>;
+  const onSortChange = listState.setSort;
+  const query = dictTypeListQuerySchema.parse(buildListQuery(filters, page, pageSize, sort));
   const list = useDictTypesList(query, canRead);
   const createMut = useCreateDictType();
   const updateMut = useUpdateDictType();
@@ -109,24 +127,22 @@ function AdminDictsPage() {
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters({ ...draft });
-    setPage(1);
+    listState.setFilters(draft);
     setSelectedKeys([]);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
+    listState.resetFilters();
     setSelectedKeys([]);
-  }, []);
+  }, [listState]);
 
   const handleStartEdit = (row: DictTypeListItemDto) => {
     setEditing(row);
@@ -218,21 +234,22 @@ function AdminDictsPage() {
   const columns: ResourceColumn<DictTypeListItemDto>[] = [
     {
       key: "name",
+      sortKey: "name",
       header: "名称",
       width: "160px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-strong"
-          title={row.name}
-        >
+        <span className="text-[13px] text-text-strong" title={row.name}>
           {row.name}
         </span>
       ),
     },
     {
       key: "code",
+      sortKey: "code",
       header: "编码",
       width: "160px",
+      ellipsis: true,
       cell: (row) => (
         <span className={MONO_CELL} title={row.code}>
           {row.code}
@@ -243,11 +260,9 @@ function AdminDictsPage() {
       key: "description",
       header: "描述",
       width: "240px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.description ?? ""}
-        >
+        <span className="text-[13px] text-text-soft" title={row.description ?? ""}>
           {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -272,6 +287,7 @@ function AdminDictsPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "170px",
       cell: (row) => (
@@ -515,8 +531,16 @@ function AdminDictsPage() {
         filterLoading={list.isFetching}
         toolbarTitle="字典类型"
         toolbarActions={
-          <>
-            {canDelete && selectedKeys.length > 0 ? (
+          <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
+            <Plus className="size-3.5" aria-hidden />
+            新建字典类型
+          </Button>
+        }
+        tableProps={{
+          settingsKey: "dicts-types",
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -543,33 +567,32 @@ function AdminDictsPage() {
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  批量删除 ({selectedKeys.length})
+                  批量删除
                 </Button>
               </Popconfirm>
-            ) : null}
-            <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
-              <Plus className="size-3.5" aria-hidden />
-              新建字典类型
-            </Button>
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<DictTypeListItemDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: (next) => {
-            setPage(next);
-            setSelectedKeys([]);
-          },
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-            setSelectedKeys([]);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              setSelectedKeys([]);
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyDescription: permissions.error ?? (list.isError ? list.error.message : undefined),
           emptyTitle: permissions.error || list.isError ? "无法加载列表" : "暂无字典类型",
           error:
@@ -663,7 +686,12 @@ const EMPTY_TYPE_FORM: CreateDictTypeFormValue = {
   status: "enabled",
 };
 
-function buildListQuery(filters: FilterState, page: number, pageSize: number) {
+function buildListQuery(
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<DictTypeSortBy>,
+) {
   const trim = (v: string) => v.trim() || undefined;
   const name = trim(filters.name);
   const code = trim(filters.code);
@@ -682,6 +710,8 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     status,
     createdFrom,
     createdTo,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
   };
 }
 

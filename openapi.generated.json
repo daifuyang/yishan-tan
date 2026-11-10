@@ -3084,6 +3084,32 @@
             "required": false,
             "name": "roleId",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "username",
+                "name"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
+            "in": "query"
           }
         ],
         "responses": {
@@ -3301,7 +3327,6 @@
                   },
                   "displayName": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 50
                   },
                   "phone": {
@@ -4246,6 +4271,32 @@
             "required": false,
             "name": "createdTo",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name",
+                "status"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
+            "in": "query"
           }
         ],
         "responses": {
@@ -4389,7 +4440,42 @@
                         "users:delete",
                         "users:reset-password",
                         "users:export",
-                        "users:assign-roles"
+                        "users:assign-roles",
+                        "departments:read",
+                        "departments:create",
+                        "departments:update",
+                        "departments:delete",
+                        "departments:export",
+                        "posts:read",
+                        "posts:create",
+                        "posts:update",
+                        "posts:delete",
+                        "dicts:read",
+                        "dicts:create",
+                        "dicts:update",
+                        "dicts:delete",
+                        "roles:read",
+                        "roles:create",
+                        "roles:update",
+                        "roles:delete",
+                        "menus:read",
+                        "menus:create",
+                        "menus:update",
+                        "menus:delete",
+                        "settings:read",
+                        "settings:update",
+                        "storages:read",
+                        "storages:create",
+                        "storages:update",
+                        "storages:delete",
+                        "attachments:read",
+                        "attachments:create",
+                        "attachments:delete",
+                        "login-logs:read",
+                        "portals:read",
+                        "portals:create",
+                        "portals:update",
+                        "portals:delete"
                       ]
                     },
                     "maxItems": 100
@@ -4654,7 +4740,42 @@
                         "users:delete",
                         "users:reset-password",
                         "users:export",
-                        "users:assign-roles"
+                        "users:assign-roles",
+                        "departments:read",
+                        "departments:create",
+                        "departments:update",
+                        "departments:delete",
+                        "departments:export",
+                        "posts:read",
+                        "posts:create",
+                        "posts:update",
+                        "posts:delete",
+                        "dicts:read",
+                        "dicts:create",
+                        "dicts:update",
+                        "dicts:delete",
+                        "roles:read",
+                        "roles:create",
+                        "roles:update",
+                        "roles:delete",
+                        "menus:read",
+                        "menus:create",
+                        "menus:update",
+                        "menus:delete",
+                        "settings:read",
+                        "settings:update",
+                        "storages:read",
+                        "storages:create",
+                        "storages:update",
+                        "storages:delete",
+                        "attachments:read",
+                        "attachments:create",
+                        "attachments:delete",
+                        "login-logs:read",
+                        "portals:read",
+                        "portals:create",
+                        "portals:update",
+                        "portals:delete"
                       ]
                     },
                     "maxItems": 100
@@ -4909,6 +5030,33 @@
             "required": false,
             "name": "type",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sort",
+                "name",
+                "path",
+                "createdAt",
+                "updatedAt"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
+            "in": "query"
           }
         ],
         "responses": {
@@ -5054,7 +5202,42 @@
                         "users:delete",
                         "users:reset-password",
                         "users:export",
-                        "users:assign-roles"
+                        "users:assign-roles",
+                        "departments:read",
+                        "departments:create",
+                        "departments:update",
+                        "departments:delete",
+                        "departments:export",
+                        "posts:read",
+                        "posts:create",
+                        "posts:update",
+                        "posts:delete",
+                        "dicts:read",
+                        "dicts:create",
+                        "dicts:update",
+                        "dicts:delete",
+                        "roles:read",
+                        "roles:create",
+                        "roles:update",
+                        "roles:delete",
+                        "menus:read",
+                        "menus:create",
+                        "menus:update",
+                        "menus:delete",
+                        "settings:read",
+                        "settings:update",
+                        "storages:read",
+                        "storages:create",
+                        "storages:update",
+                        "storages:delete",
+                        "attachments:read",
+                        "attachments:create",
+                        "attachments:delete",
+                        "login-logs:read",
+                        "portals:read",
+                        "portals:create",
+                        "portals:update",
+                        "portals:delete"
                       ]
                     },
                     "maxItems": 100
@@ -5236,7 +5419,42 @@
                         "users:delete",
                         "users:reset-password",
                         "users:export",
-                        "users:assign-roles"
+                        "users:assign-roles",
+                        "departments:read",
+                        "departments:create",
+                        "departments:update",
+                        "departments:delete",
+                        "departments:export",
+                        "posts:read",
+                        "posts:create",
+                        "posts:update",
+                        "posts:delete",
+                        "dicts:read",
+                        "dicts:create",
+                        "dicts:update",
+                        "dicts:delete",
+                        "roles:read",
+                        "roles:create",
+                        "roles:update",
+                        "roles:delete",
+                        "menus:read",
+                        "menus:create",
+                        "menus:update",
+                        "menus:delete",
+                        "settings:read",
+                        "settings:update",
+                        "storages:read",
+                        "storages:create",
+                        "storages:update",
+                        "storages:delete",
+                        "attachments:read",
+                        "attachments:create",
+                        "attachments:delete",
+                        "login-logs:read",
+                        "portals:read",
+                        "portals:create",
+                        "portals:update",
+                        "portals:delete"
                       ]
                     },
                     "maxItems": 100
@@ -5445,7 +5663,7 @@
     "/api/v1/departments": {
       "get": {
         "operationId": "listDepartments",
-        "summary": "查询部门。tree=1 返回树",
+        "summary": "查询部门。tree=1 返回树（departments:read）",
         "tags": [
           "departments"
         ],
@@ -5489,6 +5707,33 @@
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name",
+                "sort",
+                "status"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
             "in": "query"
           }
         ],
@@ -5577,7 +5822,7 @@
       },
       "post": {
         "operationId": "createDepartment",
-        "summary": "创建部门（admin）",
+        "summary": "创建部门（departments:create）",
         "tags": [
           "departments"
         ],
@@ -5715,7 +5960,7 @@
     "/api/v1/departments/{id}": {
       "patch": {
         "operationId": "updateDepartment",
-        "summary": "更新部门（admin）。parent 不能是自身或子孙",
+        "summary": "更新部门。parent 不能是自身或子孙（departments:update）",
         "tags": [
           "departments"
         ],
@@ -5857,7 +6102,7 @@
       },
       "delete": {
         "operationId": "deleteDepartment",
-        "summary": "删除部门（admin）。有子部门时不能删",
+        "summary": "删除部门。有子部门时不能删（departments:delete）",
         "tags": [
           "departments"
         ],
@@ -5959,7 +6204,7 @@
     "/api/v1/dict-types": {
       "get": {
         "operationId": "listDictTypes",
-        "summary": "分页列出字典类型（admin）",
+        "summary": "分页列出字典类型（dicts:read）",
         "tags": [
           "dict-types"
         ],
@@ -5995,6 +6240,48 @@
           },
           {
             "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "name",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "code",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "description",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "createdFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "createdTo",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "string",
               "enum": [
                 "enabled",
@@ -6003,6 +6290,32 @@
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name",
+                "code"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
             "in": "query"
           }
         ],
@@ -6091,7 +6404,7 @@
       },
       "post": {
         "operationId": "createDictType",
-        "summary": "创建字典类型（admin）",
+        "summary": "创建字典类型（dicts:create）",
         "tags": [
           "dict-types"
         ],
@@ -6220,7 +6533,7 @@
     "/api/v1/dict-types/{id}": {
       "get": {
         "operationId": "getDictType",
-        "summary": "字典类型详情（admin）",
+        "summary": "字典类型详情（dicts:read）",
         "tags": [
           "dict-types"
         ],
@@ -6320,7 +6633,7 @@
       },
       "patch": {
         "operationId": "updateDictType",
-        "summary": "更新字典类型（admin）",
+        "summary": "更新字典类型（dicts:update）",
         "tags": [
           "dict-types"
         ],
@@ -6447,7 +6760,7 @@
       },
       "delete": {
         "operationId": "deleteDictType",
-        "summary": "删除字典类型（admin）",
+        "summary": "删除字典类型（dicts:delete）",
         "tags": [
           "dict-types"
         ],
@@ -6549,7 +6862,7 @@
     "/api/v1/dicts-data": {
       "get": {
         "operationId": "listDictData",
-        "summary": "分页列出字典条目（admin）",
+        "summary": "分页列出字典条目（dicts:read）",
         "tags": [
           "dicts-data"
         ],
@@ -6588,6 +6901,48 @@
               "type": "string"
             },
             "required": false,
+            "name": "label",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "value",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "extra",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "createdFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "createdTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
             "name": "typeCode",
             "in": "query"
           },
@@ -6601,6 +6956,33 @@
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "label",
+                "value",
+                "sort"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
             "in": "query"
           }
         ],
@@ -6689,7 +7071,7 @@
       },
       "post": {
         "operationId": "createDictData",
-        "summary": "创建字典条目（admin）。typeCode 必须已存在",
+        "summary": "创建字典条目。typeCode 必须已存在（dicts:create）",
         "tags": [
           "dicts-data"
         ],
@@ -6828,7 +7210,7 @@
     "/api/v1/dicts-data/{id}": {
       "get": {
         "operationId": "getDictData",
-        "summary": "字典条目详情（admin）",
+        "summary": "字典条目详情（dicts:read）",
         "tags": [
           "dicts-data"
         ],
@@ -6928,7 +7310,7 @@
       },
       "patch": {
         "operationId": "updateDictData",
-        "summary": "更新字典条目（admin）",
+        "summary": "更新字典条目（dicts:update）",
         "tags": [
           "dicts-data"
         ],
@@ -7064,7 +7446,7 @@
       },
       "delete": {
         "operationId": "deleteDictData",
-        "summary": "删除字典条目（admin）",
+        "summary": "删除字典条目（dicts:delete）",
         "tags": [
           "dicts-data"
         ],
@@ -7163,10 +7545,10 @@
         }
       }
     },
-    "/api/v1/posts": {
+    "/api/v1/position": {
       "get": {
         "operationId": "listPosts",
-        "summary": "分页列出岗位（admin）",
+        "summary": "分页列出岗位（posts:read）",
         "tags": [
           "posts"
         ],
@@ -7249,6 +7631,32 @@
             },
             "required": false,
             "name": "createdTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name",
+                "sort"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
             "in": "query"
           }
         ],
@@ -7337,7 +7745,7 @@
       },
       "post": {
         "operationId": "createPost",
-        "summary": "创建岗位（admin）",
+        "summary": "创建岗位（posts:create）",
         "tags": [
           "posts"
         ],
@@ -7463,10 +7871,10 @@
         }
       }
     },
-    "/api/v1/posts/{id}": {
+    "/api/v1/position/{id}": {
       "patch": {
         "operationId": "updatePost",
-        "summary": "更新岗位（admin）",
+        "summary": "更新岗位（posts:update）",
         "tags": [
           "posts"
         ],
@@ -7598,7 +8006,7 @@
       },
       "delete": {
         "operationId": "deletePost",
-        "summary": "删除岗位（admin）",
+        "summary": "删除岗位（posts:delete）",
         "tags": [
           "posts"
         ],
@@ -7795,6 +8203,33 @@
             },
             "required": false,
             "name": "createdTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name",
+                "driver",
+                "status"
+              ]
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "required": false,
+            "name": "sortOrder",
             "in": "query"
           }
         ],

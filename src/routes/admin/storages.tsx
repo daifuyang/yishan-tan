@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, Cloud, Plus, Star } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -32,6 +37,7 @@ import { useResourcePermissions } from "~/features/permissions/permissions.queri
 import { useStoragesList } from "~/features/storages/storages.queries";
 import {
   type StorageDriver,
+  type StorageSortBy,
   storageDriverSchema,
   storageListQuerySchema,
 } from "~/features/storages/storages.schema";
@@ -88,7 +94,12 @@ function formatDateTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildListQuery(filters: FilterState, page: number, pageSize: number) {
+function toQuery(
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<StorageSortBy>,
+) {
   const trim = (v: string) => v.trim() || undefined;
   const { createdFrom, createdTo } = normalizeDateRange({
     start: filters.createdFrom || null,
@@ -103,14 +114,26 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     status: filters.status === "all" ? undefined : filters.status,
     createdFrom,
     createdTo,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
   });
 }
 
 function AdminStoragesPage() {
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["keyword", "driver", "isDefault", "status", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "createdAt", sortOrder: "desc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
   const [editing, setEditing] = React.useState<StorageDto | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [createForm, setCreateForm] = React.useState<EditStorageFormValue>(EMPTY_CREATE_FORM);
@@ -119,7 +142,10 @@ function AdminStoragesPage() {
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
   const [moreMenuRowId, setMoreMenuRowId] = React.useState<string | null>(null);
 
-  const query = buildListQuery(filters, page, pageSize);
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<StorageSortBy>;
+  const onSortChange = listState.setSort;
+  const query = toQuery(filters, page, pageSize, sort);
   const permissions = useResourcePermissions("storages");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
   const list = useStoragesList(query, canRead);
@@ -132,40 +158,22 @@ function AdminStoragesPage() {
   const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const resetPageOnFilterChange = React.useCallback(() => {
-    setPage(1);
-  }, []);
-
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
-  React.useEffect(() => {
-    resetPageOnFilterChange();
-  }, [
-    draft.keyword,
-    draft.driver,
-    draft.isDefault,
-    draft.status,
-    draft.createdFrom,
-    draft.createdTo,
-    resetPageOnFilterChange,
-  ]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
+    listState.setFilters(draft);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
-  }, []);
+    listState.resetFilters();
+  }, [listState]);
 
   const handleStartEdit = (row: StorageDto) => {
     setEditing(row);
@@ -254,15 +262,14 @@ function AdminStoragesPage() {
   const columns: ResourceColumn<StorageDto>[] = [
     {
       key: "name",
+      sortKey: "name",
       header: "名称",
       width: "180px",
+      ellipsis: true,
       cell: (row) => (
-        <div className="flex items-center gap-2 truncate">
+        <div className="flex items-center gap-2">
           <Cloud className="size-3.5 shrink-0 text-text-mute" aria-hidden />
-          <span
-            className="break-words whitespace-normal text-[13px] text-text-strong"
-            title={row.name}
-          >
+          <span className="min-w-0 flex-1 truncate text-[13px] text-text-strong" title={row.name}>
             {row.name}
           </span>
           {row.isDefault ? (
@@ -273,13 +280,11 @@ function AdminStoragesPage() {
     },
     {
       key: "driver",
+      sortKey: "driver",
       header: "驱动",
       width: "140px",
-      cell: (row) => (
-        <span className={MONO_CELL} title={row.driver}>
-          {DRIVER_LABELS[row.driver] ?? row.driver}
-        </span>
-      ),
+      ellipsis: true,
+      cell: (row) => <span className={MONO_CELL}>{DRIVER_LABELS[row.driver] ?? row.driver}</span>,
     },
     {
       key: "isDefault",
@@ -297,17 +302,16 @@ function AdminStoragesPage() {
       key: "description",
       header: "描述",
       width: "240px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.description ?? ""}
-        >
+        <span className="text-[13px] text-text-soft">
           {row.description ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
     {
       key: "status",
+      sortKey: "status",
       header: "状态",
       width: "90px",
       cell: (row) => (
@@ -320,6 +324,7 @@ function AdminStoragesPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "170px",
       cell: (row) => (
@@ -593,18 +598,27 @@ function AdminStoragesPage() {
           </Button>
         }
         tableProps={{
+          settingsKey: "storages",
           columns: columns as ResourceColumn<StorageDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyTitle: "暂无存储",
           error:
             permissions.error ??

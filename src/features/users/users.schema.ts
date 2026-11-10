@@ -1,14 +1,19 @@
 import { z } from "zod";
 
-const PHONE_PATTERN = /^\+?\d{6,20}$/;
+import { sortOrderSchema } from "~/lib/list-sort";
+import {
+  GENERIC_PHONE_MAX_LENGTH,
+  GENERIC_PHONE_MESSAGE,
+  GENERIC_PHONE_PATTERN,
+} from "~/lib/phone";
 
 export const statusSchema = z.enum(["enabled", "disabled"]);
 
 export const phoneSchema = z
   .string()
   .trim()
-  .max(20, "手机号过长")
-  .regex(PHONE_PATTERN, "手机号格式不正确")
+  .max(GENERIC_PHONE_MAX_LENGTH, "手机号过长")
+  .regex(GENERIC_PHONE_PATTERN, GENERIC_PHONE_MESSAGE)
   .optional()
   .or(z.literal("").transform(() => undefined));
 
@@ -25,6 +30,10 @@ export const userListQuerySchema = z.object({
   status: z.enum(["enabled", "disabled"]).optional(),
   systemRole: z.enum(["admin", "member"]).optional(),
   roleId: z.string().uuid().optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按创建时间倒序。 */
+  sortBy: z.enum(["createdAt", "updatedAt", "username", "name"]).optional(),
+  /** 排序方向；缺省倒序。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export const genderSchema = z.enum(["male", "female", "other"]);
@@ -62,6 +71,7 @@ export const loginLogListQuerySchema = z.object({
 });
 
 export type UserListQuery = z.infer<typeof userListQuerySchema>;
+export type UserSortBy = NonNullable<UserListQuery["sortBy"]>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

@@ -1,5 +1,6 @@
 import type { DbMenu } from "~/../db/schema";
 import type { PermissionCode } from "~/lib/permission-catalog";
+import type { MenuSortBy } from "./menus.schema";
 
 export type MenuDto = {
   id: string;
@@ -25,9 +26,14 @@ export type ListMenusService = (input: {
   keyword?: string;
   status?: "enabled" | "disabled";
   type?: "group" | "menu" | "action";
+  sortBy?: MenuSortBy;
+  sortOrder?: "asc" | "desc";
 }) => Promise<{ items: MenuDto[]; total: number }>;
 
-export type GetMenuTreeService = () => Promise<MenuNode[]>;
+export type GetMenuTreeService = (input?: {
+  sortBy?: MenuSortBy;
+  sortOrder?: "asc" | "desc";
+}) => Promise<MenuNode[]>;
 
 export type GetAuthorizedMenuTreeService = (userId: string) => Promise<MenuNode[]>;
 

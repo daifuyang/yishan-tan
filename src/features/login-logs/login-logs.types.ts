@@ -14,7 +14,11 @@ export type ListLoginLogsService = (input: {
   pageSize: number;
   keyword?: string;
   status?: "success" | "failed";
+  ipAddress?: string;
+  userAgent?: string;
   userId?: string;
   createdFrom?: string;
   createdTo?: string;
+  sortBy?: "createdAt" | "username" | "status";
+  sortOrder?: "asc" | "desc";
 }) => Promise<{ items: LoginLogDto[]; total: number }>;

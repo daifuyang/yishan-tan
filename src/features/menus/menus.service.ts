@@ -1,8 +1,22 @@
-import { type SQL, and, asc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
+import {
+  type AnyColumn,
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  like,
+  or,
+  sql,
+} from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
 import { isPermissionCode } from "~/lib/permission-catalog";
+import type { MenuSortBy } from "./menus.schema";
 import type {
   CreateMenuService,
   DeleteMenuService,
@@ -14,6 +28,30 @@ import type {
   MenuNode,
   UpdateMenuService,
 } from "./menus.types";
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const MENU_SORT_COLUMNS: Record<MenuSortBy, AnyColumn> = {
+  sort: schema.menu.sort,
+  name: schema.menu.name,
+  path: schema.menu.path,
+  createdAt: schema.menu.createdAt,
+  updatedAt: schema.menu.updatedAt,
+};
+
+/**
+ * 菜单默认排序：sort 升序（同层级内按 sort 排），createdAt 作为次序稳定的兜底。
+ * sortBy 缺省走 sort 列，sortOrder 缺省升序。
+ */
+function menuOrderBy(sortBy: MenuSortBy | undefined, sortOrder: SortOrder | undefined): SQL[] {
+  const column = MENU_SORT_COLUMNS[sortBy ?? "sort"] ?? MENU_SORT_COLUMNS.sort;
+  const direction = sortOrder === "desc" ? desc : asc;
+  return [direction(column), direction(schema.menu.createdAt)];
+}
 
 function toDto(row: typeof schema.menu.$inferSelect): MenuDto {
   return {
@@ -75,6 +113,8 @@ export const listMenusService: ListMenusService = async ({
   keyword,
   status,
   type,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [isNull(schema.menu.deletedAt)];
   if (status) where.push(eq(schema.menu.status, status));
@@ -93,7 +133,7 @@ export const listMenusService: ListMenusService = async ({
       .select()
       .from(schema.menu)
       .where(and(...where))
-      .orderBy(asc(schema.menu.sort), asc(schema.menu.createdAt))
+      .orderBy(...menuOrderBy(sortBy, sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb()
@@ -104,12 +144,12 @@ export const listMenusService: ListMenusService = async ({
   return { items: await toMenuDtos(rows), total: Number(totalRow[0]?.count ?? 0) };
 };
 
-export const getMenuTreeService: GetMenuTreeService = async () => {
+export const getMenuTreeService: GetMenuTreeService = async (input) => {
   const rows = await getDb()
     .select()
     .from(schema.menu)
     .where(isNull(schema.menu.deletedAt))
-    .orderBy(asc(schema.menu.sort), asc(schema.menu.createdAt));
+    .orderBy(...menuOrderBy(input?.sortBy, input?.sortOrder));
   return buildTree(await toMenuDtos(rows));
 };
 

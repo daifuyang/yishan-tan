@@ -1,8 +1,21 @@
-import { type SQL, and, desc, eq, gte, isNull, like, lte, sql } from "drizzle-orm";
+import {
+  type AnyColumn,
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  isNull,
+  like,
+  lte,
+  sql,
+} from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
-import { type StorageDriver, driverConfigSchemaMap } from "./storages.schema";
+import type { SortOrder } from "~/lib/list-sort";
+import { type StorageDriver, type StorageSortBy, driverConfigSchemaMap } from "./storages.schema";
 import type {
   CreateStorageService,
   DeleteStorageService,
@@ -16,6 +29,25 @@ import type {
   StorageDto,
   UpdateStorageService,
 } from "./storages.types";
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const STORAGE_SORT_COLUMNS: Record<StorageSortBy, AnyColumn> = {
+  createdAt: schema.storage.createdAt,
+  updatedAt: schema.storage.updatedAt,
+  name: schema.storage.name,
+  driver: schema.storage.driver,
+  status: schema.storage.status,
+};
+
+function storageOrderBy(sortBy: StorageSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const column = STORAGE_SORT_COLUMNS[sortBy ?? "createdAt"] ?? STORAGE_SORT_COLUMNS.createdAt;
+  return sortOrder === "asc" ? asc(column) : desc(column);
+}
 
 const SENSITIVE_KEYS: Record<StorageDriver, string[]> = {
   local: [],
@@ -131,6 +163,8 @@ export const listStoragesService: ListStoragesService = async ({
   status,
   createdFrom,
   createdTo,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [isNull(schema.storage.deletedAt)];
   if (driver) where.push(eq(schema.storage.driver, driver));
@@ -153,7 +187,7 @@ export const listStoragesService: ListStoragesService = async ({
       .select()
       .from(schema.storage)
       .where(and(...where))
-      .orderBy(desc(schema.storage.createdAt))
+      .orderBy(storageOrderBy(sortBy, sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb()

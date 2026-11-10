@@ -1,6 +1,11 @@
 import type { DbStorage } from "~/../db/schema";
 
-import type { CreateStorageInput, StorageDriver, UpdateStorageInput } from "./storages.schema";
+import type {
+  CreateStorageInput,
+  StorageDriver,
+  StorageSortBy,
+  UpdateStorageInput,
+} from "./storages.schema";
 
 export type StorageStatus = "enabled" | "disabled";
 
@@ -43,6 +48,8 @@ export type ListStoragesService = (input: {
   status?: StorageStatus;
   createdFrom?: string;
   createdTo?: string;
+  sortBy?: StorageSortBy;
+  sortOrder?: "asc" | "desc";
 }) => Promise<{ items: StorageDto[]; total: number }>;
 
 export type GetStorageService = (id: string) => Promise<StorageDetailDto | null>;

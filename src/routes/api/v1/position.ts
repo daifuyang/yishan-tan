@@ -6,7 +6,7 @@ import { parseJsonBody, parseQuery } from "~/server/handlers";
 import { handleApiError, ok, page } from "~/server/http";
 import { requireRequestContext } from "~/server/request-context";
 
-export const Route = createFileRoute("/api/v1/posts")({
+export const Route = createFileRoute("/api/v1/position")({
   server: {
     handlers: {
       GET: async ({ request }) => {

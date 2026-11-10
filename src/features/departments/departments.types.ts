@@ -1,4 +1,6 @@
 import type { DbDepartment } from "~/../db/schema";
+import type { SortOrder } from "~/lib/list-sort";
+import type { DepartmentSortBy } from "./departments.schema";
 
 export type DepartmentDto = {
   id: string;
@@ -20,9 +22,14 @@ export type ListDepartmentsService = (input: {
   pageSize: number;
   name?: string;
   status?: "enabled" | "disabled";
+  sortBy?: DepartmentSortBy;
+  sortOrder?: SortOrder;
 }) => Promise<{ items: DepartmentDto[]; total: number }>;
 
-export type GetDepartmentTreeService = () => Promise<DepartmentNode[]>;
+export type GetDepartmentTreeService = (input?: {
+  sortBy?: DepartmentSortBy;
+  sortOrder?: SortOrder;
+}) => Promise<DepartmentNode[]>;
 
 export type GetDepartmentService = (id: string) => Promise<DepartmentDto | null>;
 

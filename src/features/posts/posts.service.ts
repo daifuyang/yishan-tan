@@ -1,7 +1,22 @@
-import { type SQL, and, asc, eq, gte, inArray, isNull, like, lte, sql } from "drizzle-orm";
+import {
+  type AnyColumn,
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  like,
+  lte,
+  sql,
+} from "drizzle-orm";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
+import type { PostSortBy } from "./posts.schema";
 import type {
   CreatePostService,
   DeletePostService,
@@ -10,6 +25,32 @@ import type {
   PostDto,
   UpdatePostService,
 } from "./posts.types";
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const POST_SORT_COLUMNS: Record<PostSortBy, AnyColumn> = {
+  createdAt: schema.post.createdAt,
+  updatedAt: schema.post.updatedAt,
+  name: schema.post.name,
+  sort: schema.post.sort,
+};
+
+/**
+ * 列表排序。
+ *
+ * 缺省语义沿用旧列表：按 sort 升序、createdAt 升序。
+ * 非 createdAt/updatedAt 列排序时，createdAt 升序作为稳定的次级排序键。
+ */
+function postOrderBy(sortBy: PostSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const column = POST_SORT_COLUMNS[sortBy ?? "sort"] ?? POST_SORT_COLUMNS.sort;
+  const primary = sortOrder === "desc" ? desc(column) : asc(column);
+  if (sortBy === "createdAt" || sortBy === "updatedAt") return [primary];
+  return [primary, asc(schema.post.createdAt)];
+}
 
 function toDto(
   row: typeof schema.post.$inferSelect,
@@ -64,6 +105,8 @@ export const listPostsService: ListPostsService = async ({
   status,
   createdFrom,
   createdTo,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [isNull(schema.post.deletedAt)];
   if (status) where.push(eq(schema.post.status, status));
@@ -78,7 +121,7 @@ export const listPostsService: ListPostsService = async ({
       .select()
       .from(schema.post)
       .where(and(...where))
-      .orderBy(asc(schema.post.sort), asc(schema.post.createdAt))
+      .orderBy(...postOrderBy(sortBy, sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb()

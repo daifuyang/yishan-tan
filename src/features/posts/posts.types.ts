@@ -21,6 +21,8 @@ export type ListPostsService = (input: {
   status?: "enabled" | "disabled";
   createdFrom?: string;
   createdTo?: string;
+  sortBy?: "createdAt" | "updatedAt" | "name" | "sort";
+  sortOrder?: "asc" | "desc";
 }) => Promise<{ items: PostDto[]; total: number }>;
 
 export type GetPostService = (id: string) => Promise<PostDto | null>;

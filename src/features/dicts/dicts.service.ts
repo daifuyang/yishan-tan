@@ -1,4 +1,5 @@
 import {
+  type AnyColumn,
   type SQL,
   and,
   asc,
@@ -15,6 +16,8 @@ import {
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
+import type { DictDataSortBy, DictTypeSortBy } from "./dicts.schema";
 import type {
   CreateDictDataService,
   CreateDictTypeService,
@@ -30,6 +33,37 @@ import type {
   UpdateDictDataService,
   UpdateDictTypeService,
 } from "./dicts.types";
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const DICT_TYPE_SORT_COLUMNS: Record<DictTypeSortBy, AnyColumn> = {
+  createdAt: schema.dictType.createdAt,
+  updatedAt: schema.dictType.updatedAt,
+  name: schema.dictType.name,
+  code: schema.dictType.code,
+};
+
+function dictTypeOrderBy(sortBy: DictTypeSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const column = DICT_TYPE_SORT_COLUMNS[sortBy ?? "createdAt"] ?? DICT_TYPE_SORT_COLUMNS.createdAt;
+  return sortOrder === "desc" ? desc(column) : asc(column);
+}
+
+const DICT_DATA_SORT_COLUMNS: Record<DictDataSortBy, AnyColumn> = {
+  createdAt: schema.dictData.createdAt,
+  updatedAt: schema.dictData.updatedAt,
+  label: schema.dictData.label,
+  value: schema.dictData.value,
+  sort: schema.dictData.sort,
+};
+
+function dictDataOrderBy(sortBy: DictDataSortBy | undefined, sortOrder: SortOrder | undefined) {
+  const column = DICT_DATA_SORT_COLUMNS[sortBy ?? "sort"] ?? DICT_DATA_SORT_COLUMNS.sort;
+  return sortOrder === "desc" ? desc(column) : asc(column);
+}
 
 function toTypeDto(row: typeof schema.dictType.$inferSelect): DictTypeDto {
   return {
@@ -67,6 +101,8 @@ export const listDictTypesService: ListDictTypesService = async ({
   createdFrom,
   createdTo,
   status,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [isNull(schema.dictType.deletedAt)];
   if (status) where.push(eq(schema.dictType.status, status));
@@ -88,7 +124,7 @@ export const listDictTypesService: ListDictTypesService = async ({
       .select()
       .from(schema.dictType)
       .where(and(...where))
-      .orderBy(asc(schema.dictType.createdAt), asc(schema.dictType.id))
+      .orderBy(dictTypeOrderBy(sortBy, sortOrder), asc(schema.dictType.id))
       .limit(pageSize)
       .offset(offset),
     getDb()
@@ -197,6 +233,8 @@ export const listDictDataService: ListDictDataService = async ({
   createdTo,
   typeCode,
   status,
+  sortBy,
+  sortOrder,
 }) => {
   const where: SQL[] = [isNull(schema.dictData.deletedAt)];
   if (typeCode) where.push(eq(schema.dictData.typeCode, typeCode));
@@ -219,7 +257,7 @@ export const listDictDataService: ListDictDataService = async ({
       .select()
       .from(schema.dictData)
       .where(and(...where))
-      .orderBy(asc(schema.dictData.sort), desc(schema.dictData.createdAt), asc(schema.dictData.id))
+      .orderBy(dictDataOrderBy(sortBy, sortOrder), asc(schema.dictData.id))
       .limit(pageSize)
       .offset(offset),
     getDb()

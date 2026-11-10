@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { permissionCodesSchema } from "~/features/permissions/permissions.schema";
+import { sortOrderSchema } from "~/lib/list-sort";
 
 export const statusSchema = z.enum(["enabled", "disabled"]);
 
@@ -34,9 +35,14 @@ export const roleListQuerySchema = z.object({
   status: statusSchema.optional(),
   createdFrom: z.string().trim().optional(),
   createdTo: z.string().trim().optional(),
+  /** 可排序列（白名单，服务端按此映射到数据库列）；缺省按创建时间倒序。 */
+  sortBy: z.enum(["createdAt", "updatedAt", "name", "status"]).optional(),
+  /** 排序方向；缺省倒序。 */
+  sortOrder: sortOrderSchema.optional(),
 });
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type RoleListQuery = z.infer<typeof roleListQuerySchema>;
+export type RoleSortBy = NonNullable<RoleListQuery["sortBy"]>;
 export type DataScope = z.infer<typeof dataScopeSchema>;

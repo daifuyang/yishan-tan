@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, LayoutTemplate, Plus, Star } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -30,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { usePortalsList } from "~/features/portals/portals.queries";
-import { portalListQuerySchema } from "~/features/portals/portals.schema";
+import { type PortalSortBy, portalListQuerySchema } from "~/features/portals/portals.schema";
 import type { PortalDto, PortalThemeMode } from "~/features/portals/portals.types";
 import {
   useCreatePortal,
@@ -77,7 +82,12 @@ function formatDateTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildListQuery(filters: FilterState, page: number, pageSize: number) {
+function buildListQuery(
+  filters: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<PortalSortBy>,
+) {
   const trim = (v: string) => v.trim() || undefined;
   const { createdFrom, createdTo } = normalizeDateRange({
     start: filters.createdFrom || null,
@@ -91,14 +101,29 @@ function buildListQuery(filters: FilterState, page: number, pageSize: number) {
     status: filters.status === "all" ? undefined : filters.status,
     createdFrom,
     createdTo,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
   });
 }
 
 function AdminPortalsPage() {
-  const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["keyword", "isDefault", "status", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "isDefault", sortOrder: "desc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
+  const [draft, setDraft] = React.useState<FilterState>({
+    ...DEFAULT_FILTERS,
+    ...filters,
+  });
   const [editing, setEditing] = React.useState<PortalDto | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [createForm, setCreateForm] = React.useState<EditPortalFormValue>(EMPTY_CREATE_FORM);
@@ -107,7 +132,11 @@ function AdminPortalsPage() {
   const [disablePopconfirmRowId, setDisablePopconfirmRowId] = React.useState<string | null>(null);
   const [moreMenuRowId, setMoreMenuRowId] = React.useState<string | null>(null);
 
-  const query = buildListQuery(filters, page, pageSize);
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<PortalSortBy>;
+  const onSortChange = listState.setSort;
+
+  const query = buildListQuery(filters, page, pageSize, sort);
   const permissions = useResourcePermissions("portals");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
   const list = usePortalsList(query, canRead);
@@ -120,39 +149,22 @@ function AdminPortalsPage() {
   const total = canRead ? (list.data?.total ?? 0) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const resetPageOnFilterChange = React.useCallback(() => {
-    setPage(1);
-  }, []);
-
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filter fields used only as trigger for reset
-  React.useEffect(() => {
-    resetPageOnFilterChange();
-  }, [
-    draft.keyword,
-    draft.isDefault,
-    draft.status,
-    draft.createdFrom,
-    draft.createdTo,
-    resetPageOnFilterChange,
-  ]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
+    listState.setFilters(draft);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
-  }, []);
+    listState.resetFilters();
+  }, [listState]);
 
   const handleStartEdit = (row: PortalDto) => {
     setEditing(row);
@@ -244,42 +256,45 @@ function AdminPortalsPage() {
   const columns: ResourceColumn<PortalDto>[] = [
     {
       key: "name",
+      sortKey: "name",
       header: "名称",
       width: "200px",
+      ellipsis: true,
       cell: (row) => (
-        <div className="flex items-center gap-2 truncate">
-          <LayoutTemplate className="size-3.5 shrink-0 text-text-mute" aria-hidden />
-          <span
-            className="break-words whitespace-normal text-[13px] text-text-strong"
-            title={row.name}
-          >
-            {row.name}
-          </span>
-          {row.isDefault ? (
-            <StatusBadge tone="warning" label="默认" icon={Star} variant="soft" />
-          ) : null}
-        </div>
+        <>
+          <LayoutTemplate className="size-3.5 align-middle text-text-mute" aria-hidden />
+          <span className="ml-2 align-middle text-[13px] text-text-strong">{row.name}</span>
+        </>
       ),
+    },
+    {
+      key: "isDefault",
+      sortKey: "isDefault",
+      header: "默认",
+      width: "90px",
+      cell: (row) =>
+        row.isDefault ? (
+          <StatusBadge tone="warning" label="默认" icon={Star} variant="soft" />
+        ) : (
+          <span className="text-[13px] text-text-mute">--</span>
+        ),
     },
     {
       key: "code",
+      sortKey: "code",
       header: "编码",
       width: "140px",
-      cell: (row) => (
-        <span className={MONO_CELL} title={row.code}>
-          {row.code}
-        </span>
-      ),
+      ellipsis: true,
+      cell: (row) => <span className={MONO_CELL}>{row.code}</span>,
     },
     {
       key: "domain",
+      sortKey: "domain",
       header: "域名",
       width: "240px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.domain ?? ""}
-        >
+        <span className="text-[13px] text-text-soft">
           {row.domain ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -305,6 +320,7 @@ function AdminPortalsPage() {
     },
     {
       key: "status",
+      sortKey: "status",
       header: "状态",
       width: "90px",
       cell: (row) => (
@@ -317,6 +333,7 @@ function AdminPortalsPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "170px",
       cell: (row) => (
@@ -577,18 +594,27 @@ function AdminPortalsPage() {
           </Button>
         }
         tableProps={{
+          settingsKey: "portals",
           columns: columns as ResourceColumn<PortalDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyTitle: "暂无门户",
           error:
             permissions.error ??

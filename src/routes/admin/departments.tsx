@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Download, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import {
   FILTER_CONTROL_CLASS,
   TABLE_ACTION_CLASS,
@@ -25,6 +30,10 @@ import {
   useDepartmentFormOptions,
   useDepartmentTree,
 } from "~/features/departments/departments.queries";
+import type {
+  DepartmentSortBy,
+  DepartmentTreeQuery,
+} from "~/features/departments/departments.schema";
 import type { DepartmentDto, DepartmentNode } from "~/features/departments/departments.types";
 import {
   useBulkDeleteDepartments,
@@ -73,6 +82,13 @@ type FlatDepartmentRow = DepartmentDto & {
 export const Route = createFileRoute("/admin/departments")({
   component: AdminDepartmentsPage,
 });
+
+function toTreeQuery(sort: ResourceSortState<DepartmentSortBy>): DepartmentTreeQuery {
+  return {
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
+  };
+}
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -144,10 +160,29 @@ function findNodeInTree(nodes: DepartmentNode[], id: string): DepartmentNode | n
 
 function AdminDepartmentsPage() {
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(50);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+
+  // 筛选 / 排序与地址栏同步：刷新页面、分享链接都能回到同一份视图。
+  // 分页是前端分页（树展开后的行数），不进入 URL。
+  const listState = useListUrlState({
+    filterKeys: ["name", "status"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 50,
+    defaultSort: { sortKey: "sort", sortOrder: "asc" },
+    // 树形列表：分页在客户端做，地址栏只保留筛选与排序。
+    paginated: false,
+  });
+  const filters = listState.filters as FilterState;
+
+  // 排序：服务端排序（部门树整体按所选列排序），变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<DepartmentSortBy>;
+  const onSortChange = (next: ResourceSortState) => {
+    listState.setSort(next);
+    setPage(1);
+  };
+  const treeQueryInput = React.useMemo(() => toTreeQuery(sort), [sort]);
 
   const [editing, setEditing] = React.useState<DepartmentDto | null>(null);
   const [editForm, setEditForm] = React.useState<EditDepartmentFormValue>(EMPTY_DEPT_FORM);
@@ -168,7 +203,7 @@ function AdminDepartmentsPage() {
 
   const permissions = useResourcePermissions("departments");
   const { canRead, canCreate, canUpdate, canDelete } = permissions;
-  const treeQuery = useDepartmentTree(canRead);
+  const treeQuery = useDepartmentTree(canRead, treeQueryInput);
   const tree = canRead ? (treeQuery.data ?? []) : [];
   const formOptions = useDepartmentFormOptions(
     creating ? "create" : "update",
@@ -224,16 +259,16 @@ function AdminDepartmentsPage() {
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
+    listState.resetFilters();
     setPage(1);
     setSelectedKeys([]);
-  }, []);
+  }, [listState]);
 
   const handleFilterSubmit = React.useCallback(() => {
-    setFilters({ ...draft });
+    listState.setFilters(draft);
     setPage(1);
     setSelectedKeys([]);
-  }, [draft]);
+  }, [draft, listState]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅作为 filter 变化的触发器
   React.useEffect(() => {
@@ -316,13 +351,15 @@ function AdminDepartmentsPage() {
       const csv = await exportMut.mutateAsync({
         name: filters.name.trim() || undefined,
         status: filters.status === "all" ? undefined : filters.status,
+        sortBy: sort.sortKey,
+        sortOrder: sort.sortOrder,
       });
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       downloadCsv(`departments-${stamp}.csv`, csv);
     } catch {
       // 错误提示由 useMutation errorMessage 暴露
     }
-  }, [exportMut, filters.name, filters.status]);
+  }, [exportMut, filters.name, filters.status, sort.sortKey, sort.sortOrder]);
 
   const handleEditSubmit = async () => {
     if (!editing || !canUpdate) return;
@@ -372,13 +409,12 @@ function AdminDepartmentsPage() {
   const columns: ResourceColumn<FlatDepartmentRow>[] = [
     {
       key: "name",
+      sortKey: "name",
       header: "部门名称",
       width: "260px",
+      ellipsis: true,
       cell: (row) => (
-        <div
-          className="flex items-center gap-1 whitespace-nowrap"
-          style={{ paddingLeft: row.depth * 16 }}
-        >
+        <div className="flex min-w-0 items-center gap-1" style={{ paddingLeft: row.depth * 16 }}>
           {row.hasChildren ? (
             <button
               type="button"
@@ -398,10 +434,7 @@ function AdminDepartmentsPage() {
           ) : (
             <span aria-hidden className="inline-block size-5 shrink-0" />
           )}
-          <span
-            className="break-words whitespace-normal text-[13px] text-text-strong"
-            title={row.name}
-          >
+          <span className="truncate text-[13px] text-text-strong" title={row.name}>
             {row.name}
           </span>
         </div>
@@ -411,11 +444,9 @@ function AdminDepartmentsPage() {
       key: "parentName",
       header: "上级部门",
       width: "160px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.parentName ?? ""}
-        >
+        <span className="text-[13px] text-text-soft" title={row.parentName ?? ""}>
           {row.parentName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -424,17 +455,16 @@ function AdminDepartmentsPage() {
       key: "leaderName",
       header: "负责人",
       width: "120px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.leaderName ?? ""}
-        >
+        <span className="text-[13px] text-text-soft" title={row.leaderName ?? ""}>
           {row.leaderName ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
     {
       key: "sort",
+      sortKey: "sort",
       header: "排序",
       width: "80px",
       align: "center",
@@ -442,6 +472,7 @@ function AdminDepartmentsPage() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "创建时间",
       width: "170px",
       cell: (row) => (
@@ -450,6 +481,7 @@ function AdminDepartmentsPage() {
     },
     {
       key: "updatedAt",
+      sortKey: "updatedAt",
       header: "更新时间",
       width: "170px",
       cell: (row) => (
@@ -458,6 +490,7 @@ function AdminDepartmentsPage() {
     },
     {
       key: "status",
+      sortKey: "status",
       header: "状态",
       width: "90px",
       cell: (row) => (
@@ -579,7 +612,32 @@ function AdminDepartmentsPage() {
         toolbarTitle="部门树"
         toolbarActions={
           <>
-            {canDelete && selectedKeys.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!permissions.canExport || exportMut.isPending}
+              onClick={() => void handleExport()}
+            >
+              <Download className="size-3.5" aria-hidden />
+              {exportMut.isPending ? "导出中…" : "导出"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!canCreate}
+              onClick={() => handleOpenCreate(null)}
+            >
+              <Plus className="size-3.5" aria-hidden />
+              新建
+            </Button>
+          </>
+        }
+        tableProps={{
+          settingsKey: "departments",
+          toolbar: {
+            // 批量操作放在表格上方的选中态提示条里（对齐 antd ProTable）。
+            selectionActions: (
               <Popconfirm
                 open={bulkDeletePopconfirmOpen}
                 onOpenChange={(next) => {
@@ -606,48 +664,32 @@ function AdminDepartmentsPage() {
                   onClick={() => setBulkDeletePopconfirmOpen(true)}
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  批量删除 ({selectedKeys.length})
+                  批量删除
                 </Button>
               </Popconfirm>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!permissions.canExport || exportMut.isPending}
-              onClick={() => void handleExport()}
-            >
-              <Download className="size-3.5" aria-hidden />
-              {exportMut.isPending ? "导出中…" : "导出"}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={!canCreate}
-              onClick={() => handleOpenCreate(null)}
-            >
-              <Plus className="size-3.5" aria-hidden />
-              新建
-            </Button>
-          </>
-        }
-        tableProps={{
+            ),
+          },
           columns: columns as ResourceColumn<FlatDepartmentRow>[],
           data: flatRows.slice((page - 1) * pageSize, page * pageSize),
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: (next) => {
-            setPage(next);
-            setSelectedKeys([]);
-          },
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-            setSelectedKeys([]);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              setSelectedKeys([]);
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                setPage(1);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || treeQuery.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
           // 区分两种 empty：①真空（无任何部门）→ 大图标 + 新建引导；②过滤空（有数据但被过滤掉）→ dashed 横幅 + 清空筛选
           emptyDescription:
             permissions.error ?? (treeQuery.isError ? treeQuery.error.message : undefined),

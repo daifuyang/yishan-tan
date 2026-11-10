@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 
-import { QueryFormItem, type ResourceColumn } from "@/components/admin/data-table";
+import {
+  QueryFormItem,
+  type ResourceColumn,
+  type ResourceSortState,
+  useListUrlState,
+} from "@/components/admin/data-table";
 import { FILTER_CONTROL_CLASS, TABLE_ACTION_CLASS } from "@/components/admin/data-table/tokens";
 import { StatusBadge } from "@/components/admin/display";
 import { DateRangePicker, DetailSheet, DetailSheetRow } from "@/components/admin/form";
@@ -16,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLoginLogsList } from "~/features/login-logs/login-logs.queries";
-import type { ListLoginLogsQuery } from "~/features/login-logs/login-logs.schema";
+import type { ListLoginLogsQuery, LoginLogSortBy } from "~/features/login-logs/login-logs.schema";
 import type { LoginLogDto } from "~/features/login-logs/login-logs.types";
 import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { MONO_CELL } from "~/lib/classes";
@@ -45,13 +50,22 @@ export const Route = createFileRoute("/admin/login-logs")({
   component: AdminLoginLogsPage,
 });
 
-function toQuery(state: FilterState, page: number, pageSize: number): ListLoginLogsQuery {
+function toQuery(
+  state: FilterState,
+  page: number,
+  pageSize: number,
+  sort: ResourceSortState<LoginLogSortBy>,
+): ListLoginLogsQuery {
   const trim = (v: string) => v.trim() || undefined;
   return {
     page,
     pageSize,
+    sortBy: sort.sortKey,
+    sortOrder: sort.sortOrder,
     keyword: trim(state.keyword),
     status: state.status === "all" ? undefined : state.status,
+    ipAddress: trim(state.ipAddress),
+    userAgent: trim(state.userAgent),
     createdFrom: trim(state.createdFrom),
     createdTo: trim(state.createdTo),
   };
@@ -64,92 +78,65 @@ function formatDateTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-function truncate(value: string | null | undefined, max: number): string {
-  if (!value) return "";
-  if (value.length <= max) return value;
-  return `${value.slice(0, max)}…`;
-}
-
-function matchesIpFilter(value: string | null | undefined, needle: string): boolean {
-  if (!needle) return true;
-  if (!value) return false;
-  return value.toLowerCase().includes(needle.toLowerCase());
-}
-
-function matchesUserAgentFilter(value: string | null | undefined, needle: string): boolean {
-  if (!needle) return true;
-  if (!value) return false;
-  return value.toLowerCase().includes(needle.toLowerCase());
-}
-
 function AdminLoginLogsPage() {
+  // 列表状态（筛选 / 页码 / 每页条数 / 排序）与地址栏同步：
+  // 刷新页面、分享链接都能回到同一份视图。
+  const listState = useListUrlState({
+    filterKeys: ["keyword", "status", "ipAddress", "userAgent", "createdFrom", "createdTo"],
+    defaultFilters: DEFAULT_FILTERS,
+    defaultPageSize: 10,
+    defaultSort: { sortKey: "createdAt", sortOrder: "desc" },
+  });
+  const filters = listState.filters as FilterState;
+  const page = listState.page;
+  const pageSize = listState.pageSize;
+  const setPage = listState.setPage;
+  const setPageSize = listState.setPageSize;
   const [draft, setDraft] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
   const [viewing, setViewing] = React.useState<LoginLogDto | null>(null);
 
-  const query = toQuery(filters, page, pageSize);
+  // 排序：表格自带能力，服务端排序；变化后回到第一页。
+  const sort = listState.sort as ResourceSortState<LoginLogSortBy>;
+  const onSortChange = listState.setSort;
+
+  const query = toQuery(filters, page, pageSize, sort);
   const permissions = useResourcePermissions("login-logs");
   const { canRead } = permissions;
   const list = useLoginLogsList(query, canRead);
 
-  const allItems = canRead ? (list.data?.items ?? []) : [];
+  // IP / User Agent 由服务端筛选：条件进入查询参数，total 与结果同源。
+  const items = canRead ? (list.data?.items ?? []) : [];
   const total = canRead ? (list.data?.total ?? 0) : 0;
-  // IP / User Agent 是只读客户端筛选，避免再发一次查询。
-  // 客户端过滤使用提交后的 filters，与 ResourcePage 的「查询」按钮语义一致。
-  const items = React.useMemo(
-    () =>
-      allItems.filter(
-        (item) =>
-          matchesIpFilter(item.ipAddress, filters.ipAddress) &&
-          matchesUserAgentFilter(item.userAgent, filters.userAgent),
-      ),
-    [allItems, filters.ipAddress, filters.userAgent],
-  );
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   React.useEffect(() => {
     if (page > totalPages && total > 0) setPage(totalPages);
-  }, [page, totalPages, total]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: draft fields used only as trigger for reset
-  React.useEffect(() => {
-    setPage(1);
-  }, [
-    draft.keyword,
-    draft.status,
-    draft.ipAddress,
-    draft.userAgent,
-    draft.createdFrom,
-    draft.createdTo,
-  ]);
+  }, [page, totalPages, total, setPage]);
 
   const applyDraftPatch = React.useCallback((patch: Partial<FilterState>) => {
     setDraft((s) => ({ ...s, ...patch }));
   }, []);
 
   const handleFilterSubmit = () => {
-    setFilters(draft);
+    // setFilters 自带回到第 1 页。
+    listState.setFilters(draft);
   };
 
   const handleResetFilters = React.useCallback(() => {
     setDraft(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
-  }, []);
+    listState.resetFilters();
+  }, [listState]);
 
   const columns: ResourceColumn<LoginLogDto>[] = [
     {
       key: "username",
+      sortKey: "username",
       header: "账号",
       width: "160px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-strong"
-          title={row.username ?? ""}
-        >
+        <span className="text-[13px] text-text-strong">
           {row.username ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -158,8 +145,9 @@ function AdminLoginLogsPage() {
       key: "ipAddress",
       header: "IP",
       width: "130px",
+      ellipsis: true,
       cell: (row) => (
-        <span className={MONO_CELL} title={row.ipAddress ?? ""}>
+        <span className={MONO_CELL}>
           {row.ipAddress ?? <span className="text-text-mute">--</span>}
         </span>
       ),
@@ -168,17 +156,16 @@ function AdminLoginLogsPage() {
       key: "userAgent",
       header: "User Agent",
       width: "240px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.userAgent ?? ""}
-        >
-          {row.userAgent ? truncate(row.userAgent, 60) : <span className="text-text-mute">--</span>}
+        <span className="text-[13px] text-text-soft">
+          {row.userAgent ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
     {
       key: "status",
+      sortKey: "status",
       header: "状态",
       width: "100px",
       cell: (row) => (
@@ -193,17 +180,16 @@ function AdminLoginLogsPage() {
       key: "message",
       header: "消息",
       width: "200px",
+      ellipsis: true,
       cell: (row) => (
-        <span
-          className="break-words whitespace-normal text-[13px] text-text-soft"
-          title={row.message ?? ""}
-        >
-          {row.message ? truncate(row.message, 40) : <span className="text-text-mute">--</span>}
+        <span className="text-[13px] text-text-soft">
+          {row.message ?? <span className="text-text-mute">--</span>}
         </span>
       ),
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "登录时间",
       width: "170px",
       cell: (row) => (
@@ -310,18 +296,28 @@ function AdminLoginLogsPage() {
         filterLoading={permissions.isPending || list.isFetching}
         toolbarTitle="日志列表"
         tableProps={{
+          settingsKey: "login-logs",
           columns: columns as ResourceColumn<LoginLogDto>[],
           data: items,
           rowKey: (row) => row.id,
-          page,
-          pageSize,
-          total,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage: number, nextPageSize: number) => {
+              if (nextPageSize !== pageSize) {
+                // setPageSize 内部已把页码重置为 1。
+                setPageSize(nextPageSize);
+                return;
+              }
+              setPage(nextPage);
+            },
+            showSizeChanger: true,
           },
           loading: permissions.isPending || list.isFetching,
+          sort: sort,
+          onSortChange: onSortChange,
+          onRetry: canRead ? () => void list.refetch() : undefined,
           emptyTitle: "暂无日志",
           error:
             permissions.error ??

@@ -1,6 +1,15 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+  useLocation,
+} from "@tanstack/react-router";
+import * as React from "react";
+
+import { initAnalytics, trackPageView } from "~/lib/analytics/events";
 
 import "@/styles/globals.css";
 
@@ -23,9 +32,30 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <RootDocument>
+      <AnalyticsMount />
       <Outlet />
     </RootDocument>
   );
+}
+
+/**
+ * 埋点挂载点：根路由是全站唯一的客户端常驻位置，埋点初始化与页面浏览上报都放这里。
+ *
+ * 埋点本身是 fire-and-forget：没有任何第三方接收端时事件只是派发 DOM 事件
+ * `yishan:analytics`，接入统计服务时监听该事件即可，无需改动调用点。
+ */
+function AnalyticsMount() {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  React.useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+
+  return null;
 }
 
 function NotFoundComponent() {

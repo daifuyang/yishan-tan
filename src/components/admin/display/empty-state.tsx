@@ -1,15 +1,22 @@
 import type * as React from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "~/lib/utils";
 
-type EmptyStateIcon = React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+type EmptyStateIcon = React.ComponentType<{
+  className?: string;
+  style?: React.CSSProperties;
+  "aria-hidden"?: boolean;
+}>;
 
 type EmptyStateProps = {
   icon?: EmptyStateIcon;
-  title: React.ReactNode;
+  /** 主文案;不传时只展示 description。 */
+  title?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
   variant?: "default" | "dashed";
+  /** 图形尺寸(px),默认 40。 */
+  imageSize?: number;
   className?: string;
 };
 
@@ -19,6 +26,7 @@ export function EmptyState({
   description,
   action,
   variant = "default",
+  imageSize = 40,
   className,
 }: EmptyStateProps) {
   if (variant === "dashed") {
@@ -59,9 +67,15 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon ? <Icon className="size-10 text-text-mute" aria-hidden /> : null}
+      {Icon ? (
+        <Icon
+          className="shrink-0 text-text-mute"
+          style={{ width: imageSize, height: imageSize }}
+          aria-hidden
+        />
+      ) : null}
       <div className="space-y-0.5">
-        <h3 className="text-[14px] font-medium text-text-strong">{title}</h3>
+        {title ? <h3 className="text-[14px] font-medium text-text-strong">{title}</h3> : null}
         {description ? (
           <p className="mx-auto max-w-xs text-[13px] text-text-soft">{description}</p>
         ) : null}

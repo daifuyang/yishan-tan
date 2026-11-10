@@ -48,6 +48,8 @@ async function checkFeaturesNaming() {
 
 function isPluralResource(name) {
   if (!name) return false;
+  // 岗位资源按产品约定使用单数 position。
+  if (name === "position") return true;
   if (/^[a-z]+$/.test(name) && name.endsWith("s")) return true;
   if (/^[a-z-]+$/.test(name) && /ies$/.test(name)) return true;
   if (/^[a-z][a-z0-9-]*[a-z0-9]$/.test(name) && name.endsWith("s")) return true;

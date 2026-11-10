@@ -1,8 +1,10 @@
-import { type SQL, and, asc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { type AnyColumn, type SQL, and, asc, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import * as schema from "~/../db/schema";
 import { getDb } from "~/lib/db.server";
 import { Errors } from "~/lib/errors";
+import type { SortOrder } from "~/lib/list-sort";
+import type { DepartmentSortBy } from "./departments.schema";
 import type {
   CreateDepartmentService,
   DeleteDepartmentService,
@@ -13,6 +15,37 @@ import type {
   ListDepartmentsService,
   UpdateDepartmentService,
 } from "./departments.types";
+
+/**
+ * 可排序列 → 数据库列。
+ *
+ * sortBy 只接受 schema 里枚举过的值，这里再映射一次到真实列，
+ * 保证任意字符串进不了 orderBy。
+ */
+const DEPARTMENT_SORT_COLUMNS: Record<DepartmentSortBy, AnyColumn> = {
+  createdAt: schema.department.createdAt,
+  updatedAt: schema.department.updatedAt,
+  name: schema.department.name,
+  sort: schema.department.sort,
+  status: schema.department.status,
+};
+
+/**
+ * 生成 orderBy 片段。
+ *
+ * 未指定 sortBy 时保持历史默认：sort 升序 + createdAt 升序；
+ * 指定后按目标列排序，并追加稳定次级键避免翻页错位。
+ */
+function departmentOrderBy(sortBy: DepartmentSortBy | undefined, sortOrder: SortOrder | undefined) {
+  if (!sortBy) {
+    return [asc(schema.department.sort), asc(schema.department.createdAt)];
+  }
+  const column = DEPARTMENT_SORT_COLUMNS[sortBy] ?? DEPARTMENT_SORT_COLUMNS.sort;
+  const primary = sortOrder === "desc" ? desc(column) : asc(column);
+  const secondary =
+    sortBy === "createdAt" ? asc(schema.department.id) : asc(schema.department.createdAt);
+  return [primary, secondary];
+}
 
 /**
  * 单行映射：department 主行 + LEFT JOIN 父部门(取 parentName)+ LEFT JOIN 用户(取 leaderName)。
@@ -74,12 +107,14 @@ export const listDepartmentsService: ListDepartmentsService = async ({
   pageSize,
   name,
   status,
+  sortBy,
+  sortOrder,
 }) => {
   const where = buildDepartmentListWhere({ name, status });
   const offset = (page - 1) * pageSize;
   const [rows, totalRow] = await Promise.all([
     buildQuery(where)
-      .orderBy(asc(schema.department.sort), asc(schema.department.createdAt))
+      .orderBy(...departmentOrderBy(sortBy, sortOrder))
       .limit(pageSize)
       .offset(offset),
     getDb()
@@ -116,12 +151,11 @@ function buildDepartmentListWhere(input: {
 export const exportDepartmentsService = async (input: {
   name?: string;
   status?: "enabled" | "disabled";
+  sortBy?: DepartmentSortBy;
+  sortOrder?: SortOrder;
 }): Promise<string> => {
   const where = buildDepartmentListWhere(input);
-  const rows = await buildQuery(where).orderBy(
-    asc(schema.department.sort),
-    asc(schema.department.createdAt),
-  );
+  const rows = await buildQuery(where).orderBy(...departmentOrderBy(input.sortBy, input.sortOrder));
   const headers = ["部门名称", "上级部门", "负责人", "排序", "状态", "创建时间"];
   const csvEscape = (v: unknown): string => {
     if (v === null || v === undefined) return "";
@@ -146,11 +180,8 @@ export const exportDepartmentsService = async (input: {
   return `﻿${lines.join("\r\n")}`;
 };
 
-export const getDepartmentTreeService: GetDepartmentTreeService = async () => {
-  const rows = await buildQuery().orderBy(
-    asc(schema.department.sort),
-    asc(schema.department.createdAt),
-  );
+export const getDepartmentTreeService: GetDepartmentTreeService = async (input) => {
+  const rows = await buildQuery().orderBy(...departmentOrderBy(input?.sortBy, input?.sortOrder));
   return buildDepartmentTree(rows.map((r) => toDto(r as DepartmentRow)));
 };
 

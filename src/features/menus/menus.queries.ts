@@ -6,30 +6,30 @@ import {
   getMenuTree,
   listMenus,
 } from "~/features/menus/menus.actions";
-import type { MenuListQuery } from "~/features/menus/menus.schema";
+import type { MenuListQuery, MenuTreeQuery } from "~/features/menus/menus.schema";
 import type { MenuDto, MenuNode } from "~/features/menus/menus.types";
 
 export const menuQueryKey = {
   all: ["menus"] as const,
-  tree: () => [...menuQueryKey.all, "tree"] as const,
+  tree: (input: MenuTreeQuery = {}) => [...menuQueryKey.all, "tree", input] as const,
   lists: () => [...menuQueryKey.all, "list"] as const,
   list: (input: MenuListQuery) => [...menuQueryKey.lists(), input] as const,
   authorizedTree: () => [...menuQueryKey.all, "authorized-tree"] as const,
   authorizedPaths: () => [...menuQueryKey.all, "authorized-paths"] as const,
 };
 
-export const menuTreeQueryOptions = (enabled = true) =>
+export const menuTreeQueryOptions = (input: MenuTreeQuery = {}, enabled = true) =>
   queryOptions<MenuNode[]>({
-    queryKey: menuQueryKey.tree(),
-    queryFn: async () => getMenuTree(),
+    queryKey: menuQueryKey.tree(input),
+    queryFn: async () => getMenuTree({ data: input }),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     enabled,
   });
 
-export function useMenuTree(enabled = true) {
-  return useQuery(menuTreeQueryOptions(enabled));
+export function useMenuTree(input: MenuTreeQuery = {}, enabled = true) {
+  return useQuery(menuTreeQueryOptions(input, enabled));
 }
 
 export const menuListQueryOptions = (input: MenuListQuery, enabled = true) =>

@@ -6,6 +6,7 @@ import { assertDepartmentOperation } from "./departments.policy";
 import {
   createDepartmentSchema,
   departmentListQuerySchema,
+  departmentTreeQuerySchema,
   updateDepartmentSchema,
 } from "./departments.schema";
 import {
@@ -32,10 +33,12 @@ export const listDepartments = createServerFn({ method: "GET" })
     return listDepartmentsService(data);
   });
 
-export const getDepartmentTree = createServerFn({ method: "GET" }).handler(async () => {
-  await operationCtx("departments:read");
-  return getDepartmentTreeService();
-});
+export const getDepartmentTree = createServerFn({ method: "GET" })
+  .validator(departmentTreeQuerySchema)
+  .handler(async ({ data }) => {
+    await operationCtx("departments:read");
+    return getDepartmentTreeService(data);
+  });
 
 export const getDepartment = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().uuid() }))
