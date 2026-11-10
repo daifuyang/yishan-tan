@@ -257,7 +257,11 @@ export const listDictDataService: ListDictDataService = async ({
       .select()
       .from(schema.dictData)
       .where(and(...where))
-      .orderBy(dictDataOrderBy(sortBy, sortOrder), asc(schema.dictData.id))
+      .orderBy(
+        dictDataOrderBy(sortBy, sortOrder),
+        ...(!sortBy && !sortOrder ? [desc(schema.dictData.createdAt)] : []),
+        asc(schema.dictData.id),
+      )
       .limit(pageSize)
       .offset(offset),
     getDb()
