@@ -671,7 +671,7 @@ function AdminMenusPage() {
         toolbarActions={
           <Button type="button" size="sm" disabled={!canCreate} onClick={handleStartCreateTop}>
             <Plus className="size-3.5" aria-hidden />
-            新建顶级菜单
+            新建
           </Button>
         }
         tableProps={{

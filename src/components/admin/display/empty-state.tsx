@@ -1,3 +1,4 @@
+import { Package } from "lucide-react";
 import type * as React from "react";
 
 import { cn } from "~/lib/utils";
@@ -5,8 +6,40 @@ import { cn } from "~/lib/utils";
 type EmptyStateIcon = React.ComponentType<{
   className?: string;
   style?: React.CSSProperties;
+  strokeWidth?: number;
   "aria-hidden"?: boolean;
 }>;
+
+/**
+ * 表格内的空状态：antd ProTable 风格 —— **浅灰插画 + 一行文字**，没有按钮。
+ *
+ * 插画用线性图标（`Package`）以 `text-line` 描边，视觉上贴近 antd 的默认空态；
+ * 文案只占一行：`title` 是主文案，`description` 作为次要信息接在后面。
+ */
+export function CompactEmpty({
+  icon: Icon = Package,
+  title,
+  description,
+  className,
+}: {
+  icon?: EmptyStateIcon;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      data-slot="compact-empty"
+      className={cn("flex flex-col items-center justify-center gap-3 px-6 py-12", className)}
+    >
+      <Icon className="size-14 text-line" strokeWidth={1} aria-hidden />
+      <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-[13px] text-text-mute">
+        {title ? <span>{title}</span> : null}
+        {description ? <span>{description}</span> : null}
+      </p>
+    </div>
+  );
+}
 
 type EmptyStateProps = {
   icon?: EmptyStateIcon;

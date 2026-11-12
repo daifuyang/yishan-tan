@@ -465,7 +465,7 @@ function AdminDictDataPage() {
             </Button>
             <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
               <Plus className="size-3.5" aria-hidden />
-              新建字典数据
+              新建
             </Button>
           </>
         }

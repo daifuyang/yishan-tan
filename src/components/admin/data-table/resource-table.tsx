@@ -5,12 +5,10 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronsUpDown,
-  Inbox,
   Maximize2,
   Minimize2,
   Pin,
   RefreshCw,
-  SearchX,
   Settings,
 } from "lucide-react";
 import * as React from "react";
@@ -35,7 +33,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { SortOrder } from "~/lib/list-sort";
-import { EmptyState } from "../display/empty-state";
+import { CompactEmpty, EmptyState } from "../display/empty-state";
 import { ResourceColumnSettingItem } from "./resource-column-setting-item";
 import { ResourcePagination, type ResourcePaginationProps } from "./resource-pagination";
 import { DENSITY_CLASS, type TableDensity, TableDensityControl } from "./table-density-control";
@@ -157,8 +155,8 @@ export type ResourceTableToolbar = {
  * - `reload`：刷新按钮，默认开启。传 `false` 隐藏；传函数则用自定义刷新动作
  *   （不传时走内置刷新：优先用表格的 `onRetry`，否则重新拉取当前页面活跃的查询）。
  * - `setting`：列设置，默认开启。
- * - `density`：密度切换，默认开启。
- * - `fullScreen`：全屏，默认开启。
+ * - `density`：尺寸（行高密度）切换，默认开启。
+ * - `fullScreen`：全屏，默认关闭。
  *
  * 整个 `options` 传 `false` 时隐藏这组内置按钮，等同 antd 的 `options={false}`。
  */
@@ -213,6 +211,7 @@ export type ResourceTableProps<Row> = {
   emptyVariant?: "default" | "dashed";
   emptyIcon?: React.ComponentType<{
     className?: string;
+    strokeWidth?: number;
     "aria-hidden"?: boolean;
   }>;
   /**
@@ -413,14 +412,14 @@ export function ResourceTable<Row>({
   const [fullScreen, setFullScreen] = React.useState(false);
 
   // 表格自带能力，对齐 antd ProTable 的 `options`：
-  // 默认开启刷新与列设置；密度、全屏按页打开；`options={false}` 整体隐藏。
+  // 默认开启刷新、密度与列设置；全屏按页打开；`options={false}` 整体隐藏。
   const optionsHidden = options === false;
   const reloadOption = optionsHidden ? true : (options?.reload ?? true);
   const settingOption = optionsHidden ? false : (options?.setting ?? true);
-  // 默认开启密度与全屏：与 antd ProTable 的 options 默认行为一致
-  // （刷新 / 列设置 / 密度 / 全屏四个内置能力全部可见）。
+  // 密度默认开启；全屏默认关闭：表格基本都在页面内，全屏会打断阅读节奏，
+  // 需要时按页显式打开 `options={{ fullScreen: true }}`。
   const densityOption = optionsHidden ? false : (options?.density ?? true);
-  const fullScreenOption = optionsHidden ? false : (options?.fullScreen ?? true);
+  const fullScreenOption = optionsHidden ? false : (options?.fullScreen ?? false);
   const reloadEnabled = reloadOption !== false;
   const settingEnabled = settingOption !== false;
   const densityEnabled = densityOption === true;
@@ -675,18 +674,24 @@ export function ResourceTable<Row>({
       <TableCell colSpan={totalColumnCount} className="p-0">
         {error ? (
           <EmptyState title="加载失败" description={error} action={retryAction} />
+        ) : empty ? (
+          empty
+        ) : emptyVariant === "dashed" ? (
+          <EmptyState
+            icon={emptyIcon}
+            title={filtered ? (emptyFilteredTitle ?? "没有匹配的结果") : emptyTitle}
+            description={
+              filtered ? (emptyFilteredDescription ?? "试试调整或清空筛选条件") : emptyDescription
+            }
+            action={filtered ? (emptyFilteredAction ?? emptyAction) : emptyAction}
+            variant="dashed"
+          />
         ) : (
-          (empty ?? (
-            <EmptyState
-              icon={emptyIcon ?? (filtered ? SearchX : Inbox)}
-              title={filtered ? (emptyFilteredTitle ?? "没有匹配的结果") : emptyTitle}
-              description={
-                filtered ? (emptyFilteredDescription ?? "试试调整或清空筛选条件") : emptyDescription
-              }
-              action={filtered ? (emptyFilteredAction ?? emptyAction) : emptyAction}
-              variant={emptyVariant ?? "default"}
-            />
-          ))
+          <CompactEmpty
+            icon={emptyIcon}
+            title={filtered ? (emptyFilteredTitle ?? "暂无数据") : (emptyTitle ?? "暂无数据")}
+            description={filtered ? undefined : emptyDescription}
+          />
         )}
       </TableCell>
     </TableRow>
@@ -750,25 +755,6 @@ export function ResourceTable<Row>({
             >
               {toolbar.primaryAction}
               {toolbar.actions}
-              {densityEnabled ? (
-                <TableDensityControl value={density} onChange={setDensity} />
-              ) : null}
-              {fullScreenEnabled ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={fullScreen ? "退出全屏" : "全屏"}
-                  title={fullScreen ? "退出全屏" : "全屏"}
-                  onClick={() => setFullScreen((current) => !current)}
-                >
-                  {fullScreen ? (
-                    <Minimize2 className="size-3.5" aria-hidden />
-                  ) : (
-                    <Maximize2 className="size-3.5" aria-hidden />
-                  )}
-                </Button>
-              ) : null}
               {reloadEnabled ? (
                 <Button
                   type="button"
@@ -779,10 +765,13 @@ export function ResourceTable<Row>({
                   onClick={reloadAction}
                 >
                   <RefreshCw
-                    className={cn("size-3.5", toolbarRefreshing && "animate-spin")}
+                    className={cn("size-4", toolbarRefreshing && "animate-spin")}
                     aria-hidden
                   />
                 </Button>
+              ) : null}
+              {densityEnabled ? (
+                <TableDensityControl value={density} onChange={setDensity} />
               ) : null}
               {columnSettingsEnabled ? (
                 <Popover>
@@ -794,7 +783,7 @@ export function ResourceTable<Row>({
                       aria-label="列设置"
                       title="列设置"
                     >
-                      <Settings className="size-3.5" aria-hidden />
+                      <Settings className="size-4" aria-hidden />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="end" className="w-64 p-3">
@@ -948,6 +937,22 @@ export function ResourceTable<Row>({
                     </DragDropProvider>
                   </PopoverContent>
                 </Popover>
+              ) : null}
+              {fullScreenEnabled ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={fullScreen ? "退出全屏" : "全屏"}
+                  title={fullScreen ? "退出全屏" : "全屏"}
+                  onClick={() => setFullScreen((current) => !current)}
+                >
+                  {fullScreen ? (
+                    <Minimize2 className="size-4" aria-hidden />
+                  ) : (
+                    <Maximize2 className="size-4" aria-hidden />
+                  )}
+                </Button>
               ) : null}
             </div>
           ) : null}

@@ -594,7 +594,7 @@ function AdminStoragesPage() {
         toolbarActions={
           <Button type="button" size="sm" disabled={!canCreate} onClick={handleOpenCreate}>
             <Plus className="size-3.5" aria-hidden />
-            新建存储
+            新建
           </Button>
         }
         tableProps={{

@@ -1,4 +1,4 @@
-import { Check, Rows3 } from "lucide-react";
+import { Check } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,41 @@ const DENSITY_LABEL: Record<TableDensity, string> = {
 const DENSITY_ORDER: TableDensity[] = ["default", "middle", "small"];
 
 /**
+ * columns-3-cog：三栏网格 + 右下角齿轮。
+ *
+ * 取自 lucide-static 的 `columns-3-cog` 图形（当前安装的 lucide-react 0.460 还没有该图标），
+ * 描边风格与 lucide 一致：表达「列布局 / 尺寸可调」。
+ */
+function Columns3CogIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("size-4", className)}
+      role="img"
+      aria-label="表格尺寸"
+    >
+      <path d="M10.6 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v5.6" />
+      <path d="m14.305 19.53.923-.382" />
+      <path d="M15 3v7.6" />
+      <path d="m15.229 16.852-.924-.383" />
+      <path d="m16.852 15.228-.383-.923" />
+      <path d="m16.852 20.772-.383.924" />
+      <path d="m19.148 15.228.383-.923" />
+      <path d="m19.53 21.696-.382-.924" />
+      <path d="m20.773 16.852.922-.383" />
+      <path d="m20.773 19.148.922.383" />
+      <path d="M9 3v18" />
+      <circle cx="18" cy="18" r="3" />
+    </svg>
+  );
+}
+
+/**
  * 密度切换按钮（对应 antd ProTable 的 `options.density`）。
  *
  * antd 的密度是三档循环，这里做成弹出菜单直接选档，和列设置面板一致。
@@ -47,14 +82,13 @@ export function TableDensityControl({
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="表格密度"
-          title={`表格密度：${DENSITY_LABEL[value]}`}
+          title={`表格尺寸：${DENSITY_LABEL[value]}`}
         >
-          <Rows3 className="size-3.5" aria-hidden />
+          <Columns3CogIcon />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-32 p-1.5">
-        <div role="menu" aria-label="表格密度" className="flex flex-col">
+        <div role="menu" aria-label="表格尺寸" className="flex flex-col">
           {DENSITY_ORDER.map((density) => (
             <button
               key={density}
@@ -71,7 +105,7 @@ export function TableDensityControl({
               }}
             >
               {DENSITY_LABEL[density]}
-              {density === value ? <Check className="size-3.5" aria-hidden /> : null}
+              {density === value ? <Check className="size-4" aria-hidden /> : null}
             </button>
           ))}
         </div>
