@@ -15,6 +15,20 @@
       "when": 1791554560574,
       "tag": "0001_fearless_misty_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794351484378,
+      "tag": "0002_grey_quasar",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794352153249,
+      "tag": "0003_little_cable",
+      "breakpoints": true
     }
   ]
 }

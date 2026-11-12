@@ -23,7 +23,7 @@
 | 媒体 | [附件业务](../../yishan/packages/core/system-api/src/core/services/attachment.service.ts)、[附件路由](../../yishan/packages/core/system-api/src/core/routes/api/v1/admin/attachments/index.ts) | [媒体页](../src/routes/admin/attachments.tsx)、[上传](../src/routes/api/uploads.ts)、[附件业务](../src/features/attachments/attachments.service.ts) |
 | 存储 | [配置页面](../../yishan/apps/yishan-admin/src/pages/system/storage/index.tsx)、[七牛凭证](../../yishan/packages/core/system-api/src/core/routes/api/v1/admin/system/qiniu/index.ts) | [驱动](../src/lib/storage-driver/index.ts)、[存储页](../src/routes/admin/storages.tsx) |
 | 账户 | [个人中心](../../yishan/apps/yishan-admin/src/pages/account/center/index.tsx)、[Token 契约](../../yishan/packages/core/system-api/src/core/schemas/api-token.ts) | [用户 actions](../src/features/users/users.actions.ts)、[Key 路由](../src/routes/api/v1/api-keys/index.ts) |
-| 产品模块 | [manifest](../../yishan/apps/demo/api/src/manifest.ts) | [门户元配置](../src/routes/admin/portals.tsx) |
+| 产品模块 | [manifest](../../yishan/apps/demo/api/src/manifest.ts) | [门户内容](../src/routes/admin/portal/articles.tsx)（分类 / 文章 / 页面 / 模板） |
 
 ## 2. 总体结论
 
@@ -59,8 +59,8 @@
 - 用户批量删除、CSV 导出、管理员重置密码已有 actions/service/UI，不再称“重置密码占位”。用户编辑不直接改密码，走单独重置是当前交互选择。
 - 部门批量删除、导出已有；角色、岗位、菜单、字典类型/数据、附件批量删除已有。
 - 站点名称、域名、标题、Logo/Favicon、SEO、备案、邮箱/电话/地址、页脚 13 类基础字段已在 system-settings.groups.ts 声明并由配置页保存；旧对照“站点字段缺失”已失效。运行时消费者另列 Q03。
-- 岗位、存储、附件、日志、门户 feature 和页面都存在；旧 TODO 的“全建/无路由”不成立。
-- 登录日志详情、更多筛选、用户/岗位关系、多存储和多门户配置是 tan 的附加能力，不应为照搬原版而删除。
+- 岗位、存储、附件、日志、门户内容 feature 和页面都存在；旧 TODO 的“全建/无路由”不成立。
+- 登录日志详情、更多筛选、用户/岗位关系、多存储是 tan 的附加能力，不应为照搬原版而删除。
 
 ## 5. 交互差异与当前工程缺口
 
@@ -86,7 +86,7 @@
 
 | 编号 | 原版源码范围 | tan 状态 / 范围说明 |
 | --- | --- | --- |
-| S01 | Demo portal：pages/articles/categories/templates 的 schema/service/routes 与 Admin module 页面 | 无内容管理；portals.tsx 仅门户配置。需规划编辑、发布、模板与前台渲染 |
+| S01 | Demo portal：pages/articles/categories/templates 的 schema/service/routes 与 Admin module 页面 | 已迁移：`portal-content` feature + `/admin/portal/*` 五个列表页 + `/api/v1/portal-*` REST；待补前台渲染 |
 | S02 | Demo shop：商品/分类/属性/订单；CRM 源码包括客户/商机/报价/合同/回款等 | 未迁移；Demo manifest 默认只含 demo、portal、shop，CRM 未默认安装，不把 CRM 全部算基座必需 |
 | S03 | Taro App、Docusaurus、共享 TipTap；Core contracts/database/api/system-api 与显式产品装配 | tan 当前是单仓后台；小程序/文档站/多产品隔离需要独立计划 |
 

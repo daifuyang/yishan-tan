@@ -28,7 +28,10 @@ export type PermissionResource =
   | "storages"
   | "attachments"
   | "login-logs"
-  | "portals";
+  | "portal-categories"
+  | "portal-articles"
+  | "portal-pages"
+  | "portal-templates";
 
 export function useResourcePermissions(resource: PermissionResource) {
   const query = useMyPermissions();

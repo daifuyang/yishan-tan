@@ -10,6 +10,7 @@ const NON_LIST_ROUTES = new Map([
   ["index.tsx", "Dashboard overview"],
   ["settings.tsx", "System configuration form"],
   ["route.tsx", "Admin layout and authentication"],
+  ["portal/templates/$templateId.tsx", "Portal template low-code designer"],
 ]);
 const REQUIRED_PROPS = [
   "filter",

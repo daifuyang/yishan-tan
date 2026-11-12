@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { dataScopeSchema } from "~/features/roles/roles.schema";
 import { menuTypeSchema, statusSchema, systemRoleSchema } from "./envelope";
+import { registry } from "./registry";
 
 const nullableString = z.string().nullable();
 const nullableStringOptional = z.string().nullable().optional();
@@ -285,6 +286,86 @@ export const attachmentDtoSchema = z
     updatedAt: isoDate,
   })
   .openapi("AttachmentDto");
+
+// ---------- portal-content ----------
+const portalContentStatusSchema = z.enum(["enabled", "disabled"]);
+const portalArticleStatusSchema = z.enum(["draft", "published"]);
+const portalTemplateTypeSchema = z.enum(["article", "page"]);
+const portalAttributesSchema = z.record(z.string(), z.string());
+
+/**
+ * 模板 json 字段的 OpenAPI 表达：递归 JSON。
+ *
+ * 必须**注册成命名 component 再用 $ref 引用**：zod-to-openapi 遇到内联的递归
+ * Zod（`z.record(z.string(), z.json())` 之类）会无限递归，生成时直接
+ * `Maximum call stack size exceeded`。
+ */
+export const portalTemplateJsonSchema = registry.register("PortalTemplateJson", z.json());
+const portalTagsSchema = z.array(z.string());
+
+export const portalCategoryDtoSchema = z
+  .object({
+    id: uuid,
+    name: z.string(),
+    slug: nullableString,
+    parentId: nullableString,
+    status: portalContentStatusSchema,
+    sortOrder: z.number().int(),
+    description: nullableString,
+    createdAt: isoDate,
+    updatedAt: isoDate,
+  })
+  .openapi("PortalCategoryDto");
+
+export const portalArticleDtoSchema = z
+  .object({
+    id: uuid,
+    title: z.string(),
+    slug: nullableString,
+    summary: nullableString,
+    content: z.string(),
+    coverImage: nullableString,
+    status: portalArticleStatusSchema,
+    isPinned: z.boolean(),
+    publishTime: nullableString,
+    attributes: portalAttributesSchema.nullable(),
+    tags: portalTagsSchema.nullable(),
+    templateId: nullableString,
+    categoryIds: z.array(z.string()),
+    createdAt: isoDate,
+    updatedAt: isoDate,
+  })
+  .openapi("PortalArticleDto");
+
+export const portalPageDtoSchema = z
+  .object({
+    id: uuid,
+    title: z.string(),
+    path: z.string(),
+    content: z.string(),
+    status: portalContentStatusSchema,
+    attributes: portalAttributesSchema.nullable(),
+    publishTime: nullableString,
+    templateId: nullableString,
+    createdAt: isoDate,
+    updatedAt: isoDate,
+  })
+  .openapi("PortalPageDto");
+
+export const portalTemplateDtoSchema = z
+  .object({
+    id: uuid,
+    name: z.string(),
+    description: nullableString,
+    type: portalTemplateTypeSchema,
+    schema: portalTemplateJsonSchema.nullable(),
+    config: portalTemplateJsonSchema.nullable(),
+    status: portalContentStatusSchema,
+    isSystemDefault: z.boolean(),
+    createdAt: isoDate,
+    updatedAt: isoDate,
+  })
+  .openapi("PortalTemplateDto");
 
 // ---------- shared OK-envelope helpers ----------
 export const okEnvelope = <T extends z.ZodTypeAny>(name: string, data: T) =>

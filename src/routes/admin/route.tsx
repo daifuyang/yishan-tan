@@ -5,6 +5,9 @@ import { AdminBreadcrumb, AdminShell, useSidebarCollapsed } from "@/components/a
 import { getCurrentUser } from "~/features/auth/auth.actions";
 import { getAuthorizedMenuPaths } from "~/features/menus/menus.actions";
 
+/** 门户模板设计页路径前缀（不在菜单树里，按模板管理权限放行）。 */
+const TEMPLATE_DESIGN_PREFIX = "/admin/portal/templates/";
+
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
     const user = await getCurrentUser();
@@ -22,6 +25,19 @@ export const Route = createFileRoute("/admin")({
 
     // 其余子路径必须命中授权菜单树；命中失败回退到工作台。
     const paths = await getAuthorizedMenuPaths();
+
+    // 模板设计页不在菜单树里（它是模板列表的子页面，不是独立菜单项），
+    // 权限按「能不能进模板管理」判定。
+    if (location.pathname.startsWith(TEMPLATE_DESIGN_PREFIX)) {
+      const canManageTemplates = paths.some(
+        (p) => p === "/admin/portal/article-templates" || p === "/admin/portal/page-templates",
+      );
+      if (!canManageTemplates) {
+        throw redirect({ to: "/admin" });
+      }
+      return { user };
+    }
+
     const allowed = paths.some((p) => locationMatchesPath(location.pathname, p));
     if (!allowed) {
       throw redirect({ to: "/admin" });
@@ -35,6 +51,13 @@ export const Route = createFileRoute("/admin")({
 function AdminLayoutRoute() {
   const { collapsed, toggle } = useSidebarCollapsed();
   const location = useLocation();
+
+  // 模板设计页是「全屏工具」：不套后台外壳（侧边栏 / 顶栏 / 面包屑），
+  // 画布要占满窗口。鉴权仍在 beforeLoad 里做。
+  if (location.pathname.startsWith(TEMPLATE_DESIGN_PREFIX)) {
+    return <Outlet />;
+  }
+
   return (
     <AdminShell collapsed={collapsed} onToggleCollapsed={toggle}>
       <div className="space-y-4">

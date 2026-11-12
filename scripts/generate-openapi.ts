@@ -25,6 +25,10 @@ import "../src/lib/openapi/paths/dicts-data";
 import "../src/lib/openapi/paths/posts";
 import "../src/lib/openapi/paths/storages";
 import "../src/lib/openapi/paths/system-options";
+import "../src/lib/openapi/paths/portal-categories";
+import "../src/lib/openapi/paths/portal-articles";
+import "../src/lib/openapi/paths/portal-pages";
+import "../src/lib/openapi/paths/portal-templates";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(here, "..");

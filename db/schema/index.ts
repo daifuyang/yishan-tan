@@ -2,7 +2,9 @@ import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -26,8 +28,6 @@ export const storageDriver = pgEnum("storage_driver", [
   "minio",
 ]);
 
-export const portalThemeMode = pgEnum("portal_theme_mode", ["light", "dark"]);
-
 export const attachmentCategory = pgEnum("attachment_category", [
   "image",
   "video",
@@ -35,6 +35,12 @@ export const attachmentCategory = pgEnum("attachment_category", [
   "audio",
   "other",
 ]);
+
+/** 门户文章状态：草稿 / 已发布。 */
+export const portalArticleStatus = pgEnum("portal_article_status", ["draft", "published"]);
+
+/** 门户模板类型：文章模板 / 页面模板。 */
+export const portalTemplateType = pgEnum("portal_template_type", ["article", "page"]);
 
 /**
  * better-auth 核心表。字段命名严格遵循 better-auth 默认约定，
@@ -335,27 +341,25 @@ export const storage = pgTable(
 );
 
 /**
- * 门户：C 端一套独立的站点配置（logo / 主题 / 域名），同一时间最多一个默认。
+ * 门户内容分类（树形）。文章可归属多个分类。
  *
- * code 业务标识（slug），name 显示名，domain 可选绑定域名。
- * themePrimary 形如 #RRGGBB；themeMode 是 light / dark 二选一。
- *
- * 唯一性约束：`is_default = true` 且未删除的记录至多一条，
- * 通过 partial unique index 在数据库层强制（service 也再做一次事务校验）。
+ * parentId 自引用，指向顶级分类时为 null。
+ * slug 全局唯一（未填写时留空，多条 null 不冲突）。
  */
-export const portal = pgTable(
-  "portal",
+export const portalCategory = pgTable(
+  "portal_category",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
-    code: text("code").notNull().unique(),
-    domain: text("domain"),
-    logoUrl: text("logo_url"),
-    themePrimary: text("theme_primary"),
-    themeMode: portalThemeMode("theme_mode").notNull().default("light"),
-    description: text("description"),
-    isDefault: boolean("is_default").notNull().default(false),
+    slug: text("slug").unique(),
+    parentId: uuid("parent_id").references((): AnyPgColumn => portalCategory.id, {
+      onDelete: "set null",
+    }),
     status: statusEnum("status").notNull().default("enabled"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    description: text("description"),
+    creatorId: uuid("creator_id").references(() => user.id, { onDelete: "set null" }),
+    updaterId: uuid("updater_id").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -364,9 +368,131 @@ export const portal = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
-    uniqueIndex("portal_default_unique_idx")
-      .on(sql`(true)`)
-      .where(sql`${t.isDefault} = true AND ${t.deletedAt} IS NULL`),
+    uniqueIndex("portal_category_parent_name_unique_idx").on(t.parentId, t.name),
+    index("portal_category_status_idx").on(t.status),
+  ],
+);
+
+/**
+ * 门户文章。content 存正文（HTML 或纯文本，由前端编辑器决定），
+ * attributes / tags 用 jsonb 承载可变字段。
+ */
+export const portalArticle = pgTable(
+  "portal_article",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    slug: text("slug").unique(),
+    summary: text("summary"),
+    content: text("content").notNull(),
+    coverImage: text("cover_image"),
+    status: portalArticleStatus("status").notNull().default("draft"),
+    isPinned: boolean("is_pinned").notNull().default(false),
+    publishTime: timestamp("publish_time", { withTimezone: true }),
+    attributes: jsonb("attributes").$type<Record<string, string>>(),
+    tags: jsonb("tags").$type<string[]>(),
+    templateId: uuid("template_id").references(() => portalTemplate.id, { onDelete: "set null" }),
+    creatorId: uuid("creator_id").references(() => user.id, { onDelete: "set null" }),
+    updaterId: uuid("updater_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("portal_article_status_idx").on(t.status),
+    index("portal_article_publish_time_idx").on(t.publishTime),
+  ],
+);
+
+/**
+ * 文章 ↔ 分类 多对多桥接表。整集合替换语义由 service 负责。
+ */
+export const portalArticleCategory = pgTable(
+  "portal_article_category",
+  {
+    articleId: uuid("article_id")
+      .notNull()
+      .references(() => portalArticle.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => portalCategory.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.articleId, t.categoryId] })],
+);
+
+/**
+ * 门户页面：path 唯一，对应前台路由。
+ */
+export const portalPage = pgTable(
+  "portal_page",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    path: text("path").notNull().unique(),
+    content: text("content").notNull(),
+    status: statusEnum("status").notNull().default("enabled"),
+    attributes: jsonb("attributes").$type<Record<string, string>>(),
+    publishTime: timestamp("publish_time", { withTimezone: true }),
+    templateId: uuid("template_id").references(() => portalTemplate.id, { onDelete: "set null" }),
+    creatorId: uuid("creator_id").references(() => user.id, { onDelete: "set null" }),
+    updaterId: uuid("updater_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("portal_page_status_idx").on(t.status)],
+);
+
+/**
+ * 可序列化的 JSON 值（jsonb 列的载荷类型）。
+ *
+ * 低代码编辑器的 PageSchema 是**嵌套**结构（componentsTree 是对象树），所以
+ * jsonb 列不能用「只允许标量」的窄类型。
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+/**
+ * 门户模板：文章模板（type=article）与页面模板（type=page）共用一张表，
+ * (type, name) 唯一。系统默认模板不可删除。
+ */
+export const portalTemplate = pgTable(
+  "portal_template",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    description: text("description"),
+    type: portalTemplateType("type").notNull(),
+    /** 低代码页面结构（PageSchema） */
+    schema: jsonb("schema").$type<JsonValue>(),
+    /** 模板的扁平配置 */
+    config: jsonb("config").$type<JsonValue>(),
+    status: statusEnum("status").notNull().default("enabled"),
+    isSystemDefault: boolean("is_system_default").notNull().default(false),
+    creatorId: uuid("creator_id").references(() => user.id, { onDelete: "set null" }),
+    updaterId: uuid("updater_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("portal_template_type_name_unique_idx").on(t.type, t.name),
+    index("portal_template_status_idx").on(t.status),
   ],
 );
 
@@ -438,7 +564,10 @@ export type DbDictType = typeof dictType.$inferSelect;
 export type DbDictData = typeof dictData.$inferSelect;
 export type DbLoginLog = typeof loginLog.$inferSelect;
 export type DbStorage = typeof storage.$inferSelect;
-export type DbPortal = typeof portal.$inferSelect;
+export type DbPortalCategory = typeof portalCategory.$inferSelect;
+export type DbPortalArticle = typeof portalArticle.$inferSelect;
+export type DbPortalPage = typeof portalPage.$inferSelect;
+export type DbPortalTemplate = typeof portalTemplate.$inferSelect;
 export type DbAttachment = typeof attachment.$inferSelect;
 
 export const schemaTag = sql`yishan_tan_v1`;

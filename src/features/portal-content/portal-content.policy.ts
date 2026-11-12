@@ -2,13 +2,17 @@ import { assertPermissionService } from "~/features/permissions/permissions.serv
 import type { PermissionCode } from "~/lib/permission-catalog";
 import type { ServiceContext } from "~/lib/service-context";
 
-export async function assertCanManagePortals(ctx: ServiceContext): Promise<void> {
-  await assertPermissionService(ctx, "portals:read");
-}
+export type PortalContentPermissionCode = Extract<
+  PermissionCode,
+  | `portal-categories:${string}`
+  | `portal-articles:${string}`
+  | `portal-pages:${string}`
+  | `portal-templates:${string}`
+>;
 
-export async function assertPortalOperation(
+export async function assertPortalContentOperation(
   ctx: ServiceContext,
-  code: Extract<PermissionCode, `portals:${string}`>,
+  code: PortalContentPermissionCode,
 ): Promise<void> {
   await assertPermissionService(ctx, code);
 }
