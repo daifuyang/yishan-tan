@@ -35,6 +35,7 @@ import {
   listPortalPagesService,
   listPortalTemplatesService,
   publishPortalArticleService,
+  publishPortalPageService,
   updatePortalArticleService,
   updatePortalCategoryService,
   updatePortalPageService,
@@ -165,6 +166,13 @@ export const updatePortalPage = createServerFn({ method: "POST" })
     await operationCtx("portal-pages:update");
     const { id, ...rest } = data;
     return updatePortalPageService(id, rest);
+  });
+
+export const publishPortalPage = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await operationCtx("portal-pages:update");
+    return publishPortalPageService(data.id);
   });
 
 export const deletePortalPage = createServerFn({ method: "POST" })

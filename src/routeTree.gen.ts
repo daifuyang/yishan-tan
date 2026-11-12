@@ -38,7 +38,6 @@ import { Route as ApiV1DictTypesRouteImport } from './routes/api/v1/dict-types'
 import { Route as ApiV1DepartmentsRouteImport } from './routes/api/v1/departments'
 import { Route as ApiOpenapiJsonRouteImport } from './routes/api/openapi.json'
 import { Route as AdminPortalPagesRouteImport } from './routes/admin/portal/pages'
-import { Route as AdminPortalPageTemplatesRouteImport } from './routes/admin/portal/page-templates'
 import { Route as AdminPortalCategoriesRouteImport } from './routes/admin/portal/categories'
 import { Route as AdminPortalArticlesRouteImport } from './routes/admin/portal/articles'
 import { Route as AdminPortalArticleTemplatesRouteImport } from './routes/admin/portal/article-templates'
@@ -65,8 +64,10 @@ import { Route as ApiV1DictTypesIdRouteImport } from './routes/api/v1/dict-types
 import { Route as ApiV1DepartmentsIdRouteImport } from './routes/api/v1/departments/$id'
 import { Route as ApiV1ApiKeysIdRouteImport } from './routes/api/v1/api-keys/$id'
 import { Route as AdminPortalTemplatesTemplateIdRouteImport } from './routes/admin/portal/templates/$templateId'
+import { Route as AdminPortalPageDesignerPageIdRouteImport } from './routes/admin/portal/page-designer/$pageId'
 import { Route as ApiV1UsersMeLoginLogsRouteImport } from './routes/api/v1/users/me/login-logs'
 import { Route as ApiV1StoragesIdDefaultRouteImport } from './routes/api/v1/storages/$id.default'
+import { Route as ApiV1PortalPagesIdPublishRouteImport } from './routes/api/v1/portal-pages/$id/publish'
 import { Route as ApiV1PortalArticlesIdPublishRouteImport } from './routes/api/v1/portal-articles/$id/publish'
 
 const LoginRoute = LoginRouteImport.update({
@@ -214,12 +215,6 @@ const AdminPortalPagesRoute = AdminPortalPagesRouteImport.update({
   path: '/portal/pages',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminPortalPageTemplatesRoute =
-  AdminPortalPageTemplatesRouteImport.update({
-    id: '/portal/page-templates',
-    path: '/portal/page-templates',
-    getParentRoute: () => AdminRouteRoute,
-  } as any)
 const AdminPortalCategoriesRoute = AdminPortalCategoriesRouteImport.update({
   id: '/portal/categories',
   path: '/portal/categories',
@@ -352,6 +347,12 @@ const AdminPortalTemplatesTemplateIdRoute =
     path: '/portal/templates/$templateId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminPortalPageDesignerPageIdRoute =
+  AdminPortalPageDesignerPageIdRouteImport.update({
+    id: '/portal/page-designer/$pageId',
+    path: '/portal/page-designer/$pageId',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const ApiV1UsersMeLoginLogsRoute = ApiV1UsersMeLoginLogsRouteImport.update({
   id: '/login-logs',
   path: '/login-logs',
@@ -362,6 +363,12 @@ const ApiV1StoragesIdDefaultRoute = ApiV1StoragesIdDefaultRouteImport.update({
   path: '/default',
   getParentRoute: () => ApiV1StoragesIdRoute,
 } as any)
+const ApiV1PortalPagesIdPublishRoute =
+  ApiV1PortalPagesIdPublishRouteImport.update({
+    id: '/publish',
+    path: '/publish',
+    getParentRoute: () => ApiV1PortalPagesIdRoute,
+  } as any)
 const ApiV1PortalArticlesIdPublishRoute =
   ApiV1PortalArticlesIdPublishRouteImport.update({
     id: '/publish',
@@ -390,7 +397,6 @@ export interface FileRoutesByFullPath {
   '/admin/portal/article-templates': typeof AdminPortalArticleTemplatesRoute
   '/admin/portal/articles': typeof AdminPortalArticlesRoute
   '/admin/portal/categories': typeof AdminPortalCategoriesRoute
-  '/admin/portal/page-templates': typeof AdminPortalPageTemplatesRoute
   '/admin/portal/pages': typeof AdminPortalPagesRoute
   '/api/openapi/json': typeof ApiOpenapiJsonRoute
   '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
@@ -404,6 +410,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/position': typeof ApiV1PositionRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
   '/api/v1/users': typeof ApiV1UsersRouteWithChildren
+  '/admin/portal/page-designer/$pageId': typeof AdminPortalPageDesignerPageIdRoute
   '/admin/portal/templates/$templateId': typeof AdminPortalTemplatesTemplateIdRoute
   '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
   '/api/v1/departments/$id': typeof ApiV1DepartmentsIdRoute
@@ -412,7 +419,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
   '/api/v1/portal-articles/$id': typeof ApiV1PortalArticlesIdRouteWithChildren
   '/api/v1/portal-categories/$id': typeof ApiV1PortalCategoriesIdRoute
-  '/api/v1/portal-pages/$id': typeof ApiV1PortalPagesIdRoute
+  '/api/v1/portal-pages/$id': typeof ApiV1PortalPagesIdRouteWithChildren
   '/api/v1/portal-templates/$id': typeof ApiV1PortalTemplatesIdRoute
   '/api/v1/position/$id': typeof ApiV1PositionIdRoute
   '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/system-options/': typeof ApiV1SystemOptionsIndexRoute
   '/api/v1/users/': typeof ApiV1UsersIndexRoute
   '/api/v1/portal-articles/$id/publish': typeof ApiV1PortalArticlesIdPublishRoute
+  '/api/v1/portal-pages/$id/publish': typeof ApiV1PortalPagesIdPublishRoute
   '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
   '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
@@ -450,7 +458,6 @@ export interface FileRoutesByTo {
   '/admin/portal/article-templates': typeof AdminPortalArticleTemplatesRoute
   '/admin/portal/articles': typeof AdminPortalArticlesRoute
   '/admin/portal/categories': typeof AdminPortalCategoriesRoute
-  '/admin/portal/page-templates': typeof AdminPortalPageTemplatesRoute
   '/admin/portal/pages': typeof AdminPortalPagesRoute
   '/api/openapi/json': typeof ApiOpenapiJsonRoute
   '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
@@ -463,6 +470,7 @@ export interface FileRoutesByTo {
   '/api/v1/portal-templates': typeof ApiV1PortalTemplatesRouteWithChildren
   '/api/v1/position': typeof ApiV1PositionRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
+  '/admin/portal/page-designer/$pageId': typeof AdminPortalPageDesignerPageIdRoute
   '/admin/portal/templates/$templateId': typeof AdminPortalTemplatesTemplateIdRoute
   '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
   '/api/v1/departments/$id': typeof ApiV1DepartmentsIdRoute
@@ -471,7 +479,7 @@ export interface FileRoutesByTo {
   '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
   '/api/v1/portal-articles/$id': typeof ApiV1PortalArticlesIdRouteWithChildren
   '/api/v1/portal-categories/$id': typeof ApiV1PortalCategoriesIdRoute
-  '/api/v1/portal-pages/$id': typeof ApiV1PortalPagesIdRoute
+  '/api/v1/portal-pages/$id': typeof ApiV1PortalPagesIdRouteWithChildren
   '/api/v1/portal-templates/$id': typeof ApiV1PortalTemplatesIdRoute
   '/api/v1/position/$id': typeof ApiV1PositionIdRoute
   '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
@@ -486,6 +494,7 @@ export interface FileRoutesByTo {
   '/api/v1/system-options': typeof ApiV1SystemOptionsIndexRoute
   '/api/v1/users': typeof ApiV1UsersIndexRoute
   '/api/v1/portal-articles/$id/publish': typeof ApiV1PortalArticlesIdPublishRoute
+  '/api/v1/portal-pages/$id/publish': typeof ApiV1PortalPagesIdPublishRoute
   '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
   '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
@@ -511,7 +520,6 @@ export interface FileRoutesById {
   '/admin/portal/article-templates': typeof AdminPortalArticleTemplatesRoute
   '/admin/portal/articles': typeof AdminPortalArticlesRoute
   '/admin/portal/categories': typeof AdminPortalCategoriesRoute
-  '/admin/portal/page-templates': typeof AdminPortalPageTemplatesRoute
   '/admin/portal/pages': typeof AdminPortalPagesRoute
   '/api/openapi/json': typeof ApiOpenapiJsonRoute
   '/api/v1/departments': typeof ApiV1DepartmentsRouteWithChildren
@@ -525,6 +533,7 @@ export interface FileRoutesById {
   '/api/v1/position': typeof ApiV1PositionRouteWithChildren
   '/api/v1/sessions': typeof ApiV1SessionsRoute
   '/api/v1/users': typeof ApiV1UsersRouteWithChildren
+  '/admin/portal/page-designer/$pageId': typeof AdminPortalPageDesignerPageIdRoute
   '/admin/portal/templates/$templateId': typeof AdminPortalTemplatesTemplateIdRoute
   '/api/v1/api-keys/$id': typeof ApiV1ApiKeysIdRoute
   '/api/v1/departments/$id': typeof ApiV1DepartmentsIdRoute
@@ -533,7 +542,7 @@ export interface FileRoutesById {
   '/api/v1/menus/$id': typeof ApiV1MenusIdRoute
   '/api/v1/portal-articles/$id': typeof ApiV1PortalArticlesIdRouteWithChildren
   '/api/v1/portal-categories/$id': typeof ApiV1PortalCategoriesIdRoute
-  '/api/v1/portal-pages/$id': typeof ApiV1PortalPagesIdRoute
+  '/api/v1/portal-pages/$id': typeof ApiV1PortalPagesIdRouteWithChildren
   '/api/v1/portal-templates/$id': typeof ApiV1PortalTemplatesIdRoute
   '/api/v1/position/$id': typeof ApiV1PositionIdRoute
   '/api/v1/roles/$id': typeof ApiV1RolesIdRoute
@@ -548,6 +557,7 @@ export interface FileRoutesById {
   '/api/v1/system-options/': typeof ApiV1SystemOptionsIndexRoute
   '/api/v1/users/': typeof ApiV1UsersIndexRoute
   '/api/v1/portal-articles/$id/publish': typeof ApiV1PortalArticlesIdPublishRoute
+  '/api/v1/portal-pages/$id/publish': typeof ApiV1PortalPagesIdPublishRoute
   '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
   '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
@@ -574,7 +584,6 @@ export interface FileRouteTypes {
     | '/admin/portal/article-templates'
     | '/admin/portal/articles'
     | '/admin/portal/categories'
-    | '/admin/portal/page-templates'
     | '/admin/portal/pages'
     | '/api/openapi/json'
     | '/api/v1/departments'
@@ -588,6 +597,7 @@ export interface FileRouteTypes {
     | '/api/v1/position'
     | '/api/v1/sessions'
     | '/api/v1/users'
+    | '/admin/portal/page-designer/$pageId'
     | '/admin/portal/templates/$templateId'
     | '/api/v1/api-keys/$id'
     | '/api/v1/departments/$id'
@@ -611,6 +621,7 @@ export interface FileRouteTypes {
     | '/api/v1/system-options/'
     | '/api/v1/users/'
     | '/api/v1/portal-articles/$id/publish'
+    | '/api/v1/portal-pages/$id/publish'
     | '/api/v1/storages/$id/default'
     | '/api/v1/users/me/login-logs'
   fileRoutesByTo: FileRoutesByTo
@@ -634,7 +645,6 @@ export interface FileRouteTypes {
     | '/admin/portal/article-templates'
     | '/admin/portal/articles'
     | '/admin/portal/categories'
-    | '/admin/portal/page-templates'
     | '/admin/portal/pages'
     | '/api/openapi/json'
     | '/api/v1/departments'
@@ -647,6 +657,7 @@ export interface FileRouteTypes {
     | '/api/v1/portal-templates'
     | '/api/v1/position'
     | '/api/v1/sessions'
+    | '/admin/portal/page-designer/$pageId'
     | '/admin/portal/templates/$templateId'
     | '/api/v1/api-keys/$id'
     | '/api/v1/departments/$id'
@@ -670,6 +681,7 @@ export interface FileRouteTypes {
     | '/api/v1/system-options'
     | '/api/v1/users'
     | '/api/v1/portal-articles/$id/publish'
+    | '/api/v1/portal-pages/$id/publish'
     | '/api/v1/storages/$id/default'
     | '/api/v1/users/me/login-logs'
   id:
@@ -694,7 +706,6 @@ export interface FileRouteTypes {
     | '/admin/portal/article-templates'
     | '/admin/portal/articles'
     | '/admin/portal/categories'
-    | '/admin/portal/page-templates'
     | '/admin/portal/pages'
     | '/api/openapi/json'
     | '/api/v1/departments'
@@ -708,6 +719,7 @@ export interface FileRouteTypes {
     | '/api/v1/position'
     | '/api/v1/sessions'
     | '/api/v1/users'
+    | '/admin/portal/page-designer/$pageId'
     | '/admin/portal/templates/$templateId'
     | '/api/v1/api-keys/$id'
     | '/api/v1/departments/$id'
@@ -731,6 +743,7 @@ export interface FileRouteTypes {
     | '/api/v1/system-options/'
     | '/api/v1/users/'
     | '/api/v1/portal-articles/$id/publish'
+    | '/api/v1/portal-pages/$id/publish'
     | '/api/v1/storages/$id/default'
     | '/api/v1/users/me/login-logs'
   fileRoutesById: FileRoutesById
@@ -969,13 +982,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPortalPagesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/portal/page-templates': {
-      id: '/admin/portal/page-templates'
-      path: '/portal/page-templates'
-      fullPath: '/admin/portal/page-templates'
-      preLoaderRoute: typeof AdminPortalPageTemplatesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/admin/portal/categories': {
       id: '/admin/portal/categories'
       path: '/portal/categories'
@@ -1158,6 +1164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPortalTemplatesTemplateIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/portal/page-designer/$pageId': {
+      id: '/admin/portal/page-designer/$pageId'
+      path: '/portal/page-designer/$pageId'
+      fullPath: '/admin/portal/page-designer/$pageId'
+      preLoaderRoute: typeof AdminPortalPageDesignerPageIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/api/v1/users/me/login-logs': {
       id: '/api/v1/users/me/login-logs'
       path: '/login-logs'
@@ -1171,6 +1184,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/v1/storages/$id/default'
       preLoaderRoute: typeof ApiV1StoragesIdDefaultRouteImport
       parentRoute: typeof ApiV1StoragesIdRoute
+    }
+    '/api/v1/portal-pages/$id/publish': {
+      id: '/api/v1/portal-pages/$id/publish'
+      path: '/publish'
+      fullPath: '/api/v1/portal-pages/$id/publish'
+      preLoaderRoute: typeof ApiV1PortalPagesIdPublishRouteImport
+      parentRoute: typeof ApiV1PortalPagesIdRoute
     }
     '/api/v1/portal-articles/$id/publish': {
       id: '/api/v1/portal-articles/$id/publish'
@@ -1209,8 +1229,8 @@ interface AdminRouteRouteChildren {
   AdminPortalArticleTemplatesRoute: typeof AdminPortalArticleTemplatesRoute
   AdminPortalArticlesRoute: typeof AdminPortalArticlesRoute
   AdminPortalCategoriesRoute: typeof AdminPortalCategoriesRoute
-  AdminPortalPageTemplatesRoute: typeof AdminPortalPageTemplatesRoute
   AdminPortalPagesRoute: typeof AdminPortalPagesRoute
+  AdminPortalPageDesignerPageIdRoute: typeof AdminPortalPageDesignerPageIdRoute
   AdminPortalTemplatesTemplateIdRoute: typeof AdminPortalTemplatesTemplateIdRoute
 }
 
@@ -1229,8 +1249,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminPortalArticleTemplatesRoute: AdminPortalArticleTemplatesRoute,
   AdminPortalArticlesRoute: AdminPortalArticlesRoute,
   AdminPortalCategoriesRoute: AdminPortalCategoriesRoute,
-  AdminPortalPageTemplatesRoute: AdminPortalPageTemplatesRoute,
   AdminPortalPagesRoute: AdminPortalPagesRoute,
+  AdminPortalPageDesignerPageIdRoute: AdminPortalPageDesignerPageIdRoute,
   AdminPortalTemplatesTemplateIdRoute: AdminPortalTemplatesTemplateIdRoute,
 }
 
@@ -1322,12 +1342,23 @@ const ApiV1PortalCategoriesRouteWithChildren =
     ApiV1PortalCategoriesRouteChildren,
   )
 
+interface ApiV1PortalPagesIdRouteChildren {
+  ApiV1PortalPagesIdPublishRoute: typeof ApiV1PortalPagesIdPublishRoute
+}
+
+const ApiV1PortalPagesIdRouteChildren: ApiV1PortalPagesIdRouteChildren = {
+  ApiV1PortalPagesIdPublishRoute: ApiV1PortalPagesIdPublishRoute,
+}
+
+const ApiV1PortalPagesIdRouteWithChildren =
+  ApiV1PortalPagesIdRoute._addFileChildren(ApiV1PortalPagesIdRouteChildren)
+
 interface ApiV1PortalPagesRouteChildren {
-  ApiV1PortalPagesIdRoute: typeof ApiV1PortalPagesIdRoute
+  ApiV1PortalPagesIdRoute: typeof ApiV1PortalPagesIdRouteWithChildren
 }
 
 const ApiV1PortalPagesRouteChildren: ApiV1PortalPagesRouteChildren = {
-  ApiV1PortalPagesIdRoute: ApiV1PortalPagesIdRoute,
+  ApiV1PortalPagesIdRoute: ApiV1PortalPagesIdRouteWithChildren,
 }
 
 const ApiV1PortalPagesRouteWithChildren =

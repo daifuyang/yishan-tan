@@ -80,7 +80,7 @@ const EMPTY_FORM: TemplateFormValue = {
 
 export type PortalTemplateListConfig = {
   /** 模板类型：文章模板 / 页面模板。 */
-  type: "article" | "page";
+  type: "article";
   /** 页面标题，如「文章模板管理」。 */
   title: string;
   /** 列表标题，如「文章模板列表」。 */
@@ -518,7 +518,7 @@ export function usePortalTemplateListView({
             updateMut.reset();
           }
         }}
-        title={`编辑${type === "article" ? "文章模板" : "页面模板"}`}
+        title={"编辑文章模板"}
         description={editing?.name}
         dialogSize="md"
         sheetSize="md"
@@ -550,7 +550,7 @@ export function usePortalTemplateListView({
             createMut.reset();
           }
         }}
-        title={`新建${type === "article" ? "文章模板" : "页面模板"}`}
+        title={"新建文章模板"}
         dialogSize="md"
         sheetSize="md"
         submitLabel="创建"
@@ -657,7 +657,7 @@ function buildListQuery(
   page: number,
   pageSize: number,
   sort: ResourceSortState<PortalTemplateSortBy>,
-  type: "article" | "page",
+  type: "article",
 ) {
   const name = filters.name.trim() || undefined;
   const status = filters.status === "all" ? undefined : filters.status;

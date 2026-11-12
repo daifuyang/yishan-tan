@@ -298,21 +298,6 @@ export const FALLBACK_NAV_ITEMS = [
     updatedAt: "",
     children: [],
   },
-  {
-    id: "fallback-portal-page-templates",
-    parentId: "fallback-portal",
-    name: "页面模板",
-    path: "/admin/portal/page-templates",
-    component: null,
-    icon: "LayoutTemplate",
-    type: "menu",
-    permission: null,
-    sort: 4,
-    status: "enabled",
-    createdAt: "",
-    updatedAt: "",
-    children: [],
-  },
 ] as const satisfies readonly MenuNode[];
 
 /**

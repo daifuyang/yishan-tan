@@ -18,13 +18,17 @@ type RenderComponent = React.ComponentType<{
 }>;
 
 const loadRender = createClientOnlyFn(async () => {
-  const [render, materials] = await Promise.all([
+  const [render, materials, blocks] = await Promise.all([
     import("@lowcode-next/render-react"),
     import("@lowcode-next/materials-react/basic"),
+    import("./blocks"),
   ]);
   return {
     LowcodeRender: render.LowcodeRender as unknown as RenderComponent,
-    basicPackage: materials.basicReactMaterialPackage as LowcodeMaterialPackage,
+    packages: [
+      materials.basicReactMaterialPackage as LowcodeMaterialPackage,
+      blocks.siteBlocksPackage as LowcodeMaterialPackage,
+    ],
   };
 });
 
@@ -36,10 +40,10 @@ export function PortalPreviewCanvas({ schema }: { schema: unknown }) {
   React.useEffect(() => {
     let alive = true;
     void loadRender()
-      .then(({ LowcodeRender, basicPackage }) => {
+      .then(({ LowcodeRender, packages: loaded }) => {
         if (!alive) return;
         setRender(() => LowcodeRender);
-        setPackages([basicPackage]);
+        setPackages(loaded);
       })
       .catch((error: unknown) => {
         if (!alive) return;

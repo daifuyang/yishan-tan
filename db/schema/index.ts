@@ -426,6 +426,10 @@ export const portalArticleCategory = pgTable(
 
 /**
  * 门户页面：path 唯一，对应前台路由。
+ *
+ * 页面自带低代码 PageSchema，不再经过模板：
+ * - draftSchema：设计器保存写这里，前台不可见；
+ * - publishedSchema：点「发布」时由草稿拷贝而来，前台只读这一份。
  */
 export const portalPage = pgTable(
   "portal_page",
@@ -433,11 +437,11 @@ export const portalPage = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     title: text("title").notNull(),
     path: text("path").notNull().unique(),
-    content: text("content").notNull(),
     status: statusEnum("status").notNull().default("enabled"),
     attributes: jsonb("attributes").$type<Record<string, string>>(),
     publishTime: timestamp("publish_time", { withTimezone: true }),
-    templateId: uuid("template_id").references(() => portalTemplate.id, { onDelete: "set null" }),
+    draftSchema: jsonb("draft_schema").$type<JsonValue>(),
+    publishedSchema: jsonb("published_schema").$type<JsonValue>(),
     creatorId: uuid("creator_id").references(() => user.id, { onDelete: "set null" }),
     updaterId: uuid("updater_id").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

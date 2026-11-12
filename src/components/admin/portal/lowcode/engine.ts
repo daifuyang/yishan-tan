@@ -2,6 +2,8 @@ import type {
   LowcodeCreateEditorOptions,
   LowcodeEditorHandle,
   LowcodeMaterialPackage,
+  LowcodeToolbarContext,
+  LowcodeToolbarItem,
 } from "@lowcode-next/lowcode-react";
 import type { LowcodePageSchema } from "@lowcode-next/protocol";
 /**
@@ -26,6 +28,8 @@ export type {
   LowcodeEditorHandle,
   LowcodeMaterialPackage,
   LowcodePageSchema,
+  LowcodeToolbarContext,
+  LowcodeToolbarItem,
 };
 
 export interface LowcodeEngine {
@@ -35,19 +39,23 @@ export interface LowcodeEngine {
   sampleSchema: LowcodePageSchema;
   /** 引擎自带的基础物料包（Button / Input / Div / Form 等）。 */
   basicPackage: LowcodeMaterialPackage;
+  /** 宿主定义的业务区块包（SiteHeader / AnnouncementBar），与基础包并列装配。 */
+  packages: LowcodeMaterialPackage[];
 }
 
 const loadEngine = createClientOnlyFn(async (): Promise<LowcodeEngine> => {
-  const [lowcode, protocol, materials] = await Promise.all([
+  const [lowcode, protocol, materials, blocks] = await Promise.all([
     import("@lowcode-next/lowcode-react"),
     import("@lowcode-next/protocol"),
     import("@lowcode-next/materials-react/basic"),
+    import("./blocks"),
   ]);
   return {
     createEditor: lowcode.createEditor,
     parsePageSchema: protocol.parsePageSchema,
     sampleSchema: protocol.sampleSchema,
     basicPackage: materials.basicReactMaterialPackage,
+    packages: [materials.basicReactMaterialPackage, blocks.siteBlocksPackage],
   };
 });
 

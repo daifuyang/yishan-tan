@@ -72,6 +72,8 @@ declare module "@lowcode-next/lowcode-react" {
     onSave?: (schema: LowcodePageSchema) => void;
     /** 预览按钮的触发点；不传则按钮置灰。 */
     onPreview?: () => void;
+    /** 工具栏扩展按钮（发布 / 导出等宿主行为）。 */
+    toolbar?: readonly LowcodeToolbarItem[];
     /** 物料包列表。 */
     packages?: LowcodeMaterialPackage[];
     /** 额外实现的组件（componentName → React 组件）。 */
@@ -80,7 +82,28 @@ declare module "@lowcode-next/lowcode-react" {
     includeSystem?: boolean;
   }
 
+  /** 工具栏扩展按钮：引擎只画按钮、交出点击，行为由宿主决定。 */
+  export interface LowcodeToolbarContext {
+    getSchema: () => LowcodePageSchema;
+    save: () => void;
+    undo: () => void;
+    redo: () => void;
+  }
+
+  export interface LowcodeToolbarItem {
+    key: string;
+    label: string;
+    title?: string;
+    placement?: "left" | "center" | "right";
+    variant?: "default" | "primary";
+    disabled?: boolean;
+    /** 返回 Promise 时按钮自动忙碌；抛错由编辑器提示。 */
+    onClick: (context: LowcodeToolbarContext) => void | Promise<void>;
+  }
+
   export interface LowcodeEditorHandle {
+    /** 整体替换工具栏扩展按钮，不重建编辑器。 */
+    setToolbar(items: readonly LowcodeToolbarItem[]): void;
     destroy(): void;
     getSchema(): LowcodePageSchema;
     getDocument(): unknown;

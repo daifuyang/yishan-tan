@@ -42,9 +42,11 @@ import type {
   ListPortalTemplatesService,
   PortalArticleDto,
   PortalCategoryDto,
+  PortalPageDetailDto,
   PortalPageDto,
   PortalTemplateDto,
   PublishPortalArticleService,
+  PublishPortalPageService,
   UpdatePortalArticleService,
   UpdatePortalCategoryService,
   UpdatePortalPageService,
@@ -131,18 +133,67 @@ function toArticleDto(
   };
 }
 
-function toPageDto(row: typeof schema.portalPage.$inferSelect): PortalPageDto {
+/**
+ * 页面查询的列：不含 schema 本体（可能很大），只带两个由 SQL 算出的标志位。
+ * 详情读取再额外选上 draftSchema / publishedSchema。
+ */
+const pageListColumns = {
+  id: schema.portalPage.id,
+  title: schema.portalPage.title,
+  path: schema.portalPage.path,
+  status: schema.portalPage.status,
+  attributes: schema.portalPage.attributes,
+  publishTime: schema.portalPage.publishTime,
+  createdAt: schema.portalPage.createdAt,
+  updatedAt: schema.portalPage.updatedAt,
+  published: sql<boolean>`${schema.portalPage.publishedSchema} is not null`,
+  unpublishedChanges: sql<boolean>`${schema.portalPage.draftSchema} is distinct from ${schema.portalPage.publishedSchema}`,
+};
+
+const pageDetailColumns = {
+  ...pageListColumns,
+  draftSchema: schema.portalPage.draftSchema,
+  publishedSchema: schema.portalPage.publishedSchema,
+};
+
+type PageListRow = {
+  id: string;
+  title: string;
+  path: string;
+  status: "enabled" | "disabled";
+  attributes: Record<string, string> | null;
+  publishTime: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  published: boolean;
+  unpublishedChanges: boolean;
+};
+
+function toPageDto(row: PageListRow): PortalPageDto {
   return {
     id: row.id,
     title: row.title,
     path: row.path,
-    content: row.content,
     status: row.status,
     attributes: row.attributes ?? null,
     publishTime: row.publishTime ? row.publishTime.toISOString() : null,
-    templateId: row.templateId,
+    published: Boolean(row.published),
+    unpublishedChanges: Boolean(row.unpublishedChanges),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function toPageDetailDto(
+  row: PageListRow & {
+    draftSchema: schema.JsonValue | null;
+    publishedSchema: schema.JsonValue | null;
+  },
+): PortalPageDetailDto {
+  return {
+    ...toPageDto(row),
+    draftSchema: row.draftSchema ?? null,
+    publishedSchema: row.publishedSchema ?? null,
   };
 }
 
@@ -553,7 +604,7 @@ export const listPortalPagesService: ListPortalPagesService = async ({
   const offset = (page - 1) * pageSize;
   const [rows, totalRow] = await Promise.all([
     getDb()
-      .select()
+      .select(pageListColumns)
       .from(schema.portalPage)
       .where(and(...where))
       .orderBy(
@@ -573,12 +624,12 @@ export const listPortalPagesService: ListPortalPagesService = async ({
 
 export const getPortalPageService: GetPortalPageService = async (id) => {
   const rows = await getDb()
-    .select()
+    .select(pageDetailColumns)
     .from(schema.portalPage)
     .where(and(eq(schema.portalPage.id, id), isNull(schema.portalPage.deletedAt)))
     .limit(1);
   const row = rows[0];
-  return row ? toPageDto(row) : null;
+  return row ? toPageDetailDto(row) : null;
 };
 
 async function assertPagePathAvailable(path: string, excludeId?: string) {
@@ -593,22 +644,34 @@ async function assertPagePathAvailable(path: string, excludeId?: string) {
 export const createPortalPageService: CreatePortalPageService = async (input) => {
   const db = getDb();
   await assertPagePathAvailable(input.path);
-  const rows = await db
+  let draftSchema: schema.JsonValue | null = null;
+  if (input.copyFromId) {
+    const source = await getPortalPageService(input.copyFromId);
+    if (!source) throw Errors.notFound("复制来源页面不存在");
+    draftSchema = source.draftSchema ?? source.publishedSchema;
+  }
+  const inserted = await db
     .insert(schema.portalPage)
     .values({
       title: input.title,
       path: input.path,
-      content: input.content,
       status: input.status ?? "enabled",
       attributes: input.attributes ?? null,
       publishTime: input.publishTime ? new Date(input.publishTime) : null,
-      templateId: input.templateId ?? null,
+      draftSchema,
     })
-    .returning();
-  const row = rows[0];
-  if (!row) throw Errors.internal("创建页面失败");
-  return toPageDto(row);
+    .returning({ id: schema.portalPage.id });
+  const id = inserted[0]?.id;
+  if (!id) throw Errors.internal("创建页面失败");
+  return reloadPage(id);
 };
+
+async function reloadPage(id: string): Promise<PortalPageDto> {
+  const row = await getPortalPageService(id);
+  if (!row) throw Errors.notFound("页面不存在");
+  const { draftSchema: _draft, publishedSchema: _published, ...dto } = row;
+  return dto;
+}
 
 export const updatePortalPageService: UpdatePortalPageService = async (id, input) => {
   const db = getDb();
@@ -618,19 +681,28 @@ export const updatePortalPageService: UpdatePortalPageService = async (id, input
   const patch: Partial<typeof schema.portalPage.$inferInsert> = {};
   if (input.title !== undefined) patch.title = input.title;
   if (input.path !== undefined) patch.path = input.path;
-  if (input.content !== undefined) patch.content = input.content;
   if (input.status !== undefined) patch.status = input.status;
   if (input.attributes !== undefined) patch.attributes = input.attributes;
   if (input.publishTime !== undefined) {
     patch.publishTime = input.publishTime ? new Date(input.publishTime) : null;
   }
-  if (input.templateId !== undefined) patch.templateId = input.templateId;
+  if (input.draftSchema !== undefined) patch.draftSchema = input.draftSchema;
   if (Object.keys(patch).length > 0) {
     await db.update(schema.portalPage).set(patch).where(eq(schema.portalPage.id, id));
   }
-  const refreshed = await getPortalPageService(id);
-  if (!refreshed) throw Errors.notFound("页面不存在");
-  return refreshed;
+  return reloadPage(id);
+};
+
+/** 发布：把草稿拷贝为已发布版本，并记录发布时间。没有草稿时拒绝。 */
+export const publishPortalPageService: PublishPortalPageService = async (id) => {
+  const existing = await getPortalPageService(id);
+  if (!existing) throw Errors.notFound("页面不存在");
+  if (!existing.draftSchema) throw Errors.invalid("页面还没有内容，请先在设计器里保存");
+  await getDb()
+    .update(schema.portalPage)
+    .set({ publishedSchema: existing.draftSchema, publishTime: new Date() })
+    .where(eq(schema.portalPage.id, id));
+  return reloadPage(id);
 };
 
 export const deletePortalPageService: DeletePortalPageService = async (id) => {

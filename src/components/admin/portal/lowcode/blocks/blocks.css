@@ -1,0 +1,412 @@
+/*
+ * 业务区块样式：SiteHeader（lc-sh-*）、AnnouncementBar（lc-ab-*）、列表 setter（lc-shs-*）。
+ * 编辑器会把主文档的 <style>/<link> 克隆进画布 iframe，所以组件样式必须是普通 CSS，
+ * 不依赖 Tailwind 的工具类扫描。
+ */
+
+/* ---------- SiteHeader ---------- */
+.lc-sh {
+  --lc-sh-bg: #fff;
+  --lc-sh-fg: #1f2937;
+  --lc-sh-muted: #6b7280;
+  --lc-sh-line: #e5e7eb;
+  --lc-sh-accent: #2563eb;
+  --lc-sh-accent-fg: #fff;
+  --lc-sh-pop-bg: #fff;
+  --lc-sh-pop-fg: #1f2937;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  background: var(--lc-sh-bg);
+  color: var(--lc-sh-fg);
+  font-size: 14px;
+  line-height: 1.5;
+  z-index: 40;
+}
+.lc-sh *,
+.lc-sh *::before,
+.lc-sh *::after {
+  box-sizing: border-box;
+}
+.lc-sh--dark {
+  --lc-sh-bg: #111827;
+  --lc-sh-fg: #f9fafb;
+  --lc-sh-muted: #9ca3af;
+  --lc-sh-line: #374151;
+  --lc-sh-accent: #3b82f6;
+  --lc-sh-pop-bg: #1f2937;
+  --lc-sh-pop-fg: #f9fafb;
+}
+.lc-sh--transparent {
+  --lc-sh-bg: transparent;
+  --lc-sh-fg: #fff;
+  --lc-sh-muted: rgba(255, 255, 255, 0.75);
+  --lc-sh-line: rgba(255, 255, 255, 0.25);
+  --lc-sh-pop-bg: rgba(17, 24, 39, 0.92);
+  --lc-sh-pop-fg: #fff;
+}
+.lc-sh.has-border {
+  border-bottom: 1px solid var(--lc-sh-line);
+}
+.lc-sh.is-sticky {
+  position: sticky;
+  top: 0;
+}
+.lc-sh.is-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.lc-sh.is-overlay.is-sticky {
+  position: fixed;
+}
+.lc-sh-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  max-width: var(--lc-sh-max, 1200px);
+  height: var(--lc-sh-height, 64px);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.lc-sh-brand-slot,
+.lc-sh-center {
+  flex: none;
+}
+.lc-sh-middle {
+  flex: 1;
+  min-width: 0;
+}
+.lc-sh--standard .lc-sh-side--end,
+.lc-sh--minimal .lc-sh-side--end {
+  margin-left: auto;
+}
+.lc-sh--minimal .lc-sh-side--end {
+  gap: 16px;
+}
+.lc-sh--centered:not(.is-mobile) .lc-sh-inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+.lc-sh--centered:not(.is-mobile) .lc-sh-side--end {
+  justify-self: end;
+}
+.lc-sh-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lc-sh-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 18px;
+}
+.lc-sh-brand-img {
+  display: block;
+  max-height: calc(var(--lc-sh-height, 64px) - 16px);
+  height: auto;
+  object-fit: contain;
+}
+
+.lc-sh-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lc-sh-item {
+  position: relative;
+}
+.lc-sh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--lc-sh-muted);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.lc-sh-link:hover,
+.lc-sh-link.is-active {
+  color: var(--lc-sh-fg);
+}
+.lc-sh-link.is-active {
+  font-weight: 600;
+}
+.lc-sh a:focus-visible,
+.lc-sh button:focus-visible {
+  outline: 2px solid var(--lc-sh-accent);
+  outline-offset: 2px;
+}
+.lc-sh-caret {
+  width: 6px;
+  height: 6px;
+  margin-top: -2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+.lc-sh-caret.is-open,
+.lc-sh-trigger[aria-expanded="true"] .lc-sh-caret {
+  transform: rotate(-135deg);
+  margin-top: 3px;
+}
+
+.lc-sh-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 168px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--lc-sh-pop-bg);
+  color: var(--lc-sh-pop-fg);
+  border: 1px solid var(--lc-sh-line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+}
+.lc-sh-dropdown-link {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.lc-sh-dropdown-link:hover,
+.lc-sh-dropdown-link.is-active {
+  background: rgba(127, 127, 127, 0.14);
+}
+
+.lc-sh-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lc-sh-actions.is-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  padding-top: 12px;
+}
+.lc-sh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+.lc-sh-btn--primary {
+  background: var(--lc-sh-accent);
+  color: var(--lc-sh-accent-fg);
+}
+.lc-sh-btn--primary:hover {
+  opacity: 0.9;
+}
+.lc-sh-btn--outline {
+  border-color: var(--lc-sh-line);
+  color: var(--lc-sh-fg);
+}
+.lc-sh-btn--outline:hover {
+  background: rgba(127, 127, 127, 0.14);
+}
+.lc-sh-btn--text {
+  color: var(--lc-sh-fg);
+}
+.lc-sh-btn--text:hover {
+  background: rgba(127, 127, 127, 0.14);
+}
+
+.lc-sh-burger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.lc-sh-burger-bars,
+.lc-sh-burger-bars::before,
+.lc-sh-burger-bars::after {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  transition: transform 0.15s, background-color 0.15s;
+}
+.lc-sh-burger-bars {
+  position: relative;
+}
+.lc-sh-burger-bars::before,
+.lc-sh-burger-bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+.lc-sh-burger-bars::before {
+  top: -6px;
+}
+.lc-sh-burger-bars::after {
+  top: 6px;
+}
+.lc-sh-burger[aria-expanded="true"] .lc-sh-burger-bars {
+  background: transparent;
+}
+.lc-sh-burger[aria-expanded="true"] .lc-sh-burger-bars::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+.lc-sh-burger[aria-expanded="true"] .lc-sh-burger-bars::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+.lc-sh-mobile {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: calc(100vh - var(--lc-sh-height, 64px));
+  overflow-y: auto;
+  padding: 8px 24px 20px;
+  background: var(--lc-sh-pop-bg);
+  color: var(--lc-sh-pop-fg);
+  border-bottom: 1px solid var(--lc-sh-line);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+.lc-sh-mobile-list,
+.lc-sh-mobile-sub {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lc-sh-mobile-sub {
+  padding-left: 16px;
+}
+.lc-sh-mobile-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--lc-sh-line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.lc-sh-mobile-link.is-active {
+  font-weight: 600;
+  color: var(--lc-sh-accent);
+}
+
+/* ---------- AnnouncementBar ---------- */
+.lc-ab {
+  --lc-ab-bg: #f3f4f6;
+  --lc-ab-fg: #1f2937;
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 44px 0 16px;
+  background: var(--lc-ab-bg);
+  color: var(--lc-ab-fg);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.lc-ab--dark {
+  --lc-ab-bg: #111827;
+  --lc-ab-fg: #f9fafb;
+}
+.lc-ab--brand {
+  --lc-ab-bg: #2563eb;
+  --lc-ab-fg: #fff;
+}
+/* 用户自定义颜色走内联 --lc-ab-bg / --lc-ab-fg，自然覆盖上面的外观预设。 */
+.lc-ab-inner {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.lc-ab--left .lc-ab-inner {
+  justify-content: flex-start;
+}
+.lc-ab--center .lc-ab-inner {
+  justify-content: center;
+}
+.lc-ab--right .lc-ab-inner {
+  justify-content: flex-end;
+}
+.lc-ab-link {
+  color: inherit;
+  text-decoration: none;
+}
+.lc-ab-action {
+  flex: none;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lc-ab a:focus-visible,
+.lc-ab button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.lc-ab-close {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.lc-ab-close:hover {
+  opacity: 1;
+  background: rgba(127, 127, 127, 0.2);
+}

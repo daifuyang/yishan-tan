@@ -13,7 +13,6 @@ const {
   dictType,
   menu,
   portalPage,
-  portalTemplate,
   post,
   role,
   roleMenu,
@@ -289,15 +288,6 @@ const MENU_SEED: readonly MenuSeedItem[] = [
     icon: "FileStack",
     type: "menu",
     sort: 3,
-  },
-  {
-    code: "portal-page-templates",
-    name: "页面模板",
-    parentCode: "portal",
-    path: "/admin/portal/page-templates",
-    icon: "LayoutTemplate",
-    type: "menu",
-    sort: 4,
   },
 ];
 
@@ -745,13 +735,12 @@ const SYSTEM_OPTIONS_SEED = [
 ];
 
 /**
- * 首页演示：低代码页面模板 + 一条绑定它的门户页面。
+ * 首页演示：一条自带低代码 PageSchema 的门户页面（页面不再经过模板）。
  *
- * 模板的 schema 是 lowcode-next 的 PageSchema —— 根节点是系统层 `Page`，
+ * schema 是 lowcode-next 的 PageSchema —— 根节点是系统层 `Page`，
  * 子节点用 basic 物料包里的 Typography / Button / Div / Form 等。
  * 物料包由宿主在设计页装配，schema 里只写 componentName。
  */
-const HOMEPAGE_TEMPLATE_NAME = "首页演示";
 const HOMEPAGE_PAGE_PATH = "/demo/home";
 
 const HOMEPAGE_SCHEMA: JsonValue = {
@@ -1020,43 +1009,29 @@ const HOMEPAGE_SCHEMA: JsonValue = {
 
 async function ensureHomepageDemo(): Promise<void> {
   const db = getDb();
-  const existingTemplate = await db
-    .select({ id: portalTemplate.id })
-    .from(portalTemplate)
-    .where(and(eq(portalTemplate.type, "page"), eq(portalTemplate.name, HOMEPAGE_TEMPLATE_NAME)))
-    .limit(1);
-
-  let templateId = existingTemplate[0]?.id;
-  if (!templateId) {
-    const inserted = await db
-      .insert(portalTemplate)
-      .values({
-        name: HOMEPAGE_TEMPLATE_NAME,
-        description: "低代码首页演示模板：首屏 + 特性栅格 + 预约表单",
-        type: "page",
-        schema: HOMEPAGE_SCHEMA,
-        status: "enabled",
-      })
-      .returning({ id: portalTemplate.id });
-    if (!inserted[0]) throw new Error(`首页演示模板 seed 失败：${HOMEPAGE_TEMPLATE_NAME}`);
-    templateId = inserted[0].id;
-  }
-
   const existingPage = await db
-    .select({ id: portalPage.id })
+    .select({ id: portalPage.id, draftSchema: portalPage.draftSchema })
     .from(portalPage)
     .where(eq(portalPage.path, HOMEPAGE_PAGE_PATH))
     .limit(1);
 
-  if (!existingPage[0]) {
+  // 页面自带 schema：草稿与已发布都放一份，前台和设计器开箱即用。
+  const content = {
+    draftSchema: HOMEPAGE_SCHEMA,
+    publishedSchema: HOMEPAGE_SCHEMA,
+    publishTime: new Date(),
+  };
+  const found = existingPage[0];
+  if (!found) {
     await db.insert(portalPage).values({
       title: "首页演示",
       path: HOMEPAGE_PAGE_PATH,
-      content: "",
       status: "enabled",
-      templateId,
-      publishTime: new Date(),
+      ...content,
     });
+  } else if (!found.draftSchema) {
+    // 旧版本 seed 建的页面还没有 schema（那时内容挂在模板上），补上。
+    await db.update(portalPage).set(content).where(eq(portalPage.id, found.id));
   }
 }
 

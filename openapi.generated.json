@@ -2875,9 +2875,6 @@
           "path": {
             "type": "string"
           },
-          "content": {
-            "type": "string"
-          },
           "status": {
             "type": "string",
             "enum": [
@@ -2900,11 +2897,11 @@
               "null"
             ]
           },
-          "templateId": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "published": {
+            "type": "boolean"
+          },
+          "unpublishedChanges": {
+            "type": "boolean"
           },
           "createdAt": {
             "$ref": "#/components/schemas/IsoDateTime"
@@ -2917,11 +2914,11 @@
           "id",
           "title",
           "path",
-          "content",
           "status",
           "attributes",
           "publishTime",
-          "templateId",
+          "published",
+          "unpublishedChanges",
           "createdAt",
           "updatedAt"
         ]
@@ -2954,6 +2951,54 @@
             ]
           },
           "data": {
+            "$ref": "#/components/schemas/PortalPageDetailDto"
+          }
+        },
+        "required": [
+          "ok",
+          "data"
+        ]
+      },
+      "PortalPageDetailDto": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PortalPageDto"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "draftSchema": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": {}
+              },
+              "publishedSchema": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "draftSchema",
+              "publishedSchema"
+            ]
+          }
+        ]
+      },
+      "Ok_UpdatedPortalPage": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
             "$ref": "#/components/schemas/PortalPageDto"
           }
         },
@@ -2962,7 +3007,43 @@
           "data"
         ]
       },
-      "Ok_UpdatedPortalPage": {
+      "UpdatePortalPage": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "disabled"
+            ]
+          },
+          "attributes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "publishTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "draftSchema": {
+            "$ref": "#/components/schemas/PortalTemplateJson"
+          }
+        }
+      },
+      "Ok_PublishedPortalPage": {
         "type": "object",
         "properties": {
           "ok": {
@@ -3134,8 +3215,7 @@
           "type": {
             "type": "string",
             "enum": [
-              "article",
-              "page"
+              "article"
             ]
           },
           "schema": {
@@ -12084,9 +12164,6 @@
                     "minLength": 1,
                     "maxLength": 255
                   },
-                  "content": {
-                    "type": "string"
-                  },
                   "status": {
                     "type": "string",
                     "enum": [
@@ -12106,18 +12183,14 @@
                     "type": "string",
                     "format": "date-time"
                   },
-                  "templateId": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
+                  "copyFromId": {
+                    "type": "string",
                     "format": "uuid"
                   }
                 },
                 "required": [
                   "title",
-                  "path",
-                  "content"
+                  "path"
                 ]
               }
             }
@@ -12210,7 +12283,7 @@
     "/api/v1/portal-pages/{id}": {
       "get": {
         "operationId": "getPortalPage",
-        "summary": "门户页面详情（admin）",
+        "summary": "门户页面详情（admin）。含草稿与已发布的 PageSchema",
         "tags": [
           "portal-pages"
         ],
@@ -12329,47 +12402,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "title": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  },
-                  "path": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255
-                  },
-                  "content": {
-                    "type": "string"
-                  },
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "enabled",
-                      "disabled"
-                    ]
-                  },
-                  "attributes": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "string",
-                      "maxLength": 500
-                    }
-                  },
-                  "publishTime": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "templateId": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "format": "uuid"
-                  }
-                }
+                "$ref": "#/components/schemas/UpdatePortalPage"
               }
             }
           }
@@ -12558,6 +12591,108 @@
         }
       }
     },
+    "/api/v1/portal-pages/{id}/publish": {
+      "post": {
+        "operationId": "publishPortalPage",
+        "summary": "发布门户页面（admin）。把草稿 PageSchema 拷贝为已发布版本",
+        "tags": [
+          "portal-pages"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已发布",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok_PublishedPortalPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法 (INVALID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或 session/apiKey 无效 (UNAUTHENTICATED / INVALID_CREDENTIALS)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足 (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在 (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "资源冲突，例如重复 / 有关联数据 (CONFLICT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁 (RATE_LIMITED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务暂时不可用 (INTERNAL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/portal-templates": {
       "get": {
         "operationId": "listPortalTemplates",
@@ -12607,8 +12742,7 @@
             "schema": {
               "type": "string",
               "enum": [
-                "article",
-                "page"
+                "article"
               ]
             },
             "required": false,

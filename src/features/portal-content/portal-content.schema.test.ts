@@ -36,12 +36,13 @@ describe("portal-content.schema", () => {
   });
 
   describe("createPortalTemplateSchema", () => {
-    it("按类型区分文章模板与页面模板", () => {
+    it("只接受文章模板，页面不再有模板", () => {
       const article = createPortalTemplateSchema.parse({ name: "默认文章模板", type: "article" });
-      const page = createPortalTemplateSchema.parse({ name: "默认页面模板", type: "page" });
       expect(article.type).toBe("article");
-      expect(page.type).toBe("page");
       expect(article.isSystemDefault).toBe(false);
+      expect(createPortalTemplateSchema.safeParse({ name: "页面模板", type: "page" }).success).toBe(
+        false,
+      );
     });
 
     it("拒绝未知模板类型", () => {
@@ -52,7 +53,7 @@ describe("portal-content.schema", () => {
     it("接受低代码 PageSchema（嵌套对象树）", () => {
       const parsed = createPortalTemplateSchema.parse({
         name: "落地页模板",
-        type: "page",
+        type: "article",
         schema: {
           version: "1.0.0",
           componentsMap: [{ name: "Button" }],
@@ -69,7 +70,7 @@ describe("portal-content.schema", () => {
     it("拒绝缺少页面结构的 schema", () => {
       const result = createPortalTemplateSchema.safeParse({
         name: "落地页模板",
-        type: "page",
+        type: "article",
         schema: { componentsMap: [] },
       });
       expect(result.success).toBe(false);
@@ -98,8 +99,8 @@ describe("portal-content.schema", () => {
     });
 
     it("模板列表按 type 过滤", () => {
-      const parsed = portalTemplateListQuerySchema.parse({ type: "page" });
-      expect(parsed.type).toBe("page");
+      const parsed = portalTemplateListQuerySchema.parse({ type: "article" });
+      expect(parsed.type).toBe("article");
     });
 
     it("排序列只接受白名单内的值", () => {

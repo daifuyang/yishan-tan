@@ -5,8 +5,9 @@ import { AdminBreadcrumb, AdminShell, useSidebarCollapsed } from "@/components/a
 import { getCurrentUser } from "~/features/auth/auth.actions";
 import { getAuthorizedMenuPaths } from "~/features/menus/menus.actions";
 
-/** 门户模板设计页路径前缀（不在菜单树里，按模板管理权限放行）。 */
+/** 设计页路径前缀（不在菜单树里，是列表页的子页面，按对应列表的菜单权限放行）。 */
 const TEMPLATE_DESIGN_PREFIX = "/admin/portal/templates/";
+const PAGE_DESIGN_PREFIX = "/admin/portal/page-designer/";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
@@ -29,10 +30,15 @@ export const Route = createFileRoute("/admin")({
     // 模板设计页不在菜单树里（它是模板列表的子页面，不是独立菜单项），
     // 权限按「能不能进模板管理」判定。
     if (location.pathname.startsWith(TEMPLATE_DESIGN_PREFIX)) {
-      const canManageTemplates = paths.some(
-        (p) => p === "/admin/portal/article-templates" || p === "/admin/portal/page-templates",
-      );
-      if (!canManageTemplates) {
+      if (!paths.includes("/admin/portal/article-templates")) {
+        throw redirect({ to: "/admin" });
+      }
+      return { user };
+    }
+
+    // 页面设计页同理，按「能不能进页面管理」判定。
+    if (location.pathname.startsWith(PAGE_DESIGN_PREFIX)) {
+      if (!paths.includes("/admin/portal/pages")) {
         throw redirect({ to: "/admin" });
       }
       return { user };
@@ -52,9 +58,12 @@ function AdminLayoutRoute() {
   const { collapsed, toggle } = useSidebarCollapsed();
   const location = useLocation();
 
-  // 模板设计页是「全屏工具」：不套后台外壳（侧边栏 / 顶栏 / 面包屑），
+  // 设计页（模板 / 页面）是「全屏工具」：不套后台外壳（侧边栏 / 顶栏 / 面包屑），
   // 画布要占满窗口。鉴权仍在 beforeLoad 里做。
-  if (location.pathname.startsWith(TEMPLATE_DESIGN_PREFIX)) {
+  if (
+    location.pathname.startsWith(TEMPLATE_DESIGN_PREFIX) ||
+    location.pathname.startsWith(PAGE_DESIGN_PREFIX)
+  ) {
     return <Outlet />;
   }
 

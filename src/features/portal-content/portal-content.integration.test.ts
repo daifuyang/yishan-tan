@@ -16,12 +16,16 @@ const {
   deletePortalCategoryService,
   deletePortalTemplateService,
   getPortalArticleService,
+  getPortalPageService,
   getPortalTemplateService,
   listPortalArticlesService,
   listPortalCategoriesService,
+  listPortalPagesService,
   listPortalTemplatesService,
   publishPortalArticleService,
+  publishPortalPageService,
   updatePortalArticleService,
+  updatePortalPageService,
   updatePortalTemplateService,
 } = await import("./portal-content.service");
 
@@ -44,6 +48,16 @@ beforeEach(async () => {
     'TRUNCATE "portal_article_category", "portal_article", "portal_page", "portal_category", "portal_template" CASCADE',
   );
 });
+
+const PAGE_SCHEMA = {
+  version: "1.0.0",
+  componentsMap: [{ name: "Button" }],
+  componentsTree: {
+    id: "root",
+    componentName: "Page",
+    children: [{ id: "btn", componentName: "Button", props: { text: "提交" } }],
+  },
+};
 
 describe("portal-content service on isolated PostgreSQL", () => {
   it("分类：同名 / 同 slug 冲突，存在下级时不可删除", async () => {
@@ -137,17 +151,63 @@ describe("portal-content service on isolated PostgreSQL", () => {
   });
 
   it("页面：路径唯一，重复路径冲突", async () => {
-    await createPortalPageService({ title: "关于我们", path: "/about", content: "内容" });
-    await expect(
-      createPortalPageService({ title: "重复", path: "/about", content: "内容" }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await createPortalPageService({ title: "关于我们", path: "/about" });
+    await expect(createPortalPageService({ title: "重复", path: "/about" })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
   });
 
-  it("模板：同名不同类型可共存，系统默认模板不可删除", async () => {
-    const article = await createPortalTemplateService({ name: "默认模板", type: "article" });
-    const page = await createPortalTemplateService({ name: "默认模板", type: "page" });
-    expect(article.id).not.toBe(page.id);
+  it("页面：草稿保存不影响已发布版本，发布后拷贝草稿", async () => {
+    const created = await createPortalPageService({ title: "首页", path: "/" });
+    expect(created).toMatchObject({ published: false, unpublishedChanges: false });
+    await expect(publishPortalPageService(created.id)).rejects.toMatchObject({ code: "INVALID" });
 
+    const v1 = { ...PAGE_SCHEMA, version: "1.0.0" };
+    const afterSave = await updatePortalPageService(created.id, { draftSchema: v1 });
+    expect(afterSave).toMatchObject({ published: false, unpublishedChanges: true });
+
+    const published = await publishPortalPageService(created.id);
+    expect(published).toMatchObject({ published: true, unpublishedChanges: false });
+    expect(published.publishTime).not.toBeNull();
+
+    const v2 = { ...PAGE_SCHEMA, version: "2.0.0" };
+    await updatePortalPageService(created.id, { draftSchema: v2 });
+    const detail = await getPortalPageService(created.id);
+    expect(detail?.publishedSchema).toEqual(v1);
+    expect(detail?.draftSchema).toEqual(v2);
+    expect(detail?.unpublishedChanges).toBe(true);
+  });
+
+  it("页面：复制来源页面的草稿，之后互不影响；列表不带 schema", async () => {
+    const source = await createPortalPageService({ title: "源", path: "/src" });
+    await updatePortalPageService(source.id, { draftSchema: PAGE_SCHEMA });
+    const copy = await createPortalPageService({
+      title: "副本",
+      path: "/copy",
+      copyFromId: source.id,
+    });
+    const copyDetail = await getPortalPageService(copy.id);
+    expect(copyDetail?.draftSchema).toEqual(PAGE_SCHEMA);
+    expect(copyDetail?.published).toBe(false);
+
+    await updatePortalPageService(source.id, { draftSchema: { ...PAGE_SCHEMA, version: "9.9.9" } });
+    expect((await getPortalPageService(copy.id))?.draftSchema).toEqual(PAGE_SCHEMA);
+
+    await expect(
+      createPortalPageService({
+        title: "坏来源",
+        path: "/bad",
+        copyFromId: "00000000-0000-4000-8000-000000000000",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    const list = await listPortalPagesService({ page: 1, pageSize: 10 });
+    expect(list.items).toHaveLength(2);
+    for (const item of list.items) expect(item).not.toHaveProperty("draftSchema");
+  });
+
+  it("模板：只剩文章模板，同名冲突，系统默认模板不可删除", async () => {
+    await createPortalTemplateService({ name: "默认模板", type: "article" });
     await expect(
       createPortalTemplateService({ name: "默认模板", type: "article" }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
@@ -167,25 +227,11 @@ describe("portal-content service on isolated PostgreSQL", () => {
       type: "article",
     });
     expect(articleTemplates.total).toBe(2);
-    const pageTemplates = await listPortalTemplatesService({
-      page: 1,
-      pageSize: 10,
-      type: "page",
-    });
-    expect(pageTemplates.total).toBe(1);
   });
 
   it("模板：低代码 PageSchema 可保存并读回", async () => {
-    const template = await createPortalTemplateService({ name: "落地页", type: "page" });
-    const pageSchema = {
-      version: "1.0.0",
-      componentsMap: [{ name: "Button" }],
-      componentsTree: {
-        id: "root",
-        componentName: "Page",
-        children: [{ id: "btn", componentName: "Button", props: { text: "提交" } }],
-      },
-    };
+    const template = await createPortalTemplateService({ name: "落地页", type: "article" });
+    const pageSchema = PAGE_SCHEMA;
 
     const saved = await updatePortalTemplateService(template.id, { schema: pageSchema });
     expect(saved.schema).toEqual(pageSchema);

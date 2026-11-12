@@ -10,6 +10,7 @@ import {
   deletePortalPage,
   deletePortalTemplate,
   publishPortalArticle,
+  publishPortalPage,
   updatePortalArticle,
   updatePortalCategory,
   updatePortalPage,
@@ -148,6 +149,16 @@ export function useUpdatePortalPage() {
   return useMutation({
     mutationFn: async ({ id, ...data }: UpdatePortalPageInput & { id: string }) =>
       updatePortalPage({ data: { id, ...data } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: portalContentQueryKey.pages() });
+    },
+  });
+}
+
+export function usePublishPortalPage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => publishPortalPage({ data: { id } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: portalContentQueryKey.pages() });
     },

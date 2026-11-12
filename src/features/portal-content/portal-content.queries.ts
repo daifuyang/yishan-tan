@@ -160,7 +160,7 @@ export function usePortalTemplate(id: string | null) {
 }
 
 /** 按类型拉取启用模板，作为文章 / 页面的模板下拉选项源。 */
-export function usePortalTemplateOptions(type: "article" | "page", enabled = true) {
+export function usePortalTemplateOptions(type: "article", enabled = true) {
   return useQuery({
     queryKey: [...portalContentQueryKey.templates(), "options", type],
     queryFn: async () =>

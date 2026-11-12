@@ -11,6 +11,7 @@ const NON_LIST_ROUTES = new Map([
   ["settings.tsx", "System configuration form"],
   ["route.tsx", "Admin layout and authentication"],
   ["portal/templates/$templateId.tsx", "Portal template low-code designer"],
+  ["portal/page-designer/$pageId.tsx", "Portal page low-code designer"],
 ]);
 const REQUIRED_PROPS = [
   "filter",

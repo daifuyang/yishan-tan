@@ -342,15 +342,23 @@ export const portalPageDtoSchema = z
     id: uuid,
     title: z.string(),
     path: z.string(),
-    content: z.string(),
     status: portalContentStatusSchema,
     attributes: portalAttributesSchema.nullable(),
     publishTime: nullableString,
-    templateId: nullableString,
+    published: z.boolean(),
+    unpublishedChanges: z.boolean(),
     createdAt: isoDate,
     updatedAt: isoDate,
   })
   .openapi("PortalPageDto");
+
+/** 页面详情：多带草稿 / 已发布的低代码 PageSchema。 */
+export const portalPageDetailDtoSchema = portalPageDtoSchema
+  .extend({
+    draftSchema: z.record(z.string(), z.unknown()).nullable(),
+    publishedSchema: z.record(z.string(), z.unknown()).nullable(),
+  })
+  .openapi("PortalPageDetailDto");
 
 export const portalTemplateDtoSchema = z
   .object({

@@ -40,17 +40,26 @@ export type PortalArticleDto = {
   updatedAt: string;
 };
 
+/** 页面（列表 / 创建 / 更新返回）。不含 schema 本体，避免列表带上大 JSON。 */
 export type PortalPageDto = {
   id: string;
   title: string;
   path: string;
-  content: string;
   status: PortalContentStatus;
   attributes: Record<string, string> | null;
   publishTime: string | null;
-  templateId: string | null;
+  /** 是否有已发布版本（前台是否可见内容）。 */
+  published: boolean;
+  /** 草稿与已发布版本不一致（有未发布的改动）。 */
+  unpublishedChanges: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+/** 页面详情：多带草稿与已发布的 PageSchema。 */
+export type PortalPageDetailDto = PortalPageDto & {
+  draftSchema: JsonValue | null;
+  publishedSchema: JsonValue | null;
 };
 
 export type PortalTemplateDto = {
@@ -142,16 +151,15 @@ export type ListPortalPagesService = (
   input: PortalPageListQuery,
 ) => Promise<{ items: PortalPageDto[]; total: number }>;
 
-export type GetPortalPageService = (id: string) => Promise<PortalPageDto | null>;
+export type GetPortalPageService = (id: string) => Promise<PortalPageDetailDto | null>;
 
 export type CreatePortalPageService = (input: {
   title: string;
   path: string;
-  content: string;
   status?: PortalContentStatus;
   attributes?: Record<string, string>;
   publishTime?: string;
-  templateId?: string | null;
+  copyFromId?: string;
 }) => Promise<PortalPageDto>;
 
 export type UpdatePortalPageService = (
@@ -159,13 +167,14 @@ export type UpdatePortalPageService = (
   input: {
     title?: string;
     path?: string;
-    content?: string;
     status?: PortalContentStatus;
     attributes?: Record<string, string>;
     publishTime?: string;
-    templateId?: string | null;
+    draftSchema?: JsonValue;
   },
 ) => Promise<PortalPageDto>;
+
+export type PublishPortalPageService = (id: string) => Promise<PortalPageDto>;
 
 export type DeletePortalPageService = (id: string) => Promise<{ ok: true }>;
 

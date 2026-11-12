@@ -4,7 +4,8 @@ import { sortOrderSchema } from "~/lib/list-sort";
 
 export const portalContentStatusSchema = z.enum(["enabled", "disabled"]);
 export const portalArticleStatusSchema = z.enum(["draft", "published"]);
-export const portalTemplateTypeSchema = z.enum(["article", "page"]);
+/** 页面自带低代码结构，不再有「页面模板」；模板只剩文章模板。 */
+export const portalTemplateTypeSchema = z.enum(["article"]);
 
 /** 自定义属性：键值对集合，落库为 jsonb。 */
 export const portalAttributesSchema = z.record(z.string().min(1).max(64), z.string().max(500));
@@ -162,21 +163,26 @@ export const portalArticleListQuerySchema = z.object({
 export const createPortalPageSchema = z.object({
   title: z.string().min(1).max(200),
   path: z.string().trim().min(1).max(255),
-  content: z.string(),
   status: portalContentStatusSchema.default("enabled"),
   attributes: portalAttributesSchema.optional(),
   publishTime: z.string().datetime().optional(),
-  templateId: z.string().uuid().nullish(),
+  /** 以某个页面的草稿为起点复制；缺省建空白页。复制之后两个页面互不影响。 */
+  copyFromId: z.string().uuid().optional(),
 });
+
+/** 页面的低代码结构（PageSchema）：只做最小形状校验，完整校验在浏览器侧引擎里。 */
+const portalPageDraftSchemaField = portalTemplateJsonSchema.superRefine((value, ctx) =>
+  checkPageSchemaLike(value, ctx, "draftSchema"),
+);
 
 export const updatePortalPageSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   path: z.string().trim().min(1).max(255).optional(),
-  content: z.string().optional(),
   status: portalContentStatusSchema.optional(),
   attributes: portalAttributesSchema.optional(),
   publishTime: z.string().datetime().optional(),
-  templateId: z.string().uuid().nullish(),
+  /** 设计器保存：写草稿，不影响线上。 */
+  draftSchema: portalPageDraftSchemaField.optional(),
 });
 
 export const portalPageListQuerySchema = z.object({

@@ -10,7 +10,12 @@
  */
 import * as React from "react";
 
-import { type LowcodePageSchema, loadLowcodeEngine } from "./engine";
+import {
+  type LowcodeEditorHandle,
+  type LowcodePageSchema,
+  type LowcodeToolbarItem,
+  loadLowcodeEngine,
+} from "./engine";
 
 export interface PortalTemplateDesignerProps {
   /** 文档 id：引擎内部用它做保存 key，这里用模板 id。 */
@@ -25,6 +30,8 @@ export interface PortalTemplateDesignerProps {
   onError?: (message: string) => void;
   /** 点「预览」时回调，参数是当前 schema（未保存的改动也在内）。 */
   onPreview?: (schema: LowcodePageSchema) => void;
+  /** 工具栏扩展按钮（发布等宿主行为）；变化时实时同步，不重建编辑器。 */
+  toolbar?: readonly LowcodeToolbarItem[];
 }
 
 export function PortalTemplateDesigner({
@@ -34,6 +41,7 @@ export function PortalTemplateDesigner({
   onChange,
   onError,
   onPreview,
+  toolbar,
 }: PortalTemplateDesignerProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = React.useState<"loading" | "ready" | "failed">("loading");
@@ -44,6 +52,11 @@ export function PortalTemplateDesigner({
   handlersRef.current = { onSave, onChange, onError, onPreview };
 
   // 预览要拿到「此刻」的 schema：引擎的 onPreview 不带参数，只能自己留一份最新的。
+  // 工具栏同理放进 ref：创建时取一次，之后靠 setToolbar 推送变化。
+  const toolbarRef = React.useRef(toolbar);
+  toolbarRef.current = toolbar;
+  const handleRef = React.useRef<LowcodeEditorHandle | null>(null);
+
   const latestSchemaRef = React.useRef<LowcodePageSchema | null>(schema);
 
   React.useEffect(() => {
@@ -60,8 +73,9 @@ export function PortalTemplateDesigner({
         const handle = engine.createEditor(containerRef.current, {
           schema: initial,
           documentId,
-          packages: [engine.basicPackage],
+          packages: engine.packages,
           canvasPadding: 0,
+          toolbar: toolbarRef.current,
           onSchemaChange: (next) => {
             latestSchemaRef.current = next;
             handlersRef.current.onChange?.(next);
@@ -81,6 +95,7 @@ export function PortalTemplateDesigner({
             })();
           },
         });
+        handleRef.current = handle;
         destroy = handle.destroy;
         setStatus("ready");
       } catch (loadError) {
@@ -92,9 +107,14 @@ export function PortalTemplateDesigner({
 
     return () => {
       disposed = true;
+      handleRef.current = null;
       destroy?.();
     };
   }, [documentId, schema]);
+
+  React.useEffect(() => {
+    handleRef.current?.setToolbar(toolbar ?? []);
+  }, [toolbar]);
 
   return (
     <div className="relative h-full min-h-0 overflow-hidden bg-white">

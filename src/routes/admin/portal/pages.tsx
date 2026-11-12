@@ -37,7 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useResourcePermissions } from "~/features/permissions/permissions.queries";
 import { usePortalPagesList } from "~/features/portal-content/portal-content.queries";
 import {
@@ -83,19 +82,22 @@ type AttributeRow = {
 type PageFormValue = {
   title: string;
   path: string;
-  content: string;
   status: "enabled" | "disabled";
   publishTime: string;
   attributes: AttributeRow[];
+  /** 仅新建时有效：复制某个页面的内容作为起点，"blank" 表示空白页。 */
+  copyFromId: string;
 };
+
+const BLANK = "blank";
 
 const EMPTY_FORM: PageFormValue = {
   title: "",
   path: "",
-  content: "",
   status: "enabled",
   publishTime: "",
   attributes: [],
+  copyFromId: BLANK,
 };
 
 export const Route = createFileRoute("/admin/portal/pages")({
@@ -193,10 +195,10 @@ function AdminPortalPagesPage() {
     setEditForm({
       title: row.title,
       path: row.path,
-      content: row.content,
       status: row.status,
       publishTime: row.publishTime ? row.publishTime.slice(0, 16) : "",
       attributes: recordToAttributes(row.attributes),
+      copyFromId: BLANK,
     });
   };
 
@@ -282,6 +284,18 @@ function AdminPortalPagesPage() {
       ),
     },
     {
+      key: "published",
+      header: "发布状态",
+      width: "120px",
+      cell: (row) => (
+        <StatusBadge
+          tone={!row.published ? "info" : row.unpublishedChanges ? "warning" : "success"}
+          label={!row.published ? "未发布" : row.unpublishedChanges ? "有未发布改动" : "已发布"}
+          variant="soft"
+        />
+      ),
+    },
+    {
       key: "publishTime",
       header: "发布时间",
       width: "170px",
@@ -311,12 +325,29 @@ function AdminPortalPagesPage() {
       key: "actions",
       header: "操作",
       align: "right",
-      width: "200px",
+      width: "240px",
       sticky: "right",
       cell: (row) => {
         const isDisabled = row.status === "disabled";
         return (
           <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className={TABLE_ACTION_CLASS}
+              disabled={!canUpdate}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(
+                  `/admin/portal/page-designer/${row.id}`,
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              }}
+            >
+              设计
+            </Button>
             <Button
               type="button"
               variant="link"
@@ -439,7 +470,6 @@ function AdminPortalPagesPage() {
   const toPayload = (form: PageFormValue) => ({
     title: form.title.trim(),
     path: form.path.trim(),
-    content: form.content,
     status: form.status,
     publishTime: form.publishTime ? new Date(form.publishTime).toISOString() : undefined,
     attributes: attributesToRecord(form.attributes),
@@ -453,7 +483,10 @@ function AdminPortalPagesPage() {
 
   const handleCreateSubmit = async () => {
     if (!canCreate) return;
-    await createMut.mutateAsync(toPayload(createForm));
+    await createMut.mutateAsync({
+      ...toPayload(createForm),
+      copyFromId: createForm.copyFromId === BLANK ? undefined : createForm.copyFromId,
+    });
     setCreating(false);
   };
 
@@ -664,6 +697,7 @@ function AdminPortalPagesPage() {
       >
         <PageFields
           key="create-form"
+          copySources={items}
           value={createForm}
           onChange={(patch) => setCreateForm((s) => ({ ...s, ...patch }))}
         />
@@ -675,9 +709,12 @@ function AdminPortalPagesPage() {
 function PageFields({
   value,
   onChange,
+  copySources,
 }: {
   value: PageFormValue;
   onChange: (patch: Partial<PageFormValue>) => void;
+  /** 传入表示新建场景：可选复制来源。编辑时不传。 */
+  copySources?: PortalPageDto[];
 }) {
   const setAttribute = (index: number, patch: Partial<AttributeRow>) => {
     onChange({
@@ -737,17 +774,27 @@ function PageFields({
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="portal-page-content">正文</Label>
-        <Textarea
-          id="portal-page-content"
-          value={value.content}
-          onChange={(e) => onChange({ content: e.target.value })}
-          placeholder="正文内容"
-          rows={10}
-          className="min-h-[240px]"
-        />
-      </div>
+      {copySources ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="portal-page-copy-from">页面内容</Label>
+          <Select value={value.copyFromId} onValueChange={(v) => onChange({ copyFromId: v })}>
+            <SelectTrigger id="portal-page-copy-from">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={BLANK}>空白页面</SelectItem>
+              {copySources.map((source) => (
+                <SelectItem key={source.id} value={source.id}>
+                  复制自：{source.title}（{source.path}）
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-[12px] text-text-mute">
+            创建后在列表点「设计」编辑内容；复制只拷贝当时的内容，之后两个页面互不影响。
+          </p>
+        </div>
+      ) : null}
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
