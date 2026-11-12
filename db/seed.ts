@@ -5,13 +5,15 @@ import { createUserService } from "../src/features/auth/auth.service";
 import { getDb } from "../src/lib/db.server";
 import { isServerError } from "../src/lib/errors";
 import * as schema from "./schema";
+import type { JsonValue } from "./schema";
 
 const {
   department,
   dictData,
   dictType,
   menu,
-  portal,
+  portalPage,
+  portalTemplate,
   post,
   role,
   roleMenu,
@@ -253,13 +255,49 @@ const MENU_SEED: readonly MenuSeedItem[] = [
     sort: 2,
   },
   {
-    code: "portals",
-    name: "门户配置",
+    code: "portal-categories",
+    name: "分类管理",
     parentCode: "portal",
-    path: "/admin/portals",
-    icon: "LayoutTemplate",
+    path: "/admin/portal/categories",
+    icon: "FolderTree",
     type: "menu",
     sort: 0,
+  },
+  {
+    code: "portal-articles",
+    name: "文章管理",
+    parentCode: "portal",
+    path: "/admin/portal/articles",
+    icon: "FileText",
+    type: "menu",
+    sort: 1,
+  },
+  {
+    code: "portal-pages",
+    name: "页面管理",
+    parentCode: "portal",
+    path: "/admin/portal/pages",
+    icon: "Files",
+    type: "menu",
+    sort: 2,
+  },
+  {
+    code: "portal-article-templates",
+    name: "文章模板",
+    parentCode: "portal",
+    path: "/admin/portal/article-templates",
+    icon: "FileStack",
+    type: "menu",
+    sort: 3,
+  },
+  {
+    code: "portal-page-templates",
+    name: "页面模板",
+    parentCode: "portal",
+    path: "/admin/portal/page-templates",
+    icon: "LayoutTemplate",
+    type: "menu",
+    sort: 4,
   },
 ];
 
@@ -387,31 +425,6 @@ async function ensureDefaultLocalStorage(): Promise<string> {
     })
     .returning({ id: storage.id });
   if (!inserted[0]) throw new Error("default storage 插入失败");
-  return inserted[0].id;
-}
-
-async function ensureDefaultPortal(): Promise<string> {
-  const db = getDb();
-  const existing = await db
-    .select({ id: portal.id })
-    .from(portal)
-    .where(and(eq(portal.code, "main"), isNull(portal.deletedAt)))
-    .limit(1);
-  if (existing[0]) return existing[0].id;
-  const inserted = await db
-    .insert(portal)
-    .values({
-      name: "主门户",
-      code: "main",
-      domain: "yishan.com",
-      themePrimary: "#1677ff",
-      themeMode: "light",
-      isDefault: true,
-      status: "enabled",
-      description: "seed 默认主门户",
-    })
-    .returning({ id: portal.id });
-  if (!inserted[0]) throw new Error("default portal 插入失败");
   return inserted[0].id;
 }
 
@@ -636,7 +649,7 @@ async function ensureSystemOptions(
 
 /**
  * 老系统（移山后台）启动默认数据：组织 / 岗位 / 业务角色 / 字典 / 系统配置。
- * 与 ensureAdminRole / ensureDefaultLocalStorage / ensureDefaultPortal 一起
+ * 与 ensureAdminRole / ensureDefaultLocalStorage 一起
  * 由 seedAuthorization 串起来。所有写入均为 idempotent，重跑不重复 insert。
  */
 // 1:1 对齐 yishan-api (apps/yishan-api/src/scripts/seed/config.ts:89) 的 deptTreeSeed。
@@ -731,15 +744,332 @@ const SYSTEM_OPTIONS_SEED = [
   { key: "defaultPageTemplateId", value: "2", description: "默认页面模板 ID" },
 ];
 
+/**
+ * 首页演示：低代码页面模板 + 一条绑定它的门户页面。
+ *
+ * 模板的 schema 是 lowcode-next 的 PageSchema —— 根节点是系统层 `Page`，
+ * 子节点用 basic 物料包里的 Typography / Button / Div / Form 等。
+ * 物料包由宿主在设计页装配，schema 里只写 componentName。
+ */
+const HOMEPAGE_TEMPLATE_NAME = "首页演示";
+const HOMEPAGE_PAGE_PATH = "/demo/home";
+
+const HOMEPAGE_SCHEMA: JsonValue = {
+  version: "1.0.0",
+  componentsMap: [
+    { componentName: "Page", package: "@lowcode-next/materials", exportName: "Page" },
+    {
+      componentName: "Typography",
+      package: "@lowcode-next/materials-react/basic",
+      exportName: "Typography",
+    },
+    {
+      componentName: "Button",
+      package: "@lowcode-next/materials-react/basic",
+      exportName: "Button",
+    },
+    { componentName: "Div", package: "@lowcode-next/materials-react/basic", exportName: "Div" },
+    { componentName: "Form", package: "@lowcode-next/materials-react/basic", exportName: "Form" },
+    {
+      componentName: "FormItem",
+      package: "@lowcode-next/materials-react/basic",
+      exportName: "FormItem",
+    },
+    { componentName: "Input", package: "@lowcode-next/materials-react/basic", exportName: "Input" },
+    { componentName: "Tag", package: "@lowcode-next/materials-react/basic", exportName: "Tag" },
+    {
+      componentName: "Divider",
+      package: "@lowcode-next/materials-react/basic",
+      exportName: "Divider",
+    },
+  ],
+  componentsTree: {
+    id: "root",
+    componentName: "Page",
+    props: { style: { padding: 0, background: "#ffffff" } },
+    children: [
+      {
+        id: "hero",
+        componentName: "Div",
+        props: {
+          style: {
+            padding: "64px 32px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px",
+            background: "#0f172a",
+          },
+        },
+        children: [
+          {
+            id: "hero_badge",
+            componentName: "Tag",
+            props: { tone: "accent" },
+            children: ["低代码门户底座"],
+          },
+          {
+            id: "hero_title",
+            componentName: "Typography",
+            props: { type: "h1", tone: "invert", align: "center", weight: "bold" },
+            children: ["把门户页面上线时间压到分钟级"],
+          },
+          {
+            id: "hero_desc",
+            componentName: "Typography",
+            props: { type: "body", tone: "muted", align: "center" },
+            children: ["可视化编排页面结构，PageSchema 直接落库，发布即可访问。"],
+          },
+          {
+            id: "hero_actions",
+            componentName: "Div",
+            props: { style: { display: "flex", gap: "12px" } },
+            children: [
+              {
+                id: "hero_primary",
+                componentName: "Button",
+                props: { variant: "primary", size: "lg" },
+                children: ["开始搭建"],
+              },
+              {
+                id: "hero_ghost",
+                componentName: "Button",
+                props: { variant: "outline", size: "lg" },
+                children: ["查看文档"],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "features",
+        componentName: "Div",
+        props: {
+          style: {
+            padding: "48px 32px",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "24px",
+          },
+        },
+        children: [
+          {
+            id: "feature_1",
+            componentName: "Div",
+            props: {
+              style: {
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                border: "1px solid #e5e6eb",
+                borderRadius: "12px",
+              },
+            },
+            children: [
+              {
+                id: "feature_1_title",
+                componentName: "Typography",
+                props: { type: "h3", weight: "semibold" },
+                children: ["可视化编排"],
+              },
+              {
+                id: "feature_1_desc",
+                componentName: "Typography",
+                props: { type: "body", tone: "muted" },
+                children: ["拖拽物料、属性面板调参，所见即所得。"],
+              },
+            ],
+          },
+          {
+            id: "feature_2",
+            componentName: "Div",
+            props: {
+              style: {
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                border: "1px solid #e5e6eb",
+                borderRadius: "12px",
+              },
+            },
+            children: [
+              {
+                id: "feature_2_title",
+                componentName: "Typography",
+                props: { type: "h3", weight: "semibold" },
+                children: ["一次编辑多处生效"],
+              },
+              {
+                id: "feature_2_desc",
+                componentName: "Typography",
+                props: { type: "body", tone: "muted" },
+                children: ["页面结构存 jsonb，模板改动即时同步到已绑定页面。"],
+              },
+            ],
+          },
+          {
+            id: "feature_3",
+            componentName: "Div",
+            props: {
+              style: {
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                border: "1px solid #e5e6eb",
+                borderRadius: "12px",
+              },
+            },
+            children: [
+              {
+                id: "feature_3_title",
+                componentName: "Typography",
+                props: { type: "h3", weight: "semibold" },
+                children: ["权限到操作"],
+              },
+              {
+                id: "feature_3_desc",
+                componentName: "Typography",
+                props: { type: "body", tone: "muted" },
+                children: ["分类、文章、页面、模板各自独立授权。"],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "divider",
+        componentName: "Divider",
+        props: {},
+      },
+      {
+        id: "contact",
+        componentName: "Div",
+        props: {
+          style: {
+            padding: "48px 32px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "24px",
+          },
+        },
+        children: [
+          {
+            id: "contact_title",
+            componentName: "Typography",
+            props: { type: "h2", align: "center", weight: "semibold" },
+            children: ["预约演示"],
+          },
+          {
+            id: "contact_form",
+            componentName: "Form",
+            props: {
+              title: "留下联系方式",
+              layout: "vertical",
+              labelWidth: 96,
+              labelAlign: "right",
+            },
+            children: [
+              {
+                id: "contact_name_item",
+                componentName: "FormItem",
+                props: { label: "姓名", required: true },
+                children: [
+                  {
+                    id: "contact_name_input",
+                    componentName: "Input",
+                    props: { value: "", placeholder: "请输入姓名" },
+                  },
+                ],
+              },
+              {
+                id: "contact_email_item",
+                componentName: "FormItem",
+                props: { label: "邮箱", required: true },
+                children: [
+                  {
+                    id: "contact_email_input",
+                    componentName: "Input",
+                    props: { value: "", placeholder: "请输入邮箱" },
+                  },
+                ],
+              },
+              {
+                id: "contact_submit_item",
+                componentName: "FormItem",
+                props: { label: "" },
+                children: [
+                  {
+                    id: "contact_submit_btn",
+                    componentName: "Button",
+                    props: { variant: "primary", block: true },
+                    children: ["提交"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+async function ensureHomepageDemo(): Promise<void> {
+  const db = getDb();
+  const existingTemplate = await db
+    .select({ id: portalTemplate.id })
+    .from(portalTemplate)
+    .where(and(eq(portalTemplate.type, "page"), eq(portalTemplate.name, HOMEPAGE_TEMPLATE_NAME)))
+    .limit(1);
+
+  let templateId = existingTemplate[0]?.id;
+  if (!templateId) {
+    const inserted = await db
+      .insert(portalTemplate)
+      .values({
+        name: HOMEPAGE_TEMPLATE_NAME,
+        description: "低代码首页演示模板：首屏 + 特性栅格 + 预约表单",
+        type: "page",
+        schema: HOMEPAGE_SCHEMA,
+        status: "enabled",
+      })
+      .returning({ id: portalTemplate.id });
+    if (!inserted[0]) throw new Error(`首页演示模板 seed 失败：${HOMEPAGE_TEMPLATE_NAME}`);
+    templateId = inserted[0].id;
+  }
+
+  const existingPage = await db
+    .select({ id: portalPage.id })
+    .from(portalPage)
+    .where(eq(portalPage.path, HOMEPAGE_PAGE_PATH))
+    .limit(1);
+
+  if (!existingPage[0]) {
+    await db.insert(portalPage).values({
+      title: "首页演示",
+      path: HOMEPAGE_PAGE_PATH,
+      content: "",
+      status: "enabled",
+      templateId,
+      publishTime: new Date(),
+    });
+  }
+}
+
 async function seedBusinessData() {
   const deptIdByName = await ensureDepartments(DEPARTMENTS_SEED);
   const postIdByCode = await ensurePosts(POSTS_SEED, deptIdByName);
   const auxRoleIdByName = await ensureAuxRoles(AUX_ROLES_SEED);
   await ensureDicts(DICTS_SEED);
   await ensureSystemOptions(SYSTEM_OPTIONS_SEED);
+  await ensureHomepageDemo();
   // 部门负责人不在 seed 里绑定(对齐 yishan-api,留空由管理员通过 UI 指派)
   console.log(
-    `✔ 部门 (${DEPARTMENTS_SEED.length} 项) / 岗位 (${POSTS_SEED.length} 项) / 业务角色 (${AUX_ROLES_SEED.length + 1} 个含 admin) / 字典 (${DICTS_SEED.length} 类型) / 系统选项 (${SYSTEM_OPTIONS_SEED.length} 项) seed 完成`,
+    `✔ 部门 (${DEPARTMENTS_SEED.length} 项) / 岗位 (${POSTS_SEED.length} 项) / 业务角色 (${AUX_ROLES_SEED.length + 1} 个含 admin) / 字典 (${DICTS_SEED.length} 类型) / 系统选项 (${SYSTEM_OPTIONS_SEED.length} 项) / 门户首页演示 seed 完成`,
   );
   return { deptIdByName, postIdByCode, auxRoleIdByName };
 }
@@ -751,7 +1081,6 @@ async function seedAuthorization(adminUserId: string): Promise<Map<string, strin
   await bindRoleToAllMenus(roleId, menuIds);
   await bindUserToAdminRole(adminUserId, roleId);
   const defaultStorageId = await ensureDefaultLocalStorage();
-  const defaultPortalId = await ensureDefaultPortal();
   const { deptIdByName, postIdByCode, auxRoleIdByName } = await seedBusinessData();
   // 把 admin 绑定到 CEO 岗位（多角色并行能工作）
   const adminPostId = postIdByCode.get("ceo");
@@ -771,7 +1100,6 @@ async function seedAuthorization(adminUserId: string): Promise<Map<string, strin
   }
   printAuthorizationBanner(roleId, menuIds.length);
   console.log(`✔ default storage id : ${defaultStorageId}`);
-  console.log(`✔ default portal id  : ${defaultPortalId}`);
   return deptIdByName;
 }
 
