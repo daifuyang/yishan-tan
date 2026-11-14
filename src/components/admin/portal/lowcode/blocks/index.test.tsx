@@ -1,9 +1,11 @@
+import type * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { AnnouncementBar, safeColor } from "./announcement-bar";
-import { safeHref } from "./block-kit";
+import { BLOCKS_GROUP, LAYOUT_CONTAINER_GROUP, safeHref } from "./block-kit";
 import { siteBlockComponents, siteBlockMetas } from "./index";
+import { PageLayout } from "./page-layout";
 import { SiteHeader } from "./site-header";
 import {
   MAX_ACTIONS,
@@ -12,10 +14,12 @@ import {
   normalizeNavItems,
   readSiteHeaderConfig,
 } from "./site-header.model";
+import { TabPane, Tabs } from "./tabs";
 
 /** 引擎基础物料包里已占用的名字（demo-react 的 17 个）。 */
 const ENGINE_NAMES = [
   "Page",
+  "Slot",
   "Div",
   "Form",
   "FormItem",
@@ -42,10 +46,12 @@ describe("业务区块物料包", () => {
     for (const name of metaNames) expect(ENGINE_NAMES).not.toContain(name);
   });
 
-  it("两个物料都是自包含的（不是容器）、归在「业务区块」", () => {
+  it("区块归「业务区块」且自包含；选项卡一对是容器、与引擎 Div 同归「布局」", () => {
+    const containers = ["Tabs", "TabPane"];
     for (const meta of siteBlockMetas) {
-      expect(meta.group).toBe("业务区块");
-      expect(meta.configure.component.isContainer).toBe(false);
+      const isContainer = containers.includes(meta.componentName);
+      expect(meta.group).toBe(isContainer ? LAYOUT_CONTAINER_GROUP : BLOCKS_GROUP);
+      expect(meta.configure.component.isContainer).toBe(isContainer);
     }
   });
 
@@ -105,6 +111,51 @@ describe("业务区块物料包", () => {
     expect(html).toContain("lc-sh--standard");
     expect(html).toContain("首页");
     expect(html).toContain("商务咨询");
+  });
+});
+
+describe("PageLayout 具名插槽", () => {
+  const layout = siteBlockMetas.find((m) => m.componentName === "PageLayout");
+  type Child = { componentName: string; props?: { name?: string }; children?: Child[] };
+
+  it("声明 header / main / footer 三个槽，页头槽只收公告条与网站头部", () => {
+    const slots = layout?.configure.component.slots ?? [];
+    expect(slots.map((s) => s.name)).toEqual(["header", "main", "footer"]);
+    expect(slots[0]?.childWhitelist).toEqual(["AnnouncementBar", "SiteHeader"]);
+    expect(slots[1]?.childWhitelist).toBeUndefined();
+  });
+
+  it("自身不是容器；defaultSchema 的 Slot 子节点与声明一一对应，页头预置 SiteHeader", () => {
+    expect(layout?.configure.component.isContainer).toBe(false);
+    const children = (layout?.defaultSchema as { children: Child[] }).children;
+    expect(children.map((c) => c.componentName)).toEqual(["Slot", "Slot", "Slot"]);
+    expect(children.map((c) => c.props?.name)).toEqual(
+      layout?.configure.component.slots?.map((s) => s.name),
+    );
+    expect(children[0]?.children?.map((c) => c.componentName)).toEqual(["SiteHeader"]);
+  });
+
+  it("只摆放 props.slots 里的三块内容，没有 children 通道", () => {
+    const html = renderToStaticMarkup(
+      <PageLayout
+        data-node-id="pl1"
+        stickyHeader
+        mainMaxWidth={1000}
+        slots={{
+          header: <div id="h">H</div>,
+          main: <div id="m">M</div>,
+          footer: <div id="f">F</div>,
+        }}
+      >
+        不该出现
+      </PageLayout>,
+    );
+    expect(html.indexOf('id="h"')).toBeLessThan(html.indexOf('id="m"'));
+    expect(html.indexOf('id="m"')).toBeLessThan(html.indexOf('id="f"'));
+    expect(html).not.toContain("不该出现");
+    expect(html).toContain("has-sticky-header");
+    expect(html).toContain("--lc-pl-main-max:1000px");
+    expect(html).toContain('data-node-id="pl1"');
   });
 });
 
@@ -196,5 +247,79 @@ describe("safeHref", () => {
     }
     expect(safeHref("javascript:alert(1)")).toBe("");
     expect(safeHref("data:text/html,x")).toBe("");
+  });
+});
+
+describe("Tabs 选项卡", () => {
+  /** 模拟渲染器：每个子节点外包一层（真实环境是容错边界）。 */
+  function Boundary({ children }: { children?: React.ReactNode }) {
+    return <>{children}</>;
+  }
+  const pane = (title: string | undefined, body: string, key: string) => (
+    <Boundary key={key}>
+      <TabPane title={title}>
+        <p>{body}</p>
+      </TabPane>
+    </Boundary>
+  );
+
+  it("穿过包装层读出各页标题，默认选中第一页，其余面板隐藏但仍在 DOM 里", () => {
+    const html = renderToStaticMarkup(
+      <Tabs>
+        {pane("概览", "内容 A", "a")}
+        {pane("详情", "内容 B", "b")}
+      </Tabs>,
+    );
+    expect(html.match(/role="tab"/g)).toHaveLength(2);
+    expect(html).toContain(">概览</button>");
+    expect(html).toContain(">详情</button>");
+    expect(html).toContain("内容 A");
+    expect(html).toContain("内容 B");
+    expect(html.match(/hidden=""/g)).toHaveLength(1);
+    expect(html).toMatch(/aria-selected="true"[^>]*>概览/);
+  });
+
+  it("defaultActive 从 1 起算，越界收口到最后一页", () => {
+    const two = (defaultActive: unknown) =>
+      renderToStaticMarkup(
+        <Tabs defaultActive={defaultActive}>
+          {pane("一", "a", "a")}
+          {pane("二", "b", "b")}
+        </Tabs>,
+      );
+    expect(two(2)).toMatch(/aria-selected="true"[^>]*>二/);
+    expect(two(99)).toMatch(/aria-selected="true"[^>]*>二/);
+    expect(two("坏数据")).toMatch(/aria-selected="true"[^>]*>一/);
+  });
+
+  it("标题为空时退回「选项卡 N」；非 TabPane 的子节点原样保留、不进页签", () => {
+    const html = renderToStaticMarkup(
+      <Tabs variant="pill" align="center">
+        {pane("", "a", "a")}
+        <div key="x" className="stray">
+          占位
+        </div>
+      </Tabs>,
+    );
+    expect(html).toContain(">选项卡 1</button>");
+    expect(html.match(/role="tab"/g)).toHaveLength(1);
+    expect(html).toContain('class="stray"');
+    expect(html).toContain("lc-tabs--pill");
+    expect(html).toContain("lc-tabs--align-center");
+  });
+
+  it("没有任何页时不渲染页签栏；非法样式退回默认", () => {
+    const html = renderToStaticMarkup(<Tabs variant="bogus" />);
+    expect(html).not.toContain("tablist");
+    expect(html).toContain("lc-tabs--line");
+  });
+
+  it("嵌套约束：Tabs 只收 TabPane，TabPane 只进 Tabs；默认带两页", () => {
+    const tabs = siteBlockMetas.find((m) => m.componentName === "Tabs");
+    const tabPane = siteBlockMetas.find((m) => m.componentName === "TabPane");
+    expect(tabs?.configure.component.nestingRule).toEqual({ childWhitelist: ["TabPane"] });
+    expect(tabPane?.configure.component.nestingRule).toEqual({ parentWhitelist: ["Tabs"] });
+    const schema = tabs?.defaultSchema as { children: Array<{ componentName: string }> };
+    expect(schema.children.map((c) => c.componentName)).toEqual(["TabPane", "TabPane"]);
   });
 });

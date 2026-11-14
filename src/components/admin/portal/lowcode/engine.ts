@@ -1,7 +1,12 @@
 import type {
   LowcodeCreateEditorOptions,
   LowcodeEditorHandle,
+  LowcodeLeftPanel,
+  LowcodeMaterialMeta,
   LowcodeMaterialPackage,
+  LowcodeMaterialPanelProps,
+  LowcodeMaterialRegistry,
+  LowcodeMaterialTab,
   LowcodeToolbarContext,
   LowcodeToolbarItem,
 } from "@lowcode-next/lowcode-react";
@@ -22,11 +27,17 @@ import type { LowcodePageSchema } from "@lowcode-next/protocol";
  * `src/routeTree.gen.ts` 是全量静态 import 所有路由，用它反而会让生产构建挂掉。
  */
 import { createClientOnlyFn } from "@tanstack/react-start";
+import type { ComponentType } from "react";
 
 export type {
   LowcodeCreateEditorOptions,
   LowcodeEditorHandle,
+  LowcodeLeftPanel,
+  LowcodeMaterialMeta,
   LowcodeMaterialPackage,
+  LowcodeMaterialPanelProps,
+  LowcodeMaterialRegistry,
+  LowcodeMaterialTab,
   LowcodePageSchema,
   LowcodeToolbarContext,
   LowcodeToolbarItem,
@@ -41,14 +52,20 @@ export interface LowcodeEngine {
   basicPackage: LowcodeMaterialPackage;
   /** 宿主定义的业务区块包（SiteHeader / AnnouncementBar），与基础包并列装配。 */
   packages: LowcodeMaterialPackage[];
+  /** 替换引擎内置物料面板的自定义布局（钉钉式简约风格）。 */
+  materialPanel: ComponentType<LowcodeMaterialPanelProps>;
+  /** 左侧追加的面板：「区块」与「组件」平行，在图标导航里单独一个入口。 */
+  leftPanels: LowcodeLeftPanel[];
 }
 
 const loadEngine = createClientOnlyFn(async (): Promise<LowcodeEngine> => {
-  const [lowcode, protocol, materials, blocks] = await Promise.all([
+  const [lowcode, protocol, materials, blocks, panel, blockPanel] = await Promise.all([
     import("@lowcode-next/lowcode-react"),
     import("@lowcode-next/protocol"),
     import("@lowcode-next/materials-react/basic"),
     import("./blocks"),
+    import("./material-panel"),
+    import("./block-panel"),
   ]);
   return {
     createEditor: lowcode.createEditor,
@@ -56,6 +73,8 @@ const loadEngine = createClientOnlyFn(async (): Promise<LowcodeEngine> => {
     sampleSchema: protocol.sampleSchema,
     basicPackage: materials.basicReactMaterialPackage,
     packages: [materials.basicReactMaterialPackage, blocks.siteBlocksPackage],
+    materialPanel: panel.MaterialPanel,
+    leftPanels: [blockPanel.blockLeftPanel],
   };
 });
 

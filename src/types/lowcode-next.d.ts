@@ -46,6 +46,8 @@ declare module "@lowcode-next/protocol" {
 }
 
 declare module "@lowcode-next/lowcode-react" {
+  import type { ComponentType, PointerEvent, ReactNode } from "react";
+
   import type { LowcodePageSchema } from "@lowcode-next/protocol";
 
   /** 物料包：描述（meta）与实现（components）成对。 */
@@ -74,12 +76,65 @@ declare module "@lowcode-next/lowcode-react" {
     onPreview?: () => void;
     /** 工具栏扩展按钮（发布 / 导出等宿主行为）。 */
     toolbar?: readonly LowcodeToolbarItem[];
+    /** 物料面板选项卡；不传或只有一个时不分页签。 */
+    materialTabs?: readonly LowcodeMaterialTab[];
+    /** 替换内置物料面板的布局组件；传模块级定义的稳定组件。 */
+    materialPanel?: ComponentType<LowcodeMaterialPanelProps>;
+    /** 左侧追加的面板（图标导航里多一个入口）；传稳定引用。 */
+    leftPanels?: readonly LowcodeLeftPanel[];
     /** 物料包列表。 */
     packages?: LowcodeMaterialPackage[];
     /** 额外实现的组件（componentName → React 组件）。 */
     components?: Record<string, unknown>;
     /** 是否包含系统层物料（`Page` 根壳），默认 true。 */
     includeSystem?: boolean;
+  }
+
+  /**
+   * 物料面板的一个选项卡。物料按自己的 `group` 归属：命中某页签 `groups` 的归它，
+   * 都不命中的归第一个没写 `groups` 的页签（兜底）。
+   */
+  export interface LowcodeMaterialTab {
+    key: string;
+    title: string;
+    groups?: readonly string[];
+  }
+
+  /** 物料描述里面板会用到的部分（引擎的 `ComponentMeta` 字段更多）。 */
+  export interface LowcodeMaterialMeta {
+    componentName: string;
+    title: string;
+    group?: string;
+    configure: { component: { hidden?: boolean } };
+  }
+
+  /** 物料注册表：`subscribe` + `getVersion` 可直接喂给 `useSyncExternalStore`。 */
+  export interface LowcodeMaterialRegistry {
+    list(): LowcodeMaterialMeta[];
+    subscribe(listener: () => void): () => void;
+    getVersion(): number;
+  }
+
+  /** 自定义物料面板收到的入参：引擎负责数据与交互通道，宿主只管长相。 */
+  export interface LowcodeMaterialPanelProps {
+    registry: LowcodeMaterialRegistry;
+    tabs?: readonly LowcodeMaterialTab[];
+    /** 按下某个物料开始拖拽。 */
+    onDragStart: (componentName: string, event: PointerEvent<HTMLElement>) => void;
+    /** 面板是否固定（占位）；false 为悬浮。 */
+    pinned?: boolean;
+    onTogglePin?: () => void;
+    onClose?: () => void;
+  }
+
+  /** 宿主注册的左侧面板：入参与物料面板相同，拖拽仍走 `onDragStart`。 */
+  export interface LowcodeLeftPanel {
+    key: string;
+    label: string;
+    icon: ReactNode;
+    /** 排在哪个入口之后（内置 key：tree / materials / datasource / code）。 */
+    after?: string;
+    component: ComponentType<LowcodeMaterialPanelProps>;
   }
 
   /** 工具栏扩展按钮：引擎只画按钮、交出点击，行为由宿主决定。 */

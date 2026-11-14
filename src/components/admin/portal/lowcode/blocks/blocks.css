@@ -410,3 +410,125 @@
   opacity: 1;
   background: rgba(127, 127, 127, 0.2);
 }
+
+/* ---------- PageLayout（页头 / 正文 / 页脚三个具名槽） ---------- */
+.lc-pl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+}
+.lc-pl.has-sticky-footer {
+  min-height: 100vh;
+}
+.lc-pl > .lc-slot--main {
+  flex: 1 0 auto;
+}
+.lc-pl.has-main-max > .lc-slot--main {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--lc-pl-main-max);
+  margin-right: auto;
+  margin-left: auto;
+}
+.lc-pl > .lc-slot--footer {
+  flex: none;
+}
+/* 吸顶放在槽容器上：sticky 受父盒限制，放在 SiteHeader 自己身上拖不动 */
+.lc-pl.has-sticky-header > .lc-slot--header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* ---------- Tabs / TabPane ---------- */
+.lc-tabs {
+  --lc-tabs-fg: #374151;
+  --lc-tabs-muted: #6b7280;
+  --lc-tabs-line: #e5e7eb;
+  --lc-tabs-accent: #2563eb;
+  box-sizing: border-box;
+  width: 100%;
+  color: var(--lc-tabs-fg);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.lc-tabs *,
+.lc-tabs *::before,
+.lc-tabs *::after {
+  box-sizing: border-box;
+}
+.lc-tabs__bar {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--lc-tabs-line);
+}
+.lc-tabs--align-center > .lc-tabs__bar {
+  justify-content: center;
+}
+.lc-tabs--align-end > .lc-tabs__bar {
+  justify-content: flex-end;
+}
+.lc-tabs__tab {
+  flex: none;
+  margin: 0 0 -1px;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--lc-tabs-muted);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+.lc-tabs__tab:hover {
+  color: var(--lc-tabs-fg);
+}
+.lc-tabs__tab:focus-visible {
+  outline: 2px solid var(--lc-tabs-accent);
+  outline-offset: -2px;
+}
+.lc-tabs__tab.is-active {
+  color: var(--lc-tabs-accent);
+  border-bottom-color: var(--lc-tabs-accent);
+}
+.lc-tabs--card > .lc-tabs__bar {
+  gap: 2px;
+}
+.lc-tabs--card .lc-tabs__tab {
+  border: 1px solid transparent;
+  border-radius: 6px 6px 0 0;
+}
+.lc-tabs--card .lc-tabs__tab.is-active {
+  border-color: var(--lc-tabs-line);
+  border-bottom-color: #fff;
+  background: #fff;
+}
+.lc-tabs--pill > .lc-tabs__bar {
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 0;
+}
+.lc-tabs--pill .lc-tabs__tab {
+  margin: 0;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 999px;
+}
+.lc-tabs--pill .lc-tabs__tab:hover {
+  background: #f3f4f6;
+}
+.lc-tabs--pill .lc-tabs__tab.is-active {
+  background: var(--lc-tabs-accent);
+  color: #fff;
+}
+.lc-tabs__panel[hidden] {
+  display: none;
+}
+.lc-tp {
+  min-height: 48px;
+  padding: 16px 0;
+}

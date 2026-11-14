@@ -9,7 +9,8 @@ import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import type { JsonValue } from "~/../db/schema";
 
-import type { LowcodePageSchema, LowcodeToolbarItem } from "./engine";
+import { DesignerSkeleton } from "./designer-skeleton";
+import { type LowcodePageSchema, type LowcodeToolbarItem, loadLowcodeEngine } from "./engine";
 import { PortalTemplateDesigner } from "./portal-template-designer";
 import { PortalPreviewCanvas } from "./preview-canvas";
 
@@ -74,10 +75,17 @@ export function PortalDesignShell({
   const initialSchema = React.useRef<{ value: LowcodePageSchema | null } | null>(null);
   if (!loading && initialSchema.current === null) initialSchema.current = { value: schema };
 
+  // 数据请求和引擎代码并行加载，而不是等数据回来才开始拉引擎。
+  React.useEffect(() => {
+    loadLowcodeEngine().catch(() => {
+      // 失败由设计器挂载时的加载流程呈现，这里只负责预热。
+    });
+  }, []);
+
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center text-[13px] text-text-soft">
-        正在加载{noun}…
+      <div className="h-screen">
+        <DesignerSkeleton />
       </div>
     );
   }

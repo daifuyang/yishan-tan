@@ -32,7 +32,15 @@ export interface BlockMeta {
   group?: string;
   props: Record<string, BlockPropMeta>;
   configure: {
-    component: { isContainer?: boolean; emptyPlaceholder?: boolean; hidden?: boolean };
+    component: {
+      isContainer?: boolean;
+      emptyPlaceholder?: boolean;
+      hidden?: boolean;
+      /** 具名插槽声明（引擎 DESIGN-v1 §14） */
+      slots?: Array<{ name: string; title?: string; childWhitelist?: string[] }>;
+      /** 嵌套约束（协议 `NestingRule`）：Tabs 只收 TabPane、TabPane 只进 Tabs */
+      nestingRule?: { parentWhitelist?: string[]; childWhitelist?: string[] };
+    };
     supports: {
       style?: boolean;
       condition?: boolean;
@@ -140,3 +148,12 @@ export function safeHref(value: unknown): string {
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }
+
+/** 区块物料的 `group`：组件面板据此把它们排除，区块面板据此只收它们。 */
+export const BLOCKS_GROUP = "业务区块";
+
+/**
+ * 选项卡等通用容器的 `group`，留在组件面板里。必须与引擎基础包里 `Div` 的分组同名（「布局」），
+ * 否则面板里会并排出现两个相近的分组。
+ */
+export const LAYOUT_CONTAINER_GROUP = "布局";

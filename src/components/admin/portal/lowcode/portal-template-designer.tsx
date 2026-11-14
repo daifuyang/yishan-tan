@@ -10,6 +10,7 @@
  */
 import * as React from "react";
 
+import { DesignerSkeleton } from "./designer-skeleton";
 import {
   type LowcodeEditorHandle,
   type LowcodePageSchema,
@@ -74,6 +75,8 @@ export function PortalTemplateDesigner({
           schema: initial,
           documentId,
           packages: engine.packages,
+          materialPanel: engine.materialPanel,
+          leftPanels: engine.leftPanels,
           canvasPadding: 0,
           toolbar: toolbarRef.current,
           onSchemaChange: (next) => {
@@ -121,8 +124,8 @@ export function PortalTemplateDesigner({
       {/* 挂载点：宿主不往里渲染 React 子节点，引擎自己 createRoot。 */}
       <div ref={containerRef} className="h-full w-full" />
       {status === "loading" ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-[13px] text-text-soft">
-          正在加载低代码编辑器…
+        <div className="absolute inset-0 z-10 bg-page">
+          <DesignerSkeleton />
         </div>
       ) : null}
       {status === "failed" ? (
