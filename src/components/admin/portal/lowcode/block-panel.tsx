@@ -105,6 +105,8 @@ export function BlockPanel({
     [blocks, activeCategory, keyword],
   );
   const sections = React.useMemo(() => groupByCategory(visible), [visible]);
+  // 分组标题只在「全部」里出现；选中具体分类时标签本身已说明内容，不再重复
+  const showHeadings = activeCategory === ALL;
 
   return (
     <div className="min-h-full bg-white font-sans text-xs text-[#171a1d]">
@@ -145,8 +147,14 @@ export function BlockPanel({
       ) : (
         sections.map((section) => (
           <section key={section.name} className="px-3 pt-6 pb-1 first-of-type:pt-2.5">
-            <h3 className="text-xs leading-5 font-bold">{section.name}</h3>
-            <ul className="mt-2 grid grid-cols-2 gap-x-2 gap-y-3">
+            {showHeadings ? <h3 className="text-xs leading-5 font-bold">{section.name}</h3> : null}
+            <ul
+              className={
+                showHeadings
+                  ? "mt-2 grid grid-cols-2 gap-x-2 gap-y-3"
+                  : "grid grid-cols-2 gap-x-2 gap-y-3"
+              }
+            >
               {section.items.map((meta) => {
                 const Thumb = BLOCK_CATALOG[meta.componentName]?.Thumb ?? GenericBlockThumb;
                 return (
