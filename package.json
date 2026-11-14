@@ -28,6 +28,7 @@
     "db:generate": "dotenv -e .env -- drizzle-kit generate",
     "db:migrate": "dotenv -e .env -- drizzle-kit migrate",
     "db:seed": "tsx --env-file=.env db/seed.ts",
+    "db:migrate-site-layout": "tsx --env-file=.env scripts/migrate-site-layout.ts",
     "db:reset": "tsx --env-file=.env scripts/db-reset.ts && pnpm db:generate && pnpm db:migrate && pnpm db:seed",
     "arch:check": "node scripts/arch/check-all.mjs",
     "arch:check:routes": "node scripts/arch/check-routes.mjs",

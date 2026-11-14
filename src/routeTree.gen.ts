@@ -67,6 +67,7 @@ import { Route as AdminPortalTemplatesTemplateIdRouteImport } from './routes/adm
 import { Route as AdminPortalPageDesignerPageIdRouteImport } from './routes/admin/portal/page-designer/$pageId'
 import { Route as ApiV1UsersMeLoginLogsRouteImport } from './routes/api/v1/users/me/login-logs'
 import { Route as ApiV1StoragesIdDefaultRouteImport } from './routes/api/v1/storages/$id.default'
+import { Route as ApiV1PortalPagesIdRenderRouteImport } from './routes/api/v1/portal-pages/$id/render'
 import { Route as ApiV1PortalPagesIdPublishRouteImport } from './routes/api/v1/portal-pages/$id/publish'
 import { Route as ApiV1PortalArticlesIdPublishRouteImport } from './routes/api/v1/portal-articles/$id/publish'
 
@@ -363,6 +364,12 @@ const ApiV1StoragesIdDefaultRoute = ApiV1StoragesIdDefaultRouteImport.update({
   path: '/default',
   getParentRoute: () => ApiV1StoragesIdRoute,
 } as any)
+const ApiV1PortalPagesIdRenderRoute =
+  ApiV1PortalPagesIdRenderRouteImport.update({
+    id: '/render',
+    path: '/render',
+    getParentRoute: () => ApiV1PortalPagesIdRoute,
+  } as any)
 const ApiV1PortalPagesIdPublishRoute =
   ApiV1PortalPagesIdPublishRouteImport.update({
     id: '/publish',
@@ -435,6 +442,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/users/': typeof ApiV1UsersIndexRoute
   '/api/v1/portal-articles/$id/publish': typeof ApiV1PortalArticlesIdPublishRoute
   '/api/v1/portal-pages/$id/publish': typeof ApiV1PortalPagesIdPublishRoute
+  '/api/v1/portal-pages/$id/render': typeof ApiV1PortalPagesIdRenderRoute
   '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
   '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
@@ -495,6 +503,7 @@ export interface FileRoutesByTo {
   '/api/v1/users': typeof ApiV1UsersIndexRoute
   '/api/v1/portal-articles/$id/publish': typeof ApiV1PortalArticlesIdPublishRoute
   '/api/v1/portal-pages/$id/publish': typeof ApiV1PortalPagesIdPublishRoute
+  '/api/v1/portal-pages/$id/render': typeof ApiV1PortalPagesIdRenderRoute
   '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
   '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
@@ -558,6 +567,7 @@ export interface FileRoutesById {
   '/api/v1/users/': typeof ApiV1UsersIndexRoute
   '/api/v1/portal-articles/$id/publish': typeof ApiV1PortalArticlesIdPublishRoute
   '/api/v1/portal-pages/$id/publish': typeof ApiV1PortalPagesIdPublishRoute
+  '/api/v1/portal-pages/$id/render': typeof ApiV1PortalPagesIdRenderRoute
   '/api/v1/storages/$id/default': typeof ApiV1StoragesIdDefaultRoute
   '/api/v1/users/me/login-logs': typeof ApiV1UsersMeLoginLogsRoute
 }
@@ -622,6 +632,7 @@ export interface FileRouteTypes {
     | '/api/v1/users/'
     | '/api/v1/portal-articles/$id/publish'
     | '/api/v1/portal-pages/$id/publish'
+    | '/api/v1/portal-pages/$id/render'
     | '/api/v1/storages/$id/default'
     | '/api/v1/users/me/login-logs'
   fileRoutesByTo: FileRoutesByTo
@@ -682,6 +693,7 @@ export interface FileRouteTypes {
     | '/api/v1/users'
     | '/api/v1/portal-articles/$id/publish'
     | '/api/v1/portal-pages/$id/publish'
+    | '/api/v1/portal-pages/$id/render'
     | '/api/v1/storages/$id/default'
     | '/api/v1/users/me/login-logs'
   id:
@@ -744,6 +756,7 @@ export interface FileRouteTypes {
     | '/api/v1/users/'
     | '/api/v1/portal-articles/$id/publish'
     | '/api/v1/portal-pages/$id/publish'
+    | '/api/v1/portal-pages/$id/render'
     | '/api/v1/storages/$id/default'
     | '/api/v1/users/me/login-logs'
   fileRoutesById: FileRoutesById
@@ -1185,6 +1198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1StoragesIdDefaultRouteImport
       parentRoute: typeof ApiV1StoragesIdRoute
     }
+    '/api/v1/portal-pages/$id/render': {
+      id: '/api/v1/portal-pages/$id/render'
+      path: '/render'
+      fullPath: '/api/v1/portal-pages/$id/render'
+      preLoaderRoute: typeof ApiV1PortalPagesIdRenderRouteImport
+      parentRoute: typeof ApiV1PortalPagesIdRoute
+    }
     '/api/v1/portal-pages/$id/publish': {
       id: '/api/v1/portal-pages/$id/publish'
       path: '/publish'
@@ -1344,10 +1364,12 @@ const ApiV1PortalCategoriesRouteWithChildren =
 
 interface ApiV1PortalPagesIdRouteChildren {
   ApiV1PortalPagesIdPublishRoute: typeof ApiV1PortalPagesIdPublishRoute
+  ApiV1PortalPagesIdRenderRoute: typeof ApiV1PortalPagesIdRenderRoute
 }
 
 const ApiV1PortalPagesIdRouteChildren: ApiV1PortalPagesIdRouteChildren = {
   ApiV1PortalPagesIdPublishRoute: ApiV1PortalPagesIdPublishRoute,
+  ApiV1PortalPagesIdRenderRoute: ApiV1PortalPagesIdRenderRoute,
 }
 
 const ApiV1PortalPagesIdRouteWithChildren =

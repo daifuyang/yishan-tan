@@ -11,6 +11,7 @@ import {
   deletePortalTemplate,
   publishPortalArticle,
   publishPortalPage,
+  savePortalPageDesign,
   updatePortalArticle,
   updatePortalCategory,
   updatePortalPage,
@@ -22,6 +23,7 @@ import type {
   CreatePortalCategoryInput,
   CreatePortalPageInput,
   CreatePortalTemplateInput,
+  SavePortalPageDesignInput,
   UpdatePortalArticleInput,
   UpdatePortalCategoryInput,
   UpdatePortalPageInput,
@@ -214,4 +216,18 @@ export function useDeletePortalTemplate() {
 
 export function useBulkDeletePortalTemplates(ids: string[]) {
   return useBulkDelete(ids, (id) => deletePortalTemplate({ data: { id } }));
+}
+
+/** 设计器保存（保存即发布）：页面正文 + 有改动的全站公共布局，一次请求、一个事务。 */
+export function useSavePortalPageDesign() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SavePortalPageDesignInput) => savePortalPageDesign({ data: input }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: portalContentQueryKey.pages() }),
+        queryClient.invalidateQueries({ queryKey: portalContentQueryKey.siteLayout() }),
+      ]);
+    },
+  });
 }

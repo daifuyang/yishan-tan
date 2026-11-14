@@ -472,6 +472,53 @@ export type JsonValue =
  * 门户模板：文章模板（type=article）与页面模板（type=page）共用一张表，
  * (type, name) 唯一。系统默认模板不可删除。
  */
+/**
+ * 全站公共布局（页头 / 页脚）。
+ *
+ * 页面只保存自己的正文（Main）；页头页脚是全站共享的一份，存在这里，所有页面加载时拼接。
+ * 草稿 / 已发布各一份，与页面同样的生命周期（保存写草稿，发布拷贝为已发布版本）。
+ * 当前门户是单站点，所以先用唯一的 `default` 记录；将来真正支持多站点时再加 siteId。
+ *
+ * 每一块是节点数组（NodeSchema[]）：页头可以同时有公告条和网站头部。
+ * `version` 是乐观锁：每次写入 +1，保存时带上读取时的版本，防止两个人互相覆盖全站布局。
+ */
+export const portalSiteLayout = pgTable("portal_site_layout", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  draftHeaderSchema: jsonb("draft_header_schema").$type<JsonValue>(),
+  publishedHeaderSchema: jsonb("published_header_schema").$type<JsonValue>(),
+  draftFooterSchema: jsonb("draft_footer_schema").$type<JsonValue>(),
+  publishedFooterSchema: jsonb("published_footer_schema").$type<JsonValue>(),
+  publishTime: timestamp("publish_time", { withTimezone: true }),
+  version: integer("version").notNull().default(1),
+  creatorId: uuid("creator_id").references(() => user.id, { onDelete: "set null" }),
+  updaterId: uuid("updater_id").references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+/**
+ * 页面 Schema 的迁移备份：把页头页脚抽到 SiteLayout 之前，先把每个页面的完整旧 Schema 存一份。
+ * (pageId, reason) 唯一：迁移重跑不会覆盖第一次留下的原始备份。
+ */
+export const portalPageSchemaBackup = pgTable(
+  "portal_page_schema_backup",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => portalPage.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    draftSchema: jsonb("draft_schema").$type<JsonValue>(),
+    publishedSchema: jsonb("published_schema").$type<JsonValue>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("portal_page_schema_backup_page_reason_idx").on(t.pageId, t.reason)],
+);
+
 export const portalTemplate = pgTable(
   "portal_template",
   {
@@ -572,6 +619,8 @@ export type DbPortalCategory = typeof portalCategory.$inferSelect;
 export type DbPortalArticle = typeof portalArticle.$inferSelect;
 export type DbPortalPage = typeof portalPage.$inferSelect;
 export type DbPortalTemplate = typeof portalTemplate.$inferSelect;
+export type DbPortalSiteLayout = typeof portalSiteLayout.$inferSelect;
+export type DbPortalPageSchemaBackup = typeof portalPageSchemaBackup.$inferSelect;
 export type DbAttachment = typeof attachment.$inferSelect;
 
 export const schemaTag = sql`yishan_tan_v1`;

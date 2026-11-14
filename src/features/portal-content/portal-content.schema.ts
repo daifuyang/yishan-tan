@@ -260,3 +260,52 @@ export type CreatePortalTemplateInput = z.infer<typeof createPortalTemplateSchem
 export type UpdatePortalTemplateInput = z.infer<typeof updatePortalTemplateSchema>;
 export type PortalTemplateListQuery = z.infer<typeof portalTemplateListQuerySchema>;
 export type PortalTemplateSortBy = NonNullable<PortalTemplateListQuery["sortBy"]>;
+
+/* ---------------------------- 全站公共布局 ---------------------------- */
+
+/** 公共布局里的一个节点：至少有 id 与 componentName，其余是任意 JSON（属性、子节点）。 */
+const portalSiteLayoutNodeSchema = portalTemplateJsonSchema.superRefine((node, ctx) => {
+  if (typeof node.id !== "string" || node.id.length === 0) {
+    ctx.addIssue({ code: "custom", message: "公共布局节点缺少 id", path: ["id"] });
+  }
+  if (typeof node.componentName !== "string" || node.componentName.length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      message: "公共布局节点缺少 componentName",
+      path: ["componentName"],
+    });
+  }
+});
+
+/** 页头 / 页脚的一块：节点数组（可以同时有公告条和网站头部）。 */
+export const portalSiteLayoutBlockSchema = z.array(portalSiteLayoutNodeSchema).max(20);
+
+/**
+ * 设计器保存：传**完整的**页面 Schema（页头 + 正文 + 页脚已组合好的那份），
+ * 由服务端拆开——正文写进页面，页头页脚写进全站公共布局。
+ * 拆分只在服务端做一次，所以不管客户端有没有拆对，页面里都不会落下一份公共页头页脚。
+ */
+export const savePortalPageDesignSchema = z.object({
+  pageId: z.string().uuid(),
+  schema: portalTemplateJsonSchema.superRefine((value, ctx) =>
+    checkPageSchemaLike(value, ctx, "schema"),
+  ),
+  /** 读取公共布局时的版本号；写公共布局时用来检测「别人在你之后改过」。0 表示当时还没初始化。 */
+  expectedLayoutVersion: z.number().int().min(0).optional(),
+  /** 保存即发布：同时把页面（以及有待发布改动的公共布局）发布到线上。 */
+  publish: z.boolean().default(true),
+});
+
+export const updatePortalSiteLayoutSchema = z.object({
+  header: portalSiteLayoutBlockSchema.optional(),
+  footer: portalSiteLayoutBlockSchema.optional(),
+  expectedVersion: z.number().int().min(0).optional(),
+});
+
+export const portalPageRenderQuerySchema = z.object({
+  mode: z.enum(["draft", "published"]).default("published"),
+});
+
+export type SavePortalPageDesignInput = z.infer<typeof savePortalPageDesignSchema>;
+export type UpdatePortalSiteLayoutInput = z.infer<typeof updatePortalSiteLayoutSchema>;
+export type PortalPageRenderQuery = z.infer<typeof portalPageRenderQuerySchema>;

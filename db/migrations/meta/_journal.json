@@ -43,6 +43,13 @@
       "when": 1794470772852,
       "tag": "0005_portal_page_drop_template",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794628511804,
+      "tag": "0006_portal_site_layout",
+      "breakpoints": true
     }
   ]
 }

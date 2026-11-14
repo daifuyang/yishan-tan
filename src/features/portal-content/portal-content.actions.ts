@@ -12,6 +12,7 @@ import {
   portalCategoryListQuerySchema,
   portalPageListQuerySchema,
   portalTemplateListQuerySchema,
+  savePortalPageDesignSchema,
   updatePortalArticleSchema,
   updatePortalCategorySchema,
   updatePortalPageSchema,
@@ -41,6 +42,10 @@ import {
   updatePortalPageService,
   updatePortalTemplateService,
 } from "./portal-content.service";
+import {
+  getPortalSiteLayoutService,
+  savePortalPageDesignService,
+} from "./portal-content.site-layout.service";
 
 async function operationCtx(code: Parameters<typeof assertPortalContentOperation>[1]) {
   const ctx = await requireRequestContext(getRequestHeaders());
@@ -220,4 +225,20 @@ export const deletePortalTemplate = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await operationCtx("portal-templates:delete");
     return deletePortalTemplateService(data.id);
+  });
+
+/* ---------------------------- 全站公共布局 ---------------------------- */
+
+/** 读取全站公共布局（页头 / 页脚）。属于页面管理的一部分，权限沿用门户页面。 */
+export const getPortalSiteLayout = createServerFn({ method: "GET" }).handler(async () => {
+  await operationCtx("portal-pages:read");
+  return getPortalSiteLayoutService();
+});
+
+/** 设计器保存：页面正文 + 公共页头页脚在同一个事务里写入（服务端负责拆分）。 */
+export const savePortalPageDesign = createServerFn({ method: "POST" })
+  .validator(savePortalPageDesignSchema)
+  .handler(async ({ data }) => {
+    const ctx = await operationCtx("portal-pages:update");
+    return savePortalPageDesignService(data, { operatorId: ctx.userId });
   });

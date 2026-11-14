@@ -4,6 +4,7 @@ import {
   getPortalArticle,
   getPortalCategory,
   getPortalPage,
+  getPortalSiteLayout,
   getPortalTemplate,
   listPortalArticles,
   listPortalCategories,
@@ -36,6 +37,7 @@ export const portalContentQueryKey = {
   pages: () => [...portalContentQueryKey.all, "pages"] as const,
   pageList: (input: PortalPageListQuery) => [...portalContentQueryKey.pages(), input] as const,
   pageById: (id: string) => [...portalContentQueryKey.pages(), { id }] as const,
+  siteLayout: () => [...portalContentQueryKey.all, "site-layout"] as const,
   templates: () => [...portalContentQueryKey.all, "templates"] as const,
   templateList: (input: PortalTemplateListQuery) =>
     [...portalContentQueryKey.templates(), input] as const,
@@ -171,5 +173,14 @@ export function usePortalTemplateOptions(type: "article", enabled = true) {
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
+  });
+}
+
+/** 全站公共布局（页头 / 页脚）。设计器加载页面时一并取，所有页面共用同一份。 */
+export function usePortalSiteLayout() {
+  return useQuery({
+    queryKey: portalContentQueryKey.siteLayout(),
+    queryFn: async () => getPortalSiteLayout(),
+    staleTime: 30_000,
   });
 }
