@@ -5,15 +5,9 @@ import { describe, expect, it } from "vitest";
 import { AnnouncementBar, safeColor } from "./announcement-bar";
 import { BLOCKS_GROUP, LAYOUT_CONTAINER_GROUP, safeHref } from "./block-kit";
 import { siteBlockComponents, siteBlockMetas } from "./index";
+import { Navbar } from "./navbar";
+import { isItemActive, normalizeNavItems } from "./navbar.model";
 import { PageLayout } from "./page-layout";
-import { SiteHeader } from "./site-header";
-import {
-  MAX_ACTIONS,
-  isItemActive,
-  normalizeActions,
-  normalizeNavItems,
-  readSiteHeaderConfig,
-} from "./site-header.model";
 import { TabPane, Tabs } from "./tabs";
 
 /** 引擎基础物料包里已占用的名字（demo-react 的 17 个）。 */
@@ -46,11 +40,16 @@ describe("业务区块物料包", () => {
     for (const name of metaNames) expect(ENGINE_NAMES).not.toContain(name);
   });
 
-  it("区块归「业务区块」且自包含；选项卡一对是容器、与引擎 Div 同归「布局」", () => {
+  it("业务区块归「业务区块」；选项卡一对是容器、与引擎 Div 同归「布局」；Navbar 是原子，归「导航」", () => {
     const containers = ["Tabs", "TabPane"];
     for (const meta of siteBlockMetas) {
       const isContainer = containers.includes(meta.componentName);
-      expect(meta.group).toBe(isContainer ? LAYOUT_CONTAINER_GROUP : BLOCKS_GROUP);
+      const expected = isContainer
+        ? LAYOUT_CONTAINER_GROUP
+        : meta.componentName === "Navbar"
+          ? "导航"
+          : BLOCKS_GROUP;
+      expect(meta.group).toBe(expected);
       expect(meta.configure.component.isContainer).toBe(isContainer);
     }
   });
@@ -77,7 +76,7 @@ describe("业务区块物料包", () => {
     }
   });
 
-  it("列表 setter 用标准 ArraySetter / ObjectSetter 配置：快捷项 + 条数上限", () => {
+  it("Navbar 的菜单项用标准 ArraySetter / ObjectSetter 配置：快捷项 + 条数上限 + 二级菜单", () => {
     type ItemConfig = { name: string; important?: boolean };
     type ListSetter = {
       componentName: string;
@@ -89,28 +88,24 @@ describe("业务区块物料包", () => {
         };
       };
     };
-    const header = siteBlockMetas.find((m) => m.componentName === "SiteHeader");
-    for (const key of ["navItems", "actions"]) {
-      const setter = header?.props[key]?.setter as ListSetter;
-      expect(setter.componentName).toBe("ArraySetter");
-      expect(setter.props.itemSetter.componentName).toBe("ObjectSetter");
-      const quick = setter.props.itemSetter.props.config.items
-        .filter((item) => item.important)
-        .map((item) => item.name);
-      expect(quick).toEqual(["label", "href"]);
-    }
-    const actions = header?.props.actions?.setter as ListSetter;
-    expect(actions.props.itemMaxLength).toBe(2);
+    const navbar = siteBlockMetas.find((m) => m.componentName === "Navbar");
+    const setter = navbar?.props.items?.setter as ListSetter;
+    expect(setter.componentName).toBe("ArraySetter");
+    expect(setter.props.itemSetter.componentName).toBe("ObjectSetter");
+    const fields = setter.props.itemSetter.props.config.items;
+    expect(fields.filter((item) => item.important).map((item) => item.name)).toEqual([
+      "label",
+      "href",
+    ]);
+    expect(fields.map((item) => item.name)).toContain("children");
   });
 
-  it("默认 schema 能渲染出完整头部", () => {
-    const meta = siteBlockMetas.find((m) => m.componentName === "SiteHeader");
+  it("默认 schema 能渲染出导航栏", () => {
+    const meta = siteBlockMetas.find((m) => m.componentName === "Navbar");
     const props = (meta?.defaultSchema as { props: Record<string, unknown> }).props;
-    const html = renderToStaticMarkup(<SiteHeader {...props} data-node-id="n1" />);
+    const html = renderToStaticMarkup(<Navbar {...props} data-node-id="n1" />);
     expect(html).toContain('data-node-id="n1"');
-    expect(html).toContain("lc-sh--standard");
     expect(html).toContain("首页");
-    expect(html).toContain("商务咨询");
   });
 });
 
@@ -118,21 +113,21 @@ describe("PageLayout 具名插槽", () => {
   const layout = siteBlockMetas.find((m) => m.componentName === "PageLayout");
   type Child = { componentName: string; props?: { name?: string }; children?: Child[] };
 
-  it("声明 header / main / footer 三个槽，页头槽只收公告条与网站头部", () => {
+  it("声明 header / main / footer 三个槽，页头槽只收公告条与 Div（页头区块的根）", () => {
     const slots = layout?.configure.component.slots ?? [];
     expect(slots.map((s) => s.name)).toEqual(["header", "main", "footer"]);
-    expect(slots[0]?.childWhitelist).toEqual(["AnnouncementBar", "SiteHeader"]);
+    expect(slots[0]?.childWhitelist).toEqual(["AnnouncementBar", "Div"]);
     expect(slots[1]?.childWhitelist).toBeUndefined();
   });
 
-  it("自身不是容器；defaultSchema 的 Slot 子节点与声明一一对应，页头预置 SiteHeader", () => {
+  it("自身不是容器；defaultSchema 的 Slot 子节点与声明一一对应，三个槽都是空的（页头页脚由全站公共布局注入）", () => {
     expect(layout?.configure.component.isContainer).toBe(false);
     const children = (layout?.defaultSchema as { children: Child[] }).children;
     expect(children.map((c) => c.componentName)).toEqual(["Slot", "Slot", "Slot"]);
     expect(children.map((c) => c.props?.name)).toEqual(
       layout?.configure.component.slots?.map((s) => s.name),
     );
-    expect(children[0]?.children?.map((c) => c.componentName)).toEqual(["SiteHeader"]);
+    for (const slot of children) expect(slot.children ?? []).toEqual([]);
   });
 
   it("只摆放 props.slots 里的三块内容，没有 children 通道", () => {
@@ -159,25 +154,11 @@ describe("PageLayout 具名插槽", () => {
   });
 });
 
-describe("SiteHeader 渲染", () => {
-  it("图片为空时退回文字品牌标识，有图时渲染图片", () => {
-    const text = renderToStaticMarkup(<SiteHeader brandText="易山" />);
-    expect(text).toContain("易山");
-    expect(text).not.toContain("<img");
-    const image = renderToStaticMarkup(<SiteHeader logoSrc="/logo.png" showBrandText={false} />);
-    expect(image).toContain('src="/logo.png"');
-  });
-
-  it("布局与外观相互独立", () => {
-    const html = renderToStaticMarkup(<SiteHeader layout="centered" appearance="dark" />);
-    expect(html).toContain("lc-sh--centered");
-    expect(html).toContain("lc-sh--dark");
-  });
-
+describe("Navbar 渲染", () => {
   it("新窗口链接带 noopener，危险协议被丢弃", () => {
     const html = renderToStaticMarkup(
-      <SiteHeader
-        navItems={[
+      <Navbar
+        items={[
           { label: "外链", href: "https://example.com", target: "_blank" },
           { label: "坏链接", href: "javascript:alert(1)" },
         ]}
@@ -187,23 +168,13 @@ describe("SiteHeader 渲染", () => {
     expect(html).not.toContain("javascript:");
   });
 
-  it("非法 props 退化为默认值而不是崩溃", () => {
-    const config = readSiteHeaderConfig({ layout: "nope", height: "x", navItems: "oops" });
-    expect(config.layout).toBe("standard");
-    expect(config.height).toBe(64);
-    expect(config.navItems).toEqual([]);
-    expect(() =>
-      renderToStaticMarkup(<SiteHeader navItems={{ a: 1 }} actions={7} />),
-    ).not.toThrow();
+  it("非法 props 退化为空而不是崩溃", () => {
+    expect(() => renderToStaticMarkup(<Navbar items={{ a: 1 }} />)).not.toThrow();
+    expect(renderToStaticMarkup(<Navbar items="oops" />)).toBe("");
   });
 });
 
-describe("导航与操作归一化", () => {
-  it("操作按钮最多两个", () => {
-    const many = Array.from({ length: 5 }, (_, i) => ({ label: `按钮${i}`, href: "/" }));
-    expect(normalizeActions(many)).toHaveLength(MAX_ACTIONS);
-  });
-
+describe("导航归一化", () => {
   it("二级菜单只保留一层，空文案项被忽略", () => {
     const items = normalizeNavItems([
       { label: "产品", children: [{ label: "A", children: [{ label: "深层" }] }, { label: "" }] },

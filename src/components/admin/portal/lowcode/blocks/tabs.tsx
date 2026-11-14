@@ -14,6 +14,7 @@
 import * as React from "react";
 
 import { cx, num, passthrough, pick, str } from "./block-kit";
+import { objectStyle } from "./block-kit";
 
 export const TABS_VARIANTS = ["line", "card", "pill"] as const;
 export const TABS_ALIGNS = ["start", "center", "end"] as const;
@@ -43,11 +44,7 @@ type RawProps = Record<string, unknown>;
 
 export function TabPane(props: RawProps) {
   return (
-    <div
-      {...passthrough(props)}
-      className="lc-tp"
-      style={props.style as React.CSSProperties | undefined}
-    >
+    <div {...passthrough(props)} className="lc-tp" style={objectStyle(props.style)}>
       {props.children as React.ReactNode}
     </div>
   );
@@ -124,7 +121,7 @@ export function Tabs(props: RawProps) {
     <div
       {...passthrough(props)}
       className={cx("lc-tabs", `lc-tabs--${variant}`, `lc-tabs--align-${align}`)}
-      style={props.style as React.CSSProperties | undefined}
+      style={objectStyle(props.style)}
     >
       {panes.length > 0 ? (
         <div className="lc-tabs__bar" role="tablist">

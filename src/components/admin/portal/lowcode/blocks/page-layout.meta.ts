@@ -1,6 +1,5 @@
 import { type BlockMeta, defineBlock } from "./block-kit";
 import { PAGE_LAYOUT_DEFAULTS as D, PAGE_LAYOUT_SLOTS } from "./page-layout";
-import { siteHeaderMeta } from "./site-header.meta";
 
 /**
  * PageLayout 物料描述。
@@ -41,12 +40,13 @@ export const pageLayoutMeta: BlockMeta = defineBlock({
       slots: PAGE_LAYOUT_SLOTS.map((name) => ({
         name,
         title: SLOT_TITLES[name],
-        ...(name === "header" ? { childWhitelist: ["AnnouncementBar", "SiteHeader"] } : {}),
+        ...(name === "header" ? { childWhitelist: ["AnnouncementBar", "Div"] } : {}),
       })),
     },
     supports: { style: true, condition: false, loop: false, events: [], textVariable: false },
   },
-  // 预置：页头槽里放一个网站头部，其余两槽留空；槽节点由引擎按 slots 声明补出 id。
+  // 预置：三个槽都留空。页头 / 页脚是全站公共布局，由 SiteLayout 在加载时注入
+  // （见 portal-content.layout.ts），新页面不再自带页头；槽节点由引擎按 slots 声明补出 id。
   defaultSchema: {
     componentName: "PageLayout",
     props: {},
@@ -54,15 +54,7 @@ export const pageLayoutMeta: BlockMeta = defineBlock({
       componentName: "Slot",
       title: SLOT_TITLES[name],
       props: { name },
-      children:
-        name === "header"
-          ? [
-              {
-                componentName: "SiteHeader",
-                props: (siteHeaderMeta.defaultSchema as { props: Record<string, unknown> }).props,
-              },
-            ]
-          : [],
+      children: [],
     })),
   },
 });

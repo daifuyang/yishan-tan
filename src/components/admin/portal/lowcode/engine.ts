@@ -7,6 +7,7 @@ import type {
   LowcodeMaterialPanelProps,
   LowcodeMaterialRegistry,
   LowcodeMaterialTab,
+  LowcodeMaterialTemplate,
   LowcodeToolbarContext,
   LowcodeToolbarItem,
 } from "@lowcode-next/lowcode-react";
@@ -37,6 +38,7 @@ export type {
   LowcodeMaterialPackage,
   LowcodeMaterialPanelProps,
   LowcodeMaterialRegistry,
+  LowcodeMaterialTemplate,
   LowcodeMaterialTab,
   LowcodePageSchema,
   LowcodeToolbarContext,
@@ -50,7 +52,7 @@ export interface LowcodeEngine {
   sampleSchema: LowcodePageSchema;
   /** 引擎自带的基础物料包（Button / Input / Div / Form 等）。 */
   basicPackage: LowcodeMaterialPackage;
-  /** 宿主定义的业务区块包（SiteHeader / AnnouncementBar），与基础包并列装配。 */
+  /** 宿主定义的业务物料包（Navbar / Tabs / AnnouncementBar 等），与基础包并列装配。 */
   packages: LowcodeMaterialPackage[];
   /** 替换引擎内置物料面板的自定义布局（钉钉式简约风格）。 */
   materialPanel: ComponentType<LowcodeMaterialPanelProps>;
@@ -58,15 +60,26 @@ export interface LowcodeEngine {
   leftPanels: LowcodeLeftPanel[];
 }
 
+/** 宿主自定义的 Setter 只注册一次：重复进编辑器（换页面、热更新）不重复注册。 */
+let hostSettersRegistered = false;
+
 const loadEngine = createClientOnlyFn(async (): Promise<LowcodeEngine> => {
-  const [lowcode, protocol, materials, blocks, panel, blockPanel] = await Promise.all([
-    import("@lowcode-next/lowcode-react"),
-    import("@lowcode-next/protocol"),
-    import("@lowcode-next/materials-react/basic"),
-    import("./blocks"),
-    import("./material-panel"),
-    import("./block-panel"),
-  ]);
+  const [lowcode, protocol, materials, blocks, panel, blockPanel, designer, imageSetter] =
+    await Promise.all([
+      import("@lowcode-next/lowcode-react"),
+      import("@lowcode-next/protocol"),
+      import("@lowcode-next/materials-react/basic"),
+      import("./blocks"),
+      import("./material-panel"),
+      import("./block-panel"),
+      import("@lowcode-next/designer-core"),
+      import("./image-setter"),
+    ]);
+  if (!hostSettersRegistered) {
+    // 物料 meta 里写 `setter: "ImageSetter"` 的属性（基础原子 Image 的图片地址）用它编辑
+    designer.registerSetter("ImageSetter", imageSetter.ImageSetter);
+    hostSettersRegistered = true;
+  }
   return {
     createEditor: lowcode.createEditor,
     parsePageSchema: protocol.parsePageSchema,

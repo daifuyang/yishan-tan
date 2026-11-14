@@ -4,6 +4,9 @@
 import * as React from "react";
 
 import { bool, cx, num, passthrough, pick, safeHref, str } from "./block-kit";
+import { objectStyle } from "./block-kit";
+import { safeColor } from "./block-safe";
+import { SiteContainer } from "./site-container";
 
 export const ANNOUNCEMENT_APPEARANCES = ["light", "dark", "brand"] as const;
 export const ANNOUNCEMENT_APPEARANCE_LABEL: Record<string, string> = {
@@ -31,13 +34,7 @@ export const ANNOUNCEMENT_DEFAULTS = {
   height: 40,
 } as const;
 
-/** 只放行 `#rgb` / `#rrggbb` / `rgb()` / `hsl()` / 命名色，挡掉能夹带其它 CSS 的值。 */
-const COLOR = /^(#[0-9a-f]{3,8}|(rgb|hsl)a?\([\d\s.,%/-]+\)|[a-z]{3,20})$/i;
-
-export function safeColor(value: unknown): string | undefined {
-  const color = str(value).trim();
-  return color && COLOR.test(color) ? color : undefined;
-}
+export { safeColor };
 
 export function AnnouncementBar(props: Record<string, unknown>) {
   const text = str(props.text, ANNOUNCEMENT_DEFAULTS.text);
@@ -59,7 +56,7 @@ export function AnnouncementBar(props: Record<string, unknown>) {
 
   const style: React.CSSProperties & Record<string, string | number> = {
     minHeight: height,
-    ...(props.style as React.CSSProperties | undefined),
+    ...objectStyle(props.style),
     ...(bg ? { "--lc-ab-bg": bg } : {}),
     ...(fg ? { "--lc-ab-fg": fg } : {}),
   };
@@ -79,26 +76,28 @@ export function AnnouncementBar(props: Record<string, unknown>) {
       className={cx("lc-ab", `lc-ab--${appearance}`, `lc-ab--${align}`)}
       style={style}
     >
-      <div className="lc-ab-inner">
-        {href && !actionText ? (
-          <a className="lc-ab-link" href={href}>
-            {message}
-          </a>
-        ) : (
-          message
-        )}
-        {action}
-      </div>
-      {dismissible ? (
-        <button
-          type="button"
-          className="lc-ab-close"
-          aria-label="关闭公告"
-          onClick={() => setDismissed(true)}
-        >
-          <span aria-hidden="true">×</span>
-        </button>
-      ) : null}
+      <SiteContainer className="lc-ab-container">
+        <div className="lc-ab-inner">
+          {href && !actionText ? (
+            <a className="lc-ab-link" href={href}>
+              {message}
+            </a>
+          ) : (
+            message
+          )}
+          {action}
+        </div>
+        {dismissible ? (
+          <button
+            type="button"
+            className="lc-ab-close"
+            aria-label="关闭公告"
+            onClick={() => setDismissed(true)}
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        ) : null}
+      </SiteContainer>
     </section>
   );
 }

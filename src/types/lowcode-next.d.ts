@@ -115,12 +115,25 @@ declare module "@lowcode-next/lowcode-react" {
     getVersion(): number;
   }
 
+  /** 拖拽时携带的节点模板：`schema` 不含 id，`label` 只用于拖拽幽灵的显示。 */
+  export interface LowcodeMaterialTemplate {
+    schema: Record<string, unknown>;
+    label?: string;
+  }
+
   /** 自定义物料面板收到的入参：引擎负责数据与交互通道，宿主只管长相。 */
   export interface LowcodeMaterialPanelProps {
     registry: LowcodeMaterialRegistry;
     tabs?: readonly LowcodeMaterialTab[];
-    /** 按下某个物料开始拖拽。 */
-    onDragStart: (componentName: string, event: PointerEvent<HTMLElement>) => void;
+    /**
+     * 按下某个物料开始拖拽。第三个参数是现成节点模板：同一物料的多套初始 schema，
+     * 落下的仍是 `componentName` 这个物料的标准节点（引擎换新 id）；不传则用物料的 defaultSchema。
+     */
+    onDragStart: (
+      componentName: string,
+      event: PointerEvent<HTMLElement>,
+      template?: LowcodeMaterialTemplate,
+    ) => void;
     /** 面板是否固定（占位）；false 为悬浮。 */
     pinned?: boolean;
     onTogglePin?: () => void;
@@ -134,6 +147,8 @@ declare module "@lowcode-next/lowcode-react" {
     icon: ReactNode;
     /** 排在哪个入口之后（内置 key：tree / materials / datasource / code）。 */
     after?: string;
+    /** 面板宽度（px），缺省 300。 */
+    width?: number;
     component: ComponentType<LowcodeMaterialPanelProps>;
   }
 
@@ -171,6 +186,14 @@ declare module "@lowcode-next/lowcode-react" {
     container: string | HTMLElement,
     options: LowcodeCreateEditorOptions,
   ): LowcodeEditorHandle;
+}
+
+declare module "@lowcode-next/designer-core" {
+  /**
+   * 注册自定义 Setter：物料 meta 里 `setter: "<kind>"` 的属性用它编辑。
+   * 组件收到引擎的 SetterContext（value / onCommit / disabled …）。
+   */
+  export function registerSetter(kind: string, component: unknown): void;
 }
 
 declare module "@lowcode-next/materials-react/basic" {

@@ -26,7 +26,7 @@ export function useRegistryMetas(registry: LowcodeMaterialRegistry): LowcodeMate
 }
 
 const ICON_BUTTON =
-  "inline-flex size-6 items-center justify-center rounded text-[#171a1d] hover:bg-[#f2f3f5]";
+  "inline-flex size-6 cursor-pointer items-center justify-center rounded text-[#171a1d] hover:bg-[#f2f3f5]";
 
 export function PanelTitleBar({
   title,

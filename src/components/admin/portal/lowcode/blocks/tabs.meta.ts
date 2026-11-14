@@ -2,9 +2,9 @@ import {
   type BlockMeta,
   LAYOUT_CONTAINER_GROUP,
   defineBlock,
+  enumProp,
   numberProp,
   propOptions,
-  radioProp,
 } from "./block-kit";
 import {
   TABS_DEFAULTS as D,
@@ -25,8 +25,8 @@ export const tabsMeta: BlockMeta = defineBlock({
   title: "选项卡",
   group: LAYOUT_CONTAINER_GROUP,
   props: {
-    variant: radioProp("样式", "外观", D.variant, propOptions(TABS_VARIANTS, TABS_VARIANT_LABEL)),
-    align: radioProp("页签对齐", "外观", D.align, propOptions(TABS_ALIGNS, TABS_ALIGN_LABEL)),
+    variant: enumProp("样式", "外观", D.variant, propOptions(TABS_VARIANTS, TABS_VARIANT_LABEL)),
+    align: enumProp("页签对齐", "外观", D.align, propOptions(TABS_ALIGNS, TABS_ALIGN_LABEL)),
     defaultActive: numberProp("默认选中（第几个）", "行为", D.defaultActive, {
       min: 1,
       max: MAX_TABS,

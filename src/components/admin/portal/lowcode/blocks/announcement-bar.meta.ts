@@ -5,7 +5,7 @@ import {
   ANNOUNCEMENT_APPEARANCE_LABEL,
   ANNOUNCEMENT_DEFAULTS as D,
 } from "./announcement-bar";
-import { type BlockMeta, defineBlock, numberProp, propOptions, radioProp } from "./block-kit";
+import { type BlockMeta, defineBlock, enumProp, numberProp, propOptions } from "./block-kit";
 
 export const announcementBarMeta: BlockMeta = defineBlock({
   componentName: "AnnouncementBar",
@@ -17,7 +17,7 @@ export const announcementBarMeta: BlockMeta = defineBlock({
     actionText: { title: "操作文字", group: "内容", type: "string", defaultValue: D.actionText },
     dismissible: { title: "可关闭", group: "内容", type: "bool", defaultValue: D.dismissible },
 
-    appearance: radioProp(
+    appearance: enumProp(
       "外观",
       "外观",
       D.appearance,
@@ -38,7 +38,7 @@ export const announcementBarMeta: BlockMeta = defineBlock({
       setter: "ColorSetter",
     },
 
-    align: radioProp(
+    align: enumProp(
       "对齐方式",
       "布局",
       D.align,

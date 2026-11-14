@@ -8,10 +8,10 @@ import "./blocks.css";
 
 import { AnnouncementBar } from "./announcement-bar";
 import { announcementBarMeta } from "./announcement-bar.meta";
+import { Navbar } from "./navbar";
+import { navbarMeta } from "./navbar.meta";
 import { PageLayout } from "./page-layout";
 import { pageLayoutMeta } from "./page-layout.meta";
-import { SiteHeader } from "./site-header";
-import { siteHeaderMeta } from "./site-header.meta";
 import { TabPane, Tabs } from "./tabs";
 import { tabPaneMeta, tabsMeta } from "./tabs.meta";
 
@@ -19,16 +19,16 @@ export const SITE_BLOCKS_PACKAGE_ID = "@yishan-tan/site-blocks";
 
 export const siteBlockMetas = [
   pageLayoutMeta,
-  siteHeaderMeta,
   announcementBarMeta,
+  navbarMeta,
   tabsMeta,
   tabPaneMeta,
 ];
 
 export const siteBlockComponents = {
   PageLayout,
-  SiteHeader,
   AnnouncementBar,
+  Navbar,
   Tabs,
   TabPane,
 };

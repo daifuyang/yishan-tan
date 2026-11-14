@@ -43,6 +43,9 @@ export interface UnavailableEditorHandle {
   getDocument(): unknown;
 }
 
+/** designer-core 的替身：自定义 Setter 的注册在引擎缺席时什么都不做。 */
+export function registerSetter(_kind: string, _component: unknown): void {}
+
 /** 往容器里写一句提示，并给一个空 handle，保证调用方不用特判。 */
 export function createEditor(
   container: string | HTMLElement,

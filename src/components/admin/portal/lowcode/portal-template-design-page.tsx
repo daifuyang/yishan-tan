@@ -3,6 +3,7 @@
  */
 import * as React from "react";
 
+import { toast } from "sonner";
 import { usePortalTemplate } from "~/features/portal-content/portal-content.queries";
 import { useUpdatePortalTemplate } from "~/features/portal-content/portal-content.use-mutations";
 
@@ -15,11 +16,19 @@ export function PortalTemplateDesignPage({ templateId }: { templateId: string })
   const data = template.data;
   const schema = React.useMemo(() => toLowcodePageSchema(data?.schema), [data?.schema]);
 
-  const handleSave = React.useCallback(
+  const persist = React.useCallback(
     async (next: LowcodePageSchema) => {
       await updateMut.mutateAsync({ id: templateId, schema: toJsonValue(next) });
     },
     [templateId, updateMut],
+  );
+
+  const handleSave = React.useCallback(
+    async (next: LowcodePageSchema) => {
+      await persist(next);
+      toast.success("保存成功");
+    },
+    [persist],
   );
 
   return (
@@ -30,6 +39,8 @@ export function PortalTemplateDesignPage({ templateId }: { templateId: string })
       error={template.isError ? template.error : null}
       schema={schema}
       onSave={handleSave}
+      // 模板没有「草稿 / 发布」之分，预览前同样落库，预览看到的就是库里存着的
+      onPreview={persist}
     />
   );
 }

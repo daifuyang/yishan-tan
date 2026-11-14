@@ -10,6 +10,7 @@
 import type * as React from "react";
 
 import { bool, cx, num, passthrough } from "./block-kit";
+import { objectStyle } from "./block-kit";
 
 export const PAGE_LAYOUT_DEFAULTS = {
   stickyHeader: false,
@@ -30,7 +31,7 @@ export function PageLayout(props: Record<string, unknown>) {
   const slots = (props.slots ?? {}) as Record<string, SlotContent | undefined>;
 
   const style = {
-    ...(props.style as React.CSSProperties | undefined),
+    ...objectStyle(props.style),
     ...(mainMaxWidth > 0 ? { "--lc-pl-main-max": `${mainMaxWidth}px` } : {}),
   } as React.CSSProperties;
 

@@ -24,6 +24,13 @@ export interface BlockPropMeta {
     | string
     | { componentName: string; props?: Record<string, unknown>; initialValue?: unknown };
   supportVariable?: boolean;
+  /** 显示条件：只在同一物料的其它属性取特定值时才在面板里显示（引擎 `PropMeta.visibleWhen`）。 */
+  visibleWhen?: BlockPropVisibility | readonly BlockPropVisibility[];
+}
+
+export interface BlockPropVisibility {
+  prop: string;
+  in: readonly unknown[];
 }
 
 export interface BlockMeta {
@@ -81,13 +88,34 @@ export function numberProp(
   };
 }
 
-export function radioProp(
+/** 单选按钮最多放几个选项。 */
+export const RADIO_MAX_OPTIONS = 3;
+/** 单选按钮所有选项文字加起来最多几个字。 */
+export const RADIO_MAX_LABEL_CHARS = 9;
+
+/**
+ * 枚举属性用哪种控件：选项少且文字短用单选按钮（一眼看全、一次点选），否则用下拉框。
+ *
+ * 属性面板只有 300px 宽，标签占了一截，留给控件的不到 180px：四个四字选项
+ * （标准导航 / 居中品牌 / 极简导航 / 双层导航）会被挤成一行重叠。按数量和文字总长判断，
+ * 以后新增的枚举选项再多再长也不会把面板挤坏。
+ */
+export function enumSetterFor(
+  options: readonly BlockPropOption[],
+): "RadioGroupSetter" | "SelectSetter" {
+  const chars = options.reduce((total, option) => total + Array.from(option.label).length, 0);
+  return options.length <= RADIO_MAX_OPTIONS && chars <= RADIO_MAX_LABEL_CHARS
+    ? "RadioGroupSetter"
+    : "SelectSetter";
+}
+
+export function enumProp(
   title: string,
   group: string,
   defaultValue: string,
   options: BlockPropOption[],
 ): BlockPropMeta {
-  return { title, group, type: "string", defaultValue, options, setter: "RadioGroupSetter" };
+  return { title, group, type: "string", defaultValue, options, setter: enumSetterFor(options) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -143,6 +171,17 @@ export function safeHref(value: unknown): string {
   if (SAFE_URL.test(href)) return href;
   // 没有协议的相对写法（`about`、`a/b`）；含冒号说明带了未知协议，丢弃。
   return href.includes(":") ? "" : href;
+}
+
+/**
+ * `props.style` 只认普通对象：字符串 / 数组 / null 等脏值当没写。
+ * 手写 JSON 或旧数据里 style 不是对象时，直接展开会得到 `{0:"o",1:"o"…}`（字符串被拆成字符），
+ * React 设置样式时抛错，整个区块白屏。
+ */
+export function objectStyle(value: unknown): import("react").CSSProperties | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as import("react").CSSProperties)
+    : undefined;
 }
 
 export function cx(...parts: Array<string | false | null | undefined>): string {

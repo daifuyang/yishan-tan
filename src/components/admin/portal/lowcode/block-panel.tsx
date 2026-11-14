@@ -2,87 +2,42 @@
  * 区块面板：与「组件」平行的独立左侧面板（图标导航里单独一个入口）。
  *
  * 参考钉钉宜搭设计器的「区块模板」面板：标题 + 搜索 + 分类标签（chips）+ 缩略图卡片。
- * 组件是单个控件，区块是一整块页面结构（页头、公告、页面骨架），拖到画布上落的是
- * 该物料的 `defaultSchema`，所以拖拽仍走引擎的 `onDragStart(componentName, event)`。
+ * 组件是单个控件，区块是一整块页面结构（页头、公告、首屏）。
  *
- * 区块 = 分组为 `BLOCKS_GROUP` 的物料。分类与缩略图由下面的 `BLOCK_CATALOG` 登记，
- * 没登记的区块归「其他」、用通用缩略图，不会丢。
+ * **模板级**：数据来自 `BLOCK_TEMPLATES`（见 `block-template-catalog.ts`）。区块 = 原子组合：
+ * 四套 Header、四套 Hero 的根节点都是基础原子 `Div`，里面是 Typography / Link / Image / Navbar
+ * 等原子节点树。拖拽时把模板自己的 schema 随载荷交给引擎，落下的就是这棵标准节点树
+ * （引擎为整棵子树换新 id），不改物料注册表、不留全局状态。
+ *
+ * 注册表只用来确认「这个物料在当前装配里存在」：没装配的物料，它的模板不展示。
  */
 import * as React from "react";
 
 import { LayoutPanelLeft } from "lucide-react";
 
+import { GenericBlockThumb, resolveThumbnailSrc } from "./block-thumbnails";
 import {
-  AnnouncementThumb,
-  GenericBlockThumb,
-  PageLayoutThumb,
-  SiteHeaderThumb,
-} from "./block-thumbnails";
-import { BLOCKS_GROUP } from "./blocks/block-kit";
-import type { LowcodeLeftPanel, LowcodeMaterialMeta, LowcodeMaterialPanelProps } from "./engine";
+  BLOCK_TEMPLATES,
+  filterBlockTemplates,
+  listBlockCategories,
+} from "./blocks/block-template-catalog";
+import type { BlockTemplate } from "./blocks/block-template.types";
+import type { LowcodeLeftPanel, LowcodeMaterialPanelProps } from "./engine";
 import { PanelSearch, PanelTitleBar, useRegistryMetas } from "./panel-chrome";
 
 const ALL = "全部";
-const OTHER = "其他";
 
-export interface BlockCatalogEntry {
-  category: string;
-  Thumb: () => React.JSX.Element;
-}
-
-export const BLOCK_CATALOG: Record<string, BlockCatalogEntry> = {
-  SiteHeader: { category: "页头", Thumb: SiteHeaderThumb },
-  AnnouncementBar: { category: "公告", Thumb: AnnouncementThumb },
-  PageLayout: { category: "布局", Thumb: PageLayoutThumb },
-};
-
-export function categoryOf(componentName: string): string {
-  return BLOCK_CATALOG[componentName]?.category ?? OTHER;
-}
-
-/** 区块物料：分组为 `BLOCKS_GROUP`，跳过隐藏项。 */
-export function listBlocks(metas: readonly LowcodeMaterialMeta[]): LowcodeMaterialMeta[] {
-  return metas.filter((meta) => meta.group === BLOCKS_GROUP && !meta.configure.component.hidden);
-}
-
-/** 当前出现过的分类（保持目录登记顺序，「其他」垫底），前面加「全部」。 */
-export function categoriesOf(blocks: readonly LowcodeMaterialMeta[]): string[] {
-  const present = new Set(blocks.map((meta) => categoryOf(meta.componentName)));
-  const ordered = [...new Set(Object.values(BLOCK_CATALOG).map((entry) => entry.category))].filter(
-    (category) => present.has(category),
-  );
-  if (present.has(OTHER)) ordered.push(OTHER);
-  return [ALL, ...ordered];
-}
-
-export function filterBlocks(
-  blocks: readonly LowcodeMaterialMeta[],
-  category: string,
-  keyword: string,
-): LowcodeMaterialMeta[] {
-  const query = keyword.trim().toLowerCase();
-  return blocks.filter((meta) => {
-    if (category !== ALL && categoryOf(meta.componentName) !== category) return false;
-    if (!query) return true;
-    return (
-      meta.title.toLowerCase().includes(query) || meta.componentName.toLowerCase().includes(query)
-    );
-  });
-}
-
-export interface BlockSection {
+export interface TemplateSection {
   name: string;
-  items: LowcodeMaterialMeta[];
+  items: BlockTemplate[];
 }
 
-/** 按分类分节，顺序与分类标签一致（目录登记顺序，「其他」垫底）；空分类不出节。 */
-export function groupByCategory(blocks: readonly LowcodeMaterialMeta[]): BlockSection[] {
-  return categoriesOf(blocks)
-    .filter((name) => name !== ALL)
-    .map((name) => ({
-      name,
-      items: blocks.filter((meta) => categoryOf(meta.componentName) === name),
-    }));
+/** 按分类分节，顺序与分类标签一致（目录里的分类顺序）；空分类不出节。 */
+export function groupTemplatesByCategory(templates: readonly BlockTemplate[]): TemplateSection[] {
+  return listBlockCategories(templates).map((name) => ({
+    name,
+    items: templates.filter((template) => template.category === name),
+  }));
 }
 
 export function BlockPanel({
@@ -96,15 +51,24 @@ export function BlockPanel({
   const [category, setCategory] = React.useState(ALL);
   const metas = useRegistryMetas(registry);
 
-  const blocks = React.useMemo(() => listBlocks(metas), [metas]);
-  const categories = React.useMemo(() => categoriesOf(blocks), [blocks]);
+  // 模板对应的物料没装配进来就不展示，免得拖了没反应
+  const available = React.useMemo(() => {
+    const registered = new Set(metas.map((meta) => meta.componentName));
+    return BLOCK_TEMPLATES.filter((template) => registered.has(template.componentName));
+  }, [metas]);
+
+  const categories = React.useMemo(() => [ALL, ...listBlockCategories(available)], [available]);
   // 分类被移除（物料卸载）时退回「全部」，别停在一个空分类上
   const activeCategory = categories.includes(category) ? category : ALL;
   const visible = React.useMemo(
-    () => filterBlocks(blocks, activeCategory, keyword),
-    [blocks, activeCategory, keyword],
+    () =>
+      filterBlockTemplates(available, {
+        category: activeCategory === ALL ? undefined : activeCategory,
+        keyword,
+      }),
+    [available, activeCategory, keyword],
   );
-  const sections = React.useMemo(() => groupByCategory(visible), [visible]);
+  const sections = React.useMemo(() => groupTemplatesByCategory(visible), [visible]);
   // 分组标题只在「全部」里出现；选中具体分类时标签本身已说明内容，不再重复
   const showHeadings = activeCategory === ALL;
 
@@ -112,11 +76,11 @@ export function BlockPanel({
     <div className="min-h-full bg-white font-sans text-xs text-[#171a1d]">
       <div className="sticky top-0 z-10 border-b-[0.67px] border-[rgba(31,56,88,0.1)] bg-white pb-3">
         <PanelTitleBar title="区块" pinned={pinned} onTogglePin={onTogglePin} onClose={onClose} />
-        <div className="px-3">
+        <div className="px-4">
           <PanelSearch value={keyword} placeholder="搜索区块" onChange={setKeyword} />
         </div>
         {categories.length > 2 ? (
-          <div className="mt-2.5 flex flex-wrap gap-x-1.5 gap-y-1.5 px-3" role="tablist">
+          <div className="mt-2.5 flex flex-wrap gap-x-1.5 gap-y-1.5 px-4" role="tablist">
             {categories.map((name) => {
               const active = name === activeCategory;
               return (
@@ -127,8 +91,8 @@ export function BlockPanel({
                   aria-selected={active}
                   className={
                     active
-                      ? "h-5 rounded-xl bg-[rgba(0,102,255,0.12)] px-1.5 leading-5 text-[#0089ff]"
-                      : "h-5 rounded-xl bg-[#eeeeef] px-1.5 leading-5 text-[rgba(24,28,31,0.6)] hover:bg-[#e5e6e8]"
+                      ? "h-5 cursor-pointer rounded-xl bg-[rgba(0,102,255,0.12)] px-1.5 leading-5 text-[#0089ff]"
+                      : "h-5 cursor-pointer rounded-xl bg-[#eeeeef] px-1.5 leading-5 text-[rgba(24,28,31,0.6)] hover:bg-[#e5e6e8]"
                   }
                   onClick={() => setCategory(name)}
                 >
@@ -146,33 +110,53 @@ export function BlockPanel({
         </p>
       ) : (
         sections.map((section) => (
-          <section key={section.name} className="px-3 pt-6 pb-1 first-of-type:pt-2.5">
+          <section key={section.name} className="px-4 pt-6 pb-1 first-of-type:pt-2.5">
             {showHeadings ? <h3 className="text-xs leading-5 font-bold">{section.name}</h3> : null}
             <ul
               className={
                 showHeadings
-                  ? "mt-2 grid grid-cols-2 gap-x-2 gap-y-3"
-                  : "grid grid-cols-2 gap-x-2 gap-y-3"
+                  ? "mt-2 grid grid-cols-2 gap-x-3 gap-y-4"
+                  : "grid grid-cols-2 gap-x-3 gap-y-4"
               }
             >
-              {section.items.map((meta) => {
-                const Thumb = BLOCK_CATALOG[meta.componentName]?.Thumb ?? GenericBlockThumb;
+              {section.items.map((template) => {
+                const thumbnailSrc = resolveThumbnailSrc(template.thumbnail);
                 return (
                   <li
-                    key={meta.componentName}
-                    data-material={meta.componentName}
-                    title={`${meta.title} · ${meta.componentName}`}
-                    className="group cursor-grab select-none active:cursor-grabbing"
+                    key={template.id}
+                    data-template={template.id}
+                    data-material={template.componentName}
+                    title={`${template.name} · ${template.description}`}
+                    className="group cursor-move select-none"
                     onPointerDown={(event) => {
                       event.preventDefault();
-                      onDragStart(meta.componentName, event);
+                      // 模板自己的 schema 随载荷交给引擎；落下的仍是 `componentName` 这个物料
+                      onDragStart(template.componentName, event, {
+                        schema: template.schema as unknown as Record<string, unknown>,
+                        label: template.name,
+                      });
                     }}
                   >
-                    <div className="h-[100px] overflow-hidden rounded-md border-[0.67px] border-[rgba(132,138,144,0.16)] bg-[#f5f6f8] group-hover:border-[#0089ff]">
-                      <Thumb />
+                    <div className="aspect-video w-full overflow-hidden rounded-md border-[0.67px] border-[rgba(132,138,144,0.16)] bg-[#f5f6f8] transition-shadow group-hover:border-[#0089ff] group-hover:shadow-[0_2px_8px_rgba(0,137,255,0.16)]">
+                      {thumbnailSrc ? (
+                        <img
+                          src={thumbnailSrc}
+                          alt=""
+                          loading="lazy"
+                          draggable={false}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <GenericBlockThumb />
+                      )}
                     </div>
-                    <div className="mt-1.5 truncate text-center leading-[18px] text-black/60">
-                      {meta.title}
+                    <div className="mt-1.5 flex items-center gap-1.5 leading-[18px]">
+                      <span className="truncate text-left text-black/70">{template.name}</span>
+                      {template.recommended ? (
+                        <span className="shrink-0 rounded-sm bg-[rgba(0,102,255,0.12)] px-1 text-[10px] leading-4 text-[#0089ff]">
+                          推荐
+                        </span>
+                      ) : null}
                     </div>
                   </li>
                 );
@@ -191,5 +175,6 @@ export const blockLeftPanel: LowcodeLeftPanel = {
   label: "区块",
   icon: <LayoutPanelLeft size={20} strokeWidth={1.5} />,
   after: "materials",
+  width: 400,
   component: BlockPanel,
 };

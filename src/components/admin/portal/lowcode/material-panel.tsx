@@ -33,7 +33,36 @@ export function tabKeyOf(tabs: readonly LowcodeMaterialTab[], group: string): st
   return hit?.key ?? "";
 }
 
-/** 按 `group` 分节：跳过隐藏物料（页面壳 Page）与区块，并按关键词过滤。 */
+/**
+ * 面板分节：引擎基础包的分组太碎（录入 5 个、表单 2 个，文字 / 操作 / 导航各只有 1~2 个），
+ * 面板里按「布局 / 基础 / 表单 / 反馈」四节重新归并。归并只发生在宿主的面板里，
+ * 不改引擎物料自己的 `group`（页签归属、其它消费方仍按原分组）。
+ *
+ * 先按组件名定（展示类要拆开：Tag / Divider / Image 是基础，Progress / Alert / Empty 是反馈），
+ * 再按原分组归并，都没命中就保留原分组名，新增物料不会凭空消失。
+ */
+const SECTION_OF_COMPONENT: Record<string, string> = {
+  Progress: "反馈",
+  Alert: "反馈",
+  Empty: "反馈",
+};
+const SECTION_OF_GROUP: Record<string, string> = {
+  文字: "基础",
+  操作: "基础",
+  展示: "基础",
+  导航: "基础",
+  录入: "表单",
+};
+export const SECTION_ORDER = ["布局", "基础", "表单", "反馈"];
+
+export function sectionOf(meta: LowcodeMaterialMeta): string {
+  return (
+    SECTION_OF_COMPONENT[meta.componentName] ??
+    (meta.group ? (SECTION_OF_GROUP[meta.group] ?? meta.group) : "其他")
+  );
+}
+
+/** 按分节归并：跳过隐藏物料（页面壳 Page）与区块，并按关键词过滤；分节顺序固定。 */
 export function groupMaterials(
   metas: readonly LowcodeMaterialMeta[],
   keyword: string,
@@ -49,12 +78,18 @@ export function groupMaterials(
     ) {
       continue;
     }
-    const name = meta.group ?? "其他";
+    const name = sectionOf(meta);
     const bucket = sections.get(name);
     if (bucket) bucket.push(meta);
     else sections.set(name, [meta]);
   }
-  return [...sections.entries()].map(([name, items]) => ({ name, items }));
+  const rank = (name: string) => {
+    const index = SECTION_ORDER.indexOf(name);
+    return index < 0 ? SECTION_ORDER.length : index;
+  };
+  return [...sections.entries()]
+    .map(([name, items]) => ({ name, items }))
+    .sort((a, b) => rank(a.name) - rank(b.name));
 }
 
 export function MaterialPanel({
@@ -105,8 +140,8 @@ export function MaterialPanel({
                   aria-selected={active}
                   className={
                     active
-                      ? "flex h-6 flex-1 items-center justify-center rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
-                      : "flex h-6 flex-1 items-center justify-center rounded-md text-black/60 hover:text-[#171a1d]"
+                      ? "flex h-6 flex-1 cursor-pointer items-center justify-center rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+                      : "flex h-6 flex-1 cursor-pointer items-center justify-center rounded-md text-black/60 hover:text-[#171a1d]"
                   }
                   onClick={() => setActiveTab(tab.key)}
                 >
@@ -141,7 +176,7 @@ export function MaterialPanel({
                     key={meta.componentName}
                     data-material={meta.componentName}
                     title={`${meta.title} · ${meta.componentName}`}
-                    className="flex h-[33px] cursor-grab select-none items-center rounded-md border-[0.67px] border-[rgba(132,138,144,0.16)] bg-white px-2 leading-[18px] hover:border-[#0089ff] active:cursor-grabbing"
+                    className="flex h-[33px] cursor-grab select-none items-center rounded-md border-[0.67px] border-[rgba(132,138,144,0.16)] bg-white px-2 leading-[18px] hover:border-[#0089ff]"
                     onPointerDown={(event) => {
                       // 阻止默认的文本选中，否则拖动时整块面板会被刷蓝
                       event.preventDefault();
